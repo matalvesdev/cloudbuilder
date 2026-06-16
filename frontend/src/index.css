@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 228 60% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 228 60% 10%;
+  --primary: 228 60% 10%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 228 60% 10%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 72 100% 50%;
+  --accent-foreground: 228 60% 10%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 210 40% 90%;
+  --input: 210 40% 90%;
+  --ring: 228 60% 10%;
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Dot grid background */
+.dot-grid {
+  background-image: radial-gradient(#e0f2fe 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+}
+
+/* Card shadows */
+.card-shadow {
+  box-shadow: 0 4px 20px rgba(10, 17, 40, 0.05);
+}
+
+.card-shadow-hover:hover {
+  box-shadow: 0 8px 32px rgba(10, 17, 40, 0.08);
+}
+
+/* Glass effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+/* ReactFlow brand theme */
+.react-flow__background {
+  background-color: #f8fafc !important;
+}
+
+.react-flow__controls-button {
+  border: 1px solid hsl(var(--border)) !important;
+  background: white !important;
+  border-radius: 8px !important;
+  width: 28px !important;
+  height: 28px !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: 0 4px 20px rgba(10, 17, 40, 0.05) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #E3E2FD !important;
+}
+
+.react-flow__minimap {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(10, 17, 40, 0.05) !important;
+  overflow: hidden !important;
+}
+
+.react-flow__selection {
+  background: rgba(10, 17, 40, 0.04) !important;
+  border: 1px solid hsl(var(--primary)) !important;
+}
+
+.react-flow__edge-path {
+  transition: stroke-width 0.15s;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-opacity: 0.8;
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px hsl(var(--primary)), 0 4px 20px rgba(10, 17, 40, 0.08) !important;
+  border-radius: 10px;
+}
+
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: hsl(var(--primary)) !important;
+  border: 2px solid white !important;
+  box-shadow: 0 1px 3px rgba(10, 17, 40, 0.15) !important;
+  transition: transform 0.15s;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.35);
+}
+
+/* Animated connection line */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.edge-animated {
+  stroke-dasharray: 8 4;
+  animation: dash-flow 1s linear infinite;
+}
+
+.edge-dashed {
+  stroke-dasharray: 5 4;
+}
+
+/* Edge interaction area */
+.react-flow__edge-interaction {
+  stroke-width: 20 !important;
+  fill: none;
+  cursor: pointer;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Scrollbar thin for code blocks */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Background gradient utilities */
+.bg-brand-gradient {
+  background: linear-gradient(135deg, #0a1128 0%, #0D1B2A 100%);
+}

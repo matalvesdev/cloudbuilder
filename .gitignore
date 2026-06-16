@@ -1,0 +1,45 @@
+# Node
+node_modules/
+frontend/dist/
+frontend/*.log
+frontend/.env
+
+# Java / Maven
+backend/target/
+backend/*.log
+backend/.mvn/
+
+# Go
+provision-engine/provision-engine
+provision-engine/provision-engine.exe
+provision-engine/vendor/
+provision-engine/bin/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Docker
+docker-data/
+
+# Temp
+tmp/
+temp/
+
+# Debug scripts
+frontend/debug_*.mjs
+frontend/test-results/

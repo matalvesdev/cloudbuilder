@@ -1,0 +1,73 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "CloudBuilder — Provision Engine",
+  "uid": "cloudbuilder-provision",
+  "version": 1,
+  "schemaVersion": 39,
+  "tags": ["cloudbuilder", "provision", "engine"],
+  "timezone": "browser",
+  "editable": false,
+  "panels": [
+    {
+      "title": "Deploys Bem-Sucedidos / min",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(cloudbuilder_provision_deploy_success_total[1m])",
+          "legendFormat": "Success"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "none" }
+      }
+    },
+    {
+      "title": "Drifts / min",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(cloudbuilder_provision_drift_detected_total[1m])",
+          "legendFormat": "Drifts"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "none" }
+      }
+    },
+    {
+      "title": "Tempo Médio de Deploy (s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(cloudbuilder_provision_deploy_duration_seconds_sum[5m]) / rate(cloudbuilder_provision_deploy_duration_seconds_count[5m])",
+          "legendFormat": "Média"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Gerações de Código",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "increase(cloudbuilder_provision_code_generated_total[24h])",
+          "legendFormat": "Códigos gerados"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "none" }
+      }
+    }
+  ]
+}

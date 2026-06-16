@@ -1,0 +1,109 @@
+syntax = "proto3";
+package provision;
+option go_package = "github.com/cloudbuilder/provision-engine/internal/api/grpc/proto";
+
+service ProvisionService {
+  rpc GenerateCode(GenerateCodeRequest) returns (GenerateCodeResponse);
+  rpc Deploy(DeployRequest) returns (stream DeployEvent);
+  rpc GetPlan(PlanRequest) returns (PlanResponse);
+  rpc ApprovePlan(ApproveRequest) returns (ApproveResponse);
+  rpc GetState(StateRequest) returns (StateResponse);
+  rpc DetectDrift(DriftRequest) returns (DriftResponse);
+  rpc Destroy(DestroyRequest) returns (stream DestroyEvent);
+}
+
+message GenerateCodeRequest {
+  string canvas_id = 1;
+  string design_json = 2;
+  string engine = 3; // "terraform" or "opentofu"
+}
+
+message GenerateCodeResponse {
+  map<string, string> files = 1;
+  int32 resource_count = 2;
+  string error = 3;
+}
+
+message DeployRequest {
+  string deployment_id = 1;
+  string workspace_dir = 2;
+  string engine = 3;
+  bool auto_approve = 4;
+}
+
+message DeployEvent {
+  string deployment_id = 1;
+  string event_type = 2; // "plan", "apply", "progress", "error", "complete"
+  string message = 3;
+  int32 progress_pct = 4;
+}
+
+message PlanRequest {
+  string workspace_dir = 1;
+  string engine = 2;
+}
+
+message PlanResponse {
+  string plan_json = 1;
+  string plan_summary = 2;
+  bool has_changes = 3;
+  int32 resources_added = 4;
+  int32 resources_changed = 5;
+  int32 resources_destroyed = 6;
+  string error = 7;
+}
+
+message ApproveRequest {
+  string deployment_id = 1;
+  string workspace_dir = 2;
+  string engine = 3;
+  string approved_by = 4;
+}
+
+message ApproveResponse {
+  bool success = 1;
+  string output = 2;
+  string error = 3;
+}
+
+message StateRequest {
+  string workspace_dir = 1;
+}
+
+message StateResponse {
+  string state_json = 1;
+  string state_version = 2;
+  int32 resource_count = 3;
+  string error = 4;
+}
+
+message DriftRequest {
+  string workspace_dir = 1;
+  string design_json = 2;
+}
+
+message DriftResponse {
+  bool has_drift = 1;
+  repeated DriftResource drifted_resources = 2;
+  string error = 3;
+}
+
+message DriftResource {
+  string address = 1;
+  string expected = 2;
+  string actual = 3;
+  string change_type = 4; // "added", "removed", "modified"
+}
+
+message DestroyRequest {
+  string deployment_id = 1;
+  string workspace_dir = 2;
+  string engine = 3;
+  bool auto_approve = 4;
+}
+
+message DestroyEvent {
+  string deployment_id = 1;
+  string event_type = 2;
+  string message = 3;
+}

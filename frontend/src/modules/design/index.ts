@@ -1,0 +1,6 @@
+export { DesignModule } from './DesignModule'
+export { ComponentPalette } from './components/ComponentPalette'
+export { PropertiesPanel } from './components/PropertiesPanel'
+export { CanvasView } from './components/CanvasView'
+export { useDrop } from './hooks/useDrop'
+export { useCanvasSocket } from './hooks/useCanvasSocket'
