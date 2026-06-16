@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Search, X, Box, Network, Database, Container, Cloud,
   BookOpen, Compass, FileCode, ShieldCheck, AlertTriangle,
@@ -25,6 +25,7 @@ import { ProtectedAction } from '@/components/ProtectedContent'
 import { useCanvasStore } from '@/store/canvasStore'
 import { usePolicyStore } from '@/store/policyStore'
 import { useUiStore } from '@/store/uiStore'
+import { platformApi } from '@/api/platform'
 import type { CanvasDesign, ProviderType } from '@/types/canvas.types'
 import type { PolicySeverity } from '@/types/policy.types'
 
@@ -65,7 +66,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   infra: 'Infraestrutura',
 }
 
-const TEMPLATES: TemplateDefinition[] = [
+const FALLBACK_TEMPLATES: TemplateDefinition[] = [
   {
     id: 'standard-web-app',
     name: 'Aplicação Web Padrão',
@@ -289,6 +290,35 @@ export function PlatformModule() {
   const [expandedPolicy, setExpandedPolicy] = useState<string | null>(null)
   const [policyFilter, setPolicyFilter] = useState<PolicySeverity | 'all'>('all')
   const [showComplianceReport, setShowComplianceReport] = useState(false)
+  const [templates, setTemplates] = useState<TemplateDefinition[]>(FALLBACK_TEMPLATES)
+  const [fetchingTemplates, setFetchingTemplates] = useState(true)
+
+  useEffect(() => {
+    platformApi.getCatalog().then((catalogData) => {
+      if (catalogData && catalogData.length > 0) {
+        // Map CatalogTemplate → TemplateDefinition for the component
+        const mapped: TemplateDefinition[] = catalogData.map((ct) => {
+          const existing = FALLBACK_TEMPLATES.find((ft) => ft.id === ct.id)
+          if (existing) return existing
+          return {
+            id: ct.id,
+            name: ct.name,
+            description: ct.description,
+            descriptionLong: ct.description,
+            category: ct.category,
+            provider: ct.provider,
+            complexity: ct.complexity === 'basic' ? 'beginner' : ct.complexity,
+            estimatedCost: ct.estimatedCost,
+            resourceCount: ct.resources.reduce((sum, r) => sum + r.count, 0),
+            icon: '📦',
+            nodes: [],
+            edges: [],
+          }
+        })
+        setTemplates(mapped)
+      }
+    }).finally(() => setFetchingTemplates(false))
+  }, [])
 
   const loadCanvas = useCanvasStore((s) => s.loadCanvas)
   const setActiveModule = useUiStore((s) => s.setActiveModule)
@@ -305,7 +335,7 @@ export function PlatformModule() {
   const resolveAll = usePolicyStore((s) => s.resolveAll)
 
   const filteredTemplates = useMemo(() => {
-    return TEMPLATES.filter((t) => {
+    return templates.filter((t) => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
         if (!t.name.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q)) return false
@@ -315,7 +345,7 @@ export function PlatformModule() {
       if (filterComplexity !== 'all' && t.complexity !== filterComplexity) return false
       return true
     })
-  }, [searchQuery, filterCategory, filterProvider, filterComplexity])
+  }, [templates, searchQuery, filterCategory, filterProvider, filterComplexity])
 
   const openViolations = useMemo(() => violations.filter((v) => v.status === 'open'), [violations])
   const resolvedViolations = useMemo(() => violations.filter((v) => v.status === 'resolved'), [violations])
@@ -379,9 +409,9 @@ export function PlatformModule() {
   }
 
   const summaryItems = [
-    { title: 'Itens do Catálogo', value: String(TEMPLATES.length), icon: BookOpen },
-    { title: 'Golden Paths', value: String(TEMPLATES.filter((t) => t.category !== 'infra').length), icon: Compass },
-    { title: 'Templates', value: String(TEMPLATES.length), icon: FileCode },
+    { title: 'Itens do Catálogo', value: String(templates.length), icon: BookOpen },
+    { title: 'Golden Paths', value: String(templates.filter((t) => t.category !== 'infra').length), icon: Compass },
+    { title: 'Templates', value: String(templates.length), icon: FileCode },
     { title: 'Políticas', value: String(policies.length), icon: ShieldCheck },
   ]
 

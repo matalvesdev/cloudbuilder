@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   DollarSign,
   TrendingUp,
@@ -243,8 +243,13 @@ function OptimizationCard({
 }
 
 export function CostModule() {
-  const { costHistory, costSummary, optimizations, applyOptimization } = useCostStore()
+  const { costHistory, costSummary, optimizations, applyOptimization, fetchCostData, loading } = useCostStore()
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [initialLoad, setInitialLoad] = useState(true)
+
+  useEffect(() => {
+    fetchCostData().finally(() => setInitialLoad(false))
+  }, [fetchCostData])
 
   const confirmingOpt = confirmingId
     ? optimizations.find((o) => o.id === confirmingId) ?? null
@@ -277,9 +282,12 @@ export function CostModule() {
           <h1 className="text-2xl font-bold text-brand-navy font-display">Custos e Otimizações</h1>
           <p className="text-sm text-slate-400">Monitore gastos e aplique otimizações nos recursos</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-50 rounded-xl px-4 py-2 border border-slate-100">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          Dados atualizados há 2 min
+        <div className={cn(
+          "flex items-center gap-2 text-xs rounded-xl px-4 py-2 border transition-colors",
+          loading ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-slate-50 text-slate-400 border-slate-100"
+        )}>
+          <div className={cn("w-2 h-2 rounded-full", loading ? "bg-amber-500 animate-pulse" : "bg-green-500")} />
+          {loading ? 'Atualizando dados...' : 'Dados conectados à API'}
         </div>
       </div>
 
