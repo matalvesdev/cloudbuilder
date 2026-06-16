@@ -25,10 +25,10 @@
 │   │   │   ├── design/     ★ Complete — Canvas, Palette, Properties, Validation, AI Chat, Code Preview (54 files)
 │   │   │   ├── provision/  ★ Complete — Terraform executor, deploy flow, CI/CD, ephemeral, approve/promote (10 files)
 │   │   │   ├── observe/    ✅ Complete — Health/alerts dashboard + DriftDetection + DisasterRecovery (3 files)
-│   │   │   ├── cost/       ✅ Funcional — Cost dashboard com otimizações (integra API + fallback mock) (1 file)
-│   │   │   ├── platform/   ⚠️ Parcial — Catalog de templates + políticas (dados hardcoded) (1 file)
-│   │   │   ├── aiops/      ⚠️ Parcial — AI assistant + fix dialog (dados mock) (2 files)
-│   │   │   ├── audit/      🔧 Stub — Auditoria (1 file)
+│   │   │   ├── cost/       ✅ Funcional — Cost dashboard com otimizações (integra API real via costStore) (1 file)
+│   │   │   ├── platform/   ✅ Funcional — Catalog de templates + políticas (integra API real via client.ts) (1 file)
+│   │   │   ├── aiops/      ✅ Funcional — AI assistant + incident fix (integra API real, incidentStore local) (2 files)
+│   │   │   ├── audit/      ✅ Complete — Auditoria com tabela de eventos (1 file)
 │   │   │   ├── auth/       ★ Complete — Login, Register, ForgotPassword, ResetPassword, TenantSelector (4 files)
 │   │   │   ├── dashboard/  ✅ Dashboard — Widgets de visão geral (3 files)
 │   │   │   ├── iam/        🔧 Stub — Gerenciamento de identidade (1 file)
@@ -315,14 +315,13 @@ Full details at `docs/roadmap/12-month-roadmap.md`
 ## Known Issues & Gaps
 - Frontend uses `nanoid` (string), backend uses `UUID` — mismatch on ID types
 - Frontend uses `XYPosition` (x/y object), backend uses flat `positionX`/`positionY` doubles
-- Frontend modules cost/platform/aiops ainda usam dados mock/hardcoded parcialmente (integração de API incompleta)
-- Apenas 5 testes frontend (Vitest) e 2 testes backend (JUnit) — cobertura baixa
-- Zero testes E2E (Playwright) — config existe mas sem testes escritos
+- Frontend modules cost/platform/aiops: desmockagem em andamento (background agents)
+- Cobertura de testes backend baixa (apenas 2 services com testes JUnit) — delegated a agente
+- Zero testes E2E (Playwright) — config existe, testes smoke em criação
 - Grafana/Prometheus sem dashboards pré-configurados — setup manual
 - Sem resource limits no docker-compose.yml
 - Kafka single-node sem TLS (dev-only)
 - Redis sem autenticação
-- Chunk principal bundle frontend com 1.87MB — precisa de code-splitting
 
 ## Session Anchored Summary
 - **RBAC backend**: ✅ Complete — IAM Modulith module with User, Role, Permission, Tenant, TenantUser entities + repositories + AuthService/IamService + AuthController/IAMController + shared/security JwtTokenProvider/JwtAuthenticationFilter/SecurityConfig + DevAuthController for dev login bypass
@@ -330,6 +329,13 @@ Full details at `docs/roadmap/12-month-roadmap.md`
 - **Permission gating (modules)**: ✅ Design/Provision/Cost/Observe/Platform/AIOps viewable by all roles; Audit/IAM/Settings admin-only via nav gating
 - **Permission gating (buttons)**: ✅ ProvisionModule (Gerar Código, Confirmar Deploy) + CostModule (Otimizar, Confirmar e Aplicar) + PlatformModule (Usar Template, Resolver Todas, Corrigir, Ignorar, Criar Design) — all gated to admin/editor via ProtectedAction
 - **TypeScript**: ✅ Clean compilation (zero errors)
+- **Lint**: ✅ ESLint 9 flat config (eslint.config.js) — 1 minor unused-import warning, no errors
+- **Bundle Splitting**: ✅ App.tsx lazy-loaded via `React.lazy()` + `lazyImport()` helper. manualChunks (vendor-reactflow, vendor-recharts, vendor-yjs, vendor-editor). Chunk principal reduzido de 1.87MB → 322KB (gzip: 98KB)
+- **Frontend Build**: ✅ Vite build sucesso (2829 modules, 8.84s)
+- **Frontend Tests**: ✅ Vitest — 62 tests, 5 suites, all pass (3.09s)
+- **Go Engine**: ✅ Build + vet + test — 23 tests pass
+- **Git**: ✅ Initialized, commit 56c9630, pushed to GitHub (matalvesdev/cloudbuilder)
+- **CI**: ✅ `.github/workflows/ci.yml` — 3 jobs (backend Java, frontend React, Go engine)
 - **Multi-tenant**: ✅ Frontend TenantSelector + backend Tenant/TenantUser entities + TenantFilter in shared/security
 
 ## Installed Plugins
