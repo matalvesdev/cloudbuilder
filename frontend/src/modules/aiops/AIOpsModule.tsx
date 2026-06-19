@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { Send, Sparkles, Plus, CheckCircle, Bolt, Bot, User, AlertTriangle, Lightbulb, BrainCircuit, MessageSquare, X, AlertCircle, Activity, Search, BarChart3, LayoutDashboard, ChevronDown, ChevronRight, ExternalLink, Layers, Workflow, Eye, Wrench, Rocket, History, ToggleLeft, ToggleRight, FileCheck, Zap } from 'lucide-react'
+import { Send, Sparkles, Plus, CheckCircle, Bolt, Bot, AlertTriangle, BrainCircuit, X, AlertCircle, Activity, Search, LayoutDashboard, ChevronDown, ChevronRight, ExternalLink, Layers, Workflow, Wrench, Rocket, History, ToggleLeft, ToggleRight, FileCheck, Zap, Lightbulb, MessageSquare, BarChart3, Eye } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useCanvasStore } from '@/store/canvasStore'
@@ -8,7 +8,22 @@ import { useIncidentStore, type ResourceModification } from '@/store/incidentSto
 import { aiopsApi, type DesignTemplate } from '@/api/aiops'
 import fallbackDesignTemplates from '@/api/aiops'
 import { IncidentFixDialog } from './IncidentFixDialog'
+import { DesignPreview } from './DesignPreview'
+import { FixWidget } from './FixWidget'
+import { FixHistoryList } from './FixHistory'
 import type { ProviderType, CanvasDesign } from '@/types/canvas.types'
+import type { Message, Incident, FixSuggestion, DesignChange } from './aiops.types'
+import {
+  generateSimulatedFix,
+  generateSimulatedIncidents,
+  detectDesignIntent,
+  getDesignSuggestions,
+  generateCanvasDesign,
+  PROVIDER_STYLES,
+  severityColor,
+  severityLabel,
+  statusColor,
+} from './aiops.utils'
 
 let designTemplates: DesignTemplate[] = [...fallbackDesignTemplates]
 
@@ -19,338 +34,10 @@ aiopsApi.getTemplates().then((templates) => {
   }
 })
 
-// ═══════════════════════════════════════════════════════════
-// ─── Simulated Incident Definitions ────────────────────────
-
-interface FixSuggestion {
-  description: string
-  modifications: ResourceModification[]
-}
-
-function findNodeByType(nodes: any[], resourceType: string): any | null {
-  return nodes.find((n) => n.data?.resourceType?.toLowerCase().includes(resourceType.toLowerCase())) || null
-}
-
-function generateSimulatedFix(incidentType: string, nodes: any[]): FixSuggestion | null {
-  switch (incidentType) {
-    case 'rds-cpu': {
-      const rdsNode = findNodeByType(nodes, 'rds')
-      if (!rdsNode) return null
-      const currentClass = rdsNode.data?.properties?.instance_class || 'db.t3.micro'
-      return {
-        description: `Escalar instância RDS de ${currentClass} para db.t3.medium para lidar com o aumento de carga`,
-        modifications: [{
-          nodeId: rdsNode.id,
-          nodeLabel: rdsNode.data?.label || 'RDS Instance',
-          property: 'instance_class',
-          oldValue: currentClass,
-          newValue: 'db.t3.medium',
-        }],
-      }
-    }
-    case 'ecs-down': {
-      const ecsNode = findNodeByType(nodes, 'ecs_service')
-      if (!ecsNode) return null
-      const currentCount = ecsNode.data?.properties?.desired_count ?? 1
-      return {
-        description: `Aumentar desired_count de ${currentCount} para 2 para garantir alta disponibilidade do serviço ECS`,
-        modifications: [{
-          nodeId: ecsNode.id,
-          nodeLabel: ecsNode.data?.label || 'ECS Service',
-          property: 'desired_count',
-          oldValue: currentCount,
-          newValue: 2,
-        }],
-      }
-    }
-    case 's3-public': {
-      const s3Node = findNodeByType(nodes, 's3_bucket')
-      if (!s3Node) return null
-      return {
-        description: 'Adicionar block_public_access = true no bucket S3 para eliminar exposição pública',
-        modifications: [{
-          nodeId: s3Node.id,
-          nodeLabel: s3Node.data?.label || 'S3 Bucket',
-          property: 'block_public_access',
-          oldValue: s3Node.data?.properties?.block_public_access ?? false,
-          newValue: true,
-        }],
-      }
-    }
-    default:
-      return null
-  }
-}
-
-// ─── Provider Display Config ───────────────────────────────
-
-const PROVIDER_STYLES: Record<ProviderType, { color: string; bg: string; border: string; label: string }> = {
-  aws: { color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200', label: 'AWS' },
-  azure: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Azure' },
-  gcp: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', label: 'GCP' },
-  k8s: { color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200', label: 'K8s' },
-}
-
-const CATEGORY_STYLES: Record<string, string> = {
-  compute: 'bg-purple-50 text-purple-700 border-purple-200',
-  network: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  storage: 'bg-amber-50 text-amber-700 border-amber-200',
-  database: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  security: 'bg-red-50 text-red-700 border-red-200',
-  serverless: 'bg-violet-50 text-violet-700 border-violet-200',
-  monitoring: 'bg-slate-50 text-slate-700 border-slate-200',
-  integration: 'bg-blue-50 text-blue-700 border-blue-200',
-}
-
-const CATEGORY_LABELS: Record<string, string> = {
-  compute: 'Compute',
-  network: 'Rede',
-  storage: 'Armazenamento',
-  database: 'Banco de Dados',
-  security: 'Segurança',
-  serverless: 'Serverless',
-  monitoring: 'Monitoramento',
-  integration: 'Integração',
-}
-
-// ─── Design Generation ─────────────────────────────────────
-
-function generateCanvasDesign(templateId: string): { design: CanvasDesign; template: DesignTemplate } | null {
-  const template = designTemplates.find(t => t.id === templateId)
-  if (!template) return null
-
-  const nodeIdMap = new Map<string, string>()
-  const nodes: any[] = []
-  const cols = 3
-  const nodeW = 224
-  const nodeH = 120
-  const gapX = 40
-  const gapY = 30
-
-  template.resources.forEach((res, i) => {
-    const nodeId = `ai-${templateId}-${res.id}-${Date.now()}-${i}`
-    nodeIdMap.set(res.id, nodeId)
-
-    const col = i % cols
-    const row = Math.floor(i / cols)
-
-    const properties: Record<string, any> = {}
-    if (res.resourceType === 'rds_instance') properties.instance_class = 'db.t3.micro'
-    if (res.resourceType === 'ecs_service') properties.desired_count = 1
-    if (res.resourceType === 's3_bucket') properties.block_public_access = false
-
-    nodes.push({
-      id: nodeId,
-      type: res.provider,
-      position: {
-        x: 60 + col * (nodeW + gapX),
-        y: 60 + row * (nodeH + gapY),
-      },
-      width: nodeW,
-      height: nodeH,
-      data: {
-        label: res.label,
-        provider: res.provider,
-        resourceType: res.resourceType,
-        properties,
-        validationStatus: 'PENDING' as const,
-      },
-    })
-  })
-
-  const edges: any[] = template.connections.map((conn, i) => ({
-    id: `ai-${templateId}-edge-${i}-${Date.now()}`,
-    source: nodeIdMap.get(conn.source) || '',
-    target: nodeIdMap.get(conn.target) || '',
-    type: 'connection' as const,
-    data: { edgeType: conn.edgeType },
-  }))
-
-  const design: CanvasDesign = {
-    id: `ai-design-${crypto.randomUUID()}`,
-    name: template.name,
-    description: template.description,
-    version: 1,
-    nodes,
-    edges,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  return { design, template }
-}
-
-// ─── Design Intent Detection ───────────────────────────────
-
-function detectDesignIntent(text: string): string | null {
-  const lower = text.toLowerCase().trim()
-
-  if (lower.includes('vpc') && (lower.includes('ecs') || lower.includes('rds'))) return 'vpc-ecs-rds'
-  if (lower.includes('kubernetes') || lower.includes('eks') || lower.includes('k8s')) return 'kubernetes-cluster'
-  if (lower.includes('serverless')) return 'serverless-api'
-  if (lower.includes('lambda') && lower.includes('api')) return 'serverless-api'
-  if (lower.includes('api gateway') && lower.includes('dynamodb')) return 'serverless-api'
-  if (lower.includes('criar design') || lower.includes('crie um design') || lower.includes('cria uma infra')) return 'vpc-ecs-rds'
-  if (lower.includes('create a design') || lower.includes('gerar design') || lower.includes('novo design')) return 'vpc-ecs-rds'
-
-  return null
-}
-
-function getDesignSuggestions(): string[] {
-  return [
-    'Criar design: VPC + ECS + RDS',
-    'Criar design: Kubernetes cluster',
-    'Criar design: Serverless API',
-  ]
-}
-
-// ─── Incident Types ────────────────────────────────────────
-
-interface Incident {
-  id: string
-  environmentId: string
-  title: string
-  description: string
-  severity: string
-  status: string
-  classification: string | null
-  suggestedRca: string | null
-  fixSuggestion: FixSuggestion | null
-  incidentType: string
-  detectedAt: string
-  resolvedAt: string | null
-}
-
-interface DesignChange {
-  action: 'add' | 'modify' | 'remove'
-  resource: string
-  description: string
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  suggestions?: string[]
-  changes?: { icon: string; text: string; color: string }[]
-  design?: CanvasDesign | null
-  designName?: string
-  isModification?: boolean
-  designChanges?: DesignChange[]
-  fixSuggestion?: FixSuggestion | null
-  incidentId?: string
-}
-
 const API_BASE = '/api/v1/aiops'
 
-function severityColor(severity: string): string {
-  switch (severity) {
-    case 'critical': return 'bg-red-500'
-    case 'warning': return 'bg-amber-500'
-    case 'info': return 'bg-blue-500'
-    default: return 'bg-slate-400'
-  }
-}
-
-function severityLabel(severity: string): string {
-  switch (severity) {
-    case 'critical': return 'Crítico'
-    case 'warning': return 'Atenção'
-    case 'info': return 'Info'
-    default: return severity
-  }
-}
-
-function statusColor(status: string): string {
-  switch (status) {
-    case 'OPEN': return 'bg-red-100 text-red-700 border-red-200'
-    case 'RESOLVED': return 'bg-green-100 text-green-700 border-green-200'
-    default: return 'bg-slate-100 text-slate-600 border-slate-200'
-  }
-}
-
-// ─── Generate simulated incidents based on canvas ─────────
-
-function generateSimulatedIncidents(nodes: any[]): Incident[] {
-  const incidents: Incident[] = []
-  const now = new Date()
-
-  const rdsNode = findNodeByType(nodes, 'rds')
-  if (rdsNode) {
-    incidents.push({
-      id: 'sim-rds-cpu',
-      environmentId: 'default',
-      title: 'RDS CPU > 90%',
-      description: `A instância RDS "${rdsNode.data?.label || 'RDS PostgreSQL'}" está com utilização de CPU acima de 90% nos últimos 15 minutos. Impacto potencial em latência de consultas.`,
-      severity: 'critical',
-      status: 'OPEN',
-      classification: null,
-      suggestedRca: null,
-      fixSuggestion: null,
-      incidentType: 'rds-cpu',
-      detectedAt: new Date(now.getTime() - 5 * 60000).toISOString(),
-      resolvedAt: null,
-    })
-  }
-
-  const ecsNode = findNodeByType(nodes, 'ecs_service')
-  if (ecsNode) {
-    incidents.push({
-      id: 'sim-ecs-down',
-      environmentId: 'default',
-      title: 'ECS Service Down',
-      description: `O serviço ECS "${ecsNode.data?.label || 'ECS Service'}" está com 0 tarefas em execução. O serviço foi implantado com 1 tarefa mas falhou ao iniciar.`,
-      severity: 'critical',
-      status: 'OPEN',
-      classification: null,
-      suggestedRca: null,
-      fixSuggestion: null,
-      incidentType: 'ecs-down',
-      detectedAt: new Date(now.getTime() - 12 * 60000).toISOString(),
-      resolvedAt: null,
-    })
-  }
-
-  const s3Node = findNodeByType(nodes, 's3_bucket')
-  if (s3Node) {
-    incidents.push({
-      id: 'sim-s3-public',
-      environmentId: 'default',
-      title: 'S3 Bucket Público',
-      description: `O bucket S3 "${s3Node.data?.label || 'S3 Assets Bucket'}" está configurado como público. Isso pode expor dados sensíveis a acesso não autorizado.`,
-      severity: 'warning',
-      status: 'OPEN',
-      classification: null,
-      suggestedRca: null,
-      fixSuggestion: null,
-      incidentType: 's3-public',
-      detectedAt: new Date(now.getTime() - 60 * 60000).toISOString(),
-      resolvedAt: null,
-    })
-  }
-
-  if (nodes.length === 0) {
-    incidents.push({
-      id: 'sim-no-canvas',
-      environmentId: 'default',
-      title: 'Nenhum Design Ativo',
-      description: 'Não há um design de infraestrutura carregado no canvas. Crie ou carregue um design para começar a monitorar.',
-      severity: 'info',
-      status: 'OPEN',
-      classification: null,
-      suggestedRca: null,
-      fixSuggestion: null,
-      incidentType: 'no-canvas',
-      detectedAt: new Date(now.getTime() - 120 * 60000).toISOString(),
-      resolvedAt: null,
-    })
-  }
-
-  return incidents
-}
-
 export function AIOpsModule() {
-  const { nodes, edges, canvasName, loadCanvas, updateNodeProperties, updateNodeLabel } = useCanvasStore()
+  const { nodes, edges, canvasName, loadCanvas, updateNodeProperties, updateNodeLabel, setHighlightedIncidentNodes, clearHighlightedIncidentNodes } = useCanvasStore()
   const { setActiveModule } = useUiStore()
   const { fixHistory, autoFixEnabled, toggleAutoFix, addFixHistory, markDeployed, markResult } = useIncidentStore()
 
@@ -429,7 +116,7 @@ export function AIOpsModule() {
   // ─── Design Response Generator ───────────────────────────
 
   const generateDesignResponse = useCallback((templateId: string, userQuestion: string): Message => {
-    const result = generateCanvasDesign(templateId)
+    const result = generateCanvasDesign(templateId, designTemplates)
     if (!result) {
       return {
         id: crypto.randomUUID(),
@@ -708,6 +395,7 @@ export function AIOpsModule() {
       i.id === id ? { ...i, status: 'RESOLVED', resolvedAt: new Date().toISOString() } : i
     ))
     setSelectedIncident((prev) => prev?.id === id ? { ...prev, status: 'RESOLVED', resolvedAt: new Date().toISOString() } : prev)
+    clearHighlightedIncidentNodes()
   }
 
   // ─── Toggle Resource Expansion ───────────────────────────
@@ -720,216 +408,6 @@ export function AIOpsModule() {
       return next
     })
   }, [])
-
-  // ─── Render: Design Preview ──────────────────────────────
-
-  const renderDesignPreview = (msg: Message) => {
-    if (!msg.design) return null
-
-    const resourceCount = msg.design.nodes.length
-    const connectionCount = msg.design.edges.length
-    const isExpanded = expandedResources.has(msg.id)
-
-    return (
-      <div className="mt-4 space-y-3 border border-brand-lime/30 rounded-xl bg-gradient-to-br from-brand-lime/[0.04] to-transparent p-4">
-        {/* AI Design Badge */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-lime/20 text-brand-navy border border-brand-lime/30">
-              <BrainCircuit className="w-3 h-3" />
-              Design gerado pela IA
-            </span>
-            {msg.isModification && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                <Workflow className="w-3 h-3" />
-                Modificação
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] font-mono text-slate-400">
-            {resourceCount} recursos • {connectionCount} conexões
-          </span>
-        </div>
-
-        {/* Resources Preview */}
-        <button
-          onClick={() => toggleResourceExpansion(msg.id)}
-          className="flex items-center gap-2 w-full text-left text-xs font-bold text-brand-navy bg-white/50 rounded-lg px-3 py-2 border border-slate-200 hover:border-brand-navy/30 transition-colors"
-        >
-          {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          <Layers className="w-3.5 h-3.5" />
-          Visualizar recursos
-          <span className="ml-auto text-[10px] text-slate-400 font-normal">{resourceCount} itens</span>
-        </button>
-
-        {isExpanded && (
-          <div className="grid grid-cols-2 gap-1.5">
-            {msg.design.nodes.map((node: any) => {
-              const provider = node.data?.provider as ProviderType
-              const pStyle = PROVIDER_STYLES[provider] || PROVIDER_STYLES.aws
-              const catStyle = CATEGORY_STYLES[node.data?.resourceType] || ''
-              return (
-                <div
-                  key={node.id}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100 hover:border-slate-200 transition-colors"
-                >
-                  <div className={cn('w-1.5 h-8 rounded-full shrink-0', pStyle.bg)} style={{ backgroundColor: provider === 'aws' ? '#FF9900' : provider === 'azure' ? '#0078D4' : provider === 'gcp' ? '#4285F4' : '#326CE5' }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-brand-navy truncate">{node.data?.label || 'Sem nome'}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className={cn('text-[9px] px-1 py-0.5 rounded font-medium border', pStyle.color, pStyle.bg, pStyle.border)}>
-                        {pStyle.label}
-                      </span>
-                      <span className="text-[9px] text-slate-400 truncate">{node.data?.resourceType || ''}</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Changes List (for modifications) */}
-        {msg.designChanges && msg.designChanges.length > 0 && (
-          <div className="space-y-1">
-            {msg.designChanges.map((change, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs text-slate-700 bg-white/50 p-2 rounded-lg border border-slate-100">
-                <div className={cn(
-                  'w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5',
-                  change.action === 'add' ? 'bg-green-50' : change.action === 'modify' ? 'bg-blue-50' : 'bg-red-50'
-                )}>
-                  {change.action === 'add' ? <Plus className="w-3 h-3 text-green-600" /> :
-                   change.action === 'modify' ? <CheckCircle className="w-3 h-3 text-blue-600" /> :
-                   <X className="w-3 h-3 text-red-600" />}
-                </div>
-                <span className="flex-1">{change.description}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleOpenInCanvas(msg.design!)}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-brand-navy text-white text-xs font-bold hover:bg-brand-navy/90 transition-all shadow-sm"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            {msg.isModification ? 'Aplicar Alterações no Canvas' : 'Abrir no Canvas'}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── Render: Fix Suggestion Widget ───────────────────────
-
-  const renderFixWidget = (msg: Message) => {
-    if (!msg.fixSuggestion || !msg.incidentId) return null
-    const fix = msg.fixSuggestion
-    const incidentTitle = selectedIncident?.title || 'Incidente'
-
-    return (
-      <div className="mt-4 space-y-3 border border-emerald-200 rounded-xl bg-gradient-to-br from-emerald-50 to-transparent p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-              <Wrench className="w-3 h-3" />
-              Correção Disponível
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono">
-              {fix.modifications.length} recurso(ns) afetado(s)
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-3 border border-emerald-100">
-          <p className="text-xs font-bold text-brand-navy mb-1">Correção Sugerida</p>
-          <p className="text-xs text-slate-600">{fix.description}</p>
-        </div>
-
-        {/* Modifications Preview */}
-        <div className="space-y-1.5">
-          {fix.modifications.map((mod, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs bg-white p-2.5 rounded-lg border border-slate-100">
-              <FileCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-brand-navy">{mod.nodeLabel}</p>
-                <p className="text-slate-500 mt-0.5">
-                  <span className="text-red-500 line-through">{String(mod.oldValue)}</span>
-                  <span className="mx-1 text-slate-300">→</span>
-                  <span className="text-green-600 font-medium">{String(mod.newValue)}</span>
-                  <span className="text-slate-400 ml-1">({mod.property})</span>
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={() => handleOpenFixDialog(fix, msg.incidentId!, incidentTitle)}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-brand-navy text-white text-xs font-bold hover:bg-brand-navy/90 transition-all shadow-md"
-        >
-          <Wrench className="w-4 h-4" />
-          Aplicar Correção
-        </button>
-      </div>
-    )
-  }
-
-  // ─── Render: Fix History per Incident ────────────────────
-
-  const renderFixHistory = (incident: Incident) => {
-    const fixes = fixHistory.filter((f) => f.incidentId === incident.id)
-    if (fixes.length === 0) return null
-
-    return (
-      <div className="mt-3 space-y-1.5">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
-          <History className="w-3 h-3" />
-          Histórico de Correções ({fixes.length})
-        </p>
-        {fixes.map((fix) => (
-          <div
-            key={fix.id}
-            className="flex items-start gap-2 p-2 rounded-lg border text-xs"
-          >
-            <div className={cn(
-              'w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5',
-              fix.result === 'success' ? 'bg-green-50' :
-              fix.result === 'failed' ? 'bg-red-50' : 'bg-amber-50'
-            )}>
-              {fix.result === 'success' ? <CheckCircle className="w-3 h-3 text-green-600" /> :
-               fix.result === 'failed' ? <X className="w-3 h-3 text-red-600" /> :
-               <AlertTriangle className="w-3 h-3 text-amber-600" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-bold text-brand-navy truncate">{fix.fixDescription}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] text-slate-400">
-                  {new Date(fix.appliedAt).toLocaleString('pt-BR')}
-                </span>
-                {fix.autoFix && (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-brand-lime/20 text-brand-navy font-medium">
-                    Auto-Fix
-                  </span>
-                )}
-                {fix.deployedAt ? (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-green-50 text-green-700 font-medium">
-                    Deployado
-                  </span>
-                ) : (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-amber-50 text-amber-700 font-medium">
-                    Não deployado
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
 
   // ─── Render ──────────────────────────────────────────────
 
@@ -983,7 +461,12 @@ export function AIOpsModule() {
               {incidents.map((inc) => (
                 <button
                   key={inc.id}
-                  onClick={() => setSelectedIncident(inc)}
+                  onClick={() => {
+                    setSelectedIncident(inc)
+                    if (inc.affectedNodeIds && inc.affectedNodeIds.length > 0) {
+                      setHighlightedIncidentNodes(inc.affectedNodeIds)
+                    }
+                  }}
                   className={cn(
                     'w-full text-left p-3 rounded-lg transition-colors',
                     selectedIncident?.id === inc.id
@@ -1070,7 +553,7 @@ export function AIOpsModule() {
                     <h3 className="text-sm font-bold text-brand-navy">{selectedIncident.title}</h3>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setSelectedIncident(null)} className="text-slate-400 hover:text-slate-600">
+                    <button onClick={() => { setSelectedIncident(null); clearHighlightedIncidentNodes() }} className="text-slate-400 hover:text-slate-600">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -1097,10 +580,10 @@ export function AIOpsModule() {
                 )}
 
                 {/* Fix History for this incident */}
-                {renderFixHistory(selectedIncident)}
+                <FixHistoryList incident={selectedIncident} fixHistory={fixHistory} />
 
                 {selectedIncident.status === 'OPEN' && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => handleAnalyzeIncident(selectedIncident)}
                       className="px-3 py-1.5 bg-brand-navy text-white rounded-lg text-xs font-bold hover:bg-brand-navy/90 transition-colors"
@@ -1119,6 +602,22 @@ export function AIOpsModule() {
                       >
                         <Wrench className="w-3 h-3 inline mr-1" />
                         Aplicar Correção
+                      </button>
+                    )}
+                    {selectedIncident.affectedNodeIds && selectedIncident.affectedNodeIds.length > 0 && (
+                      <button
+                        onClick={() => {
+                          clearHighlightedIncidentNodes()
+                          // small delay to allow ReactFlow to render before highlighting
+                          setTimeout(() => {
+                            setHighlightedIncidentNodes(selectedIncident.affectedNodeIds)
+                            setActiveModule('design')
+                          }, 50)
+                        }}
+                        className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors"
+                      >
+                        <Eye className="w-3 h-3 inline mr-1" />
+                        Ver no Canvas
                       </button>
                     )}
                     <button
@@ -1173,10 +672,19 @@ export function AIOpsModule() {
                   )}
 
                   {/* Design Preview Widget */}
-                  {renderDesignPreview(msg)}
+                  <DesignPreview
+                    msg={msg}
+                    expandedResources={expandedResources}
+                    onToggleResource={toggleResourceExpansion}
+                    onOpenInCanvas={handleOpenInCanvas}
+                  />
 
                   {/* Fix Suggestion Widget */}
-                  {renderFixWidget(msg)}
+                  <FixWidget
+                    msg={msg}
+                    selectedIncident={selectedIncident}
+                    onOpenFixDialog={handleOpenFixDialog}
+                  />
 
                   {msg.suggestions && (
                     <div className="flex flex-wrap gap-2 mt-3">

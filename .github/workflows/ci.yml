@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+  GO_VERSION: '1.22'
+
 jobs:
   backend:
     name: Backend (Java)
@@ -23,21 +28,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      kafka:
-        image: confluentinc/cp-kafka:7.9.0
-        ports: ["9092:9092"]
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Java 21
+      - name: Setup Java ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
           cache: 'maven'
       - name: Compile
         run: cd backend && ./mvnw compile -q
       - name: Test
         run: cd backend && ./mvnw test -q
+      - name: Security audit (dependencies)
+        run: cd backend && ./mvnw org.owasp:dependency-check-maven:check -q || echo "Dependency check warnings found"
+        continue-on-error: true
       - name: Package
         run: cd backend && ./mvnw package -DskipTests -q
 
@@ -46,10 +51,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - name: Install
@@ -58,20 +63,33 @@ jobs:
         run: cd frontend && npm run typecheck
       - name: Lint
         run: cd frontend && npm run lint
-      - name: Build
+      - name: Test (Vitest)
+        run: cd frontend && npm run test
+      - name: Build (Vite)
         run: cd frontend && npm run build
+      - name: Security audit (npm)
+        run: cd frontend && npm audit --audit-level=high || echo "Audit warnings found (some may require manual review)"
+        continue-on-error: true
 
   provision-engine:
     name: Provision Engine (Go)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Go
+      - name: Setup Go ${{ env.GO_VERSION }}
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: provision-engine/go.sum
+      - name: Vet
+        run: cd provision-engine && go vet ./...
       - name: Build
         run: cd provision-engine && go build ./cmd/provision-engine/
-      - name: Test
-        run: cd provision-engine && go vet ./...
+      - name: Test with coverage
+        run: cd provision-engine && go test -coverprofile=coverage.out ./...
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-coverage
+          path: provision-engine/coverage.out

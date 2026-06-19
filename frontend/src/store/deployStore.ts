@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import type { AppDeployment, AppDeployStatus, CiProvider, DeployTargetType } from '@/types/deploy.types'
 
 interface DeployState {
@@ -23,7 +22,7 @@ export const useDeployStore = create<DeployState>()(
         const now = new Date().toISOString()
         const newDep: AppDeployment = {
           ...dep,
-          id: nanoid(),
+          id: crypto.randomUUID(),
           status: 'pending',
           url: null,
           pipelineYaml: null,

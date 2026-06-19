@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import { useReactFlow } from '@xyflow/react'
-import { nanoid } from 'nanoid'
 
 export function useDrop() {
   const reactFlowInstance = useReactFlow()
@@ -12,7 +11,7 @@ export function useDrop() {
         y: event.clientY,
       })
       const newNode = {
-        id: nanoid(),
+        id: crypto.randomUUID(),
         type: componentData.provider,
         position,
         data: {

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import type { Promotion, Approval, PromotionStatus } from '@/types/promotion.types'
 
 interface PromotionState {
@@ -23,7 +22,7 @@ export const usePromotionStore = create<PromotionState>()(
       approvals: [],
 
       addPromotion: (prom) => {
-        const id = nanoid()
+        const id = crypto.randomUUID()
         const newProm: Promotion = {
           ...prom,
           id,
@@ -47,7 +46,7 @@ export const usePromotionStore = create<PromotionState>()(
       addApproval: (app) => {
         const newApp: Approval = {
           ...app,
-          id: nanoid(),
+          id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
         }
         set((state) => ({

@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react'
-import { Cloud, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
+import { Cloud, Eye, EyeOff, Loader2, AlertCircle, Compass } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 interface LoginPageProps {
@@ -158,9 +158,11 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                 localStorage.setItem('cloudbuilder-tour-seen', 'false')
                 alert('Tour guiado será iniciado após o login!')
               }}
-              className="text-[11px] text-slate-400 hover:text-brand-navy transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-brand-navy transition-colors"
+              aria-label="Iniciar tour guiado pela plataforma"
             >
-              🎯 Primeira vez? Veja um tour rápido
+              <Compass className="w-3.5 h-3.5" />
+              Primeira vez? Veja um tour rápido
             </button>
           </div>
 

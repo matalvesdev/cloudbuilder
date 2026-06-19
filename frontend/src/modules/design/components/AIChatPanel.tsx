@@ -12,7 +12,35 @@ interface Message {
   suggestions?: string[]
 }
 
-// Architecture templates: name → list of component IDs to add
+// Grid → position helper: places components in a 2-column grid with labels per column
+const GRID_COLS = 2
+const GRID_COL_WIDTH = 280
+const GRID_ROW_HEIGHT = 80
+const GRID_ORIGIN_X = 50
+const GRID_ORIGIN_Y = 50
+
+// Category → column index for grid layout
+const CATEGORY_COLUMN: Record<string, number> = {
+  network: 0,
+  compute: 0,
+  security: 0,
+  database: 1,
+  storage: 1,
+  serverless: 1,
+  integration: 1,
+  monitoring: 1,
+}
+
+function getGridPosition(category: string, offset: number): { x: number; y: number } {
+  const col = CATEGORY_COLUMN[category] ?? (offset % GRID_COLS)
+  const row = Math.floor(offset / GRID_COLS)
+  return {
+    x: GRID_ORIGIN_X + col * GRID_COL_WIDTH,
+    y: GRID_ORIGIN_Y + row * GRID_ROW_HEIGHT,
+  }
+}
+
+// Architecture templates with grid-aware positions
 const TEMPLATES: Record<string, { label: string; components: string[]; edges?: [string, string][] }> = {
   'vpc-basico': {
     label: 'VPC Básica',
@@ -21,13 +49,38 @@ const TEMPLATES: Record<string, { label: string; components: string[]; edges?: [
   },
   'web-app-3-tier': {
     label: 'Web App 3 Camadas',
-    components: ['aws-vpc', 'aws-subnet', 'aws-subnet', 'aws-alb', 'aws-ec2', 'aws-sg', 'aws-rds', 'aws-s3'],
-    edges: [['aws-alb', 'aws-ec2'], ['aws-ec2', 'aws-rds'], ['aws-vpc', 'aws-subnet']],
+    components: ['aws-vpc', 'aws-subnet', 'aws-subnet', 'aws-alb', 'aws-sg', 'aws-ec2', 'aws-rds', 'aws-s3'],
+    edges: [['aws-vpc', 'aws-subnet'], ['aws-vpc', 'aws-subnet'], ['aws-alb', 'aws-ec2'], ['aws-sg', 'aws-ec2'], ['aws-sg', 'aws-rds'], ['aws-ec2', 'aws-rds'], ['aws-ec2', 'aws-s3']],
   },
   'serverless-api': {
     label: 'API Serverless',
     components: ['aws-lambda', 'aws-dynamodb', 'aws-sqs', 'aws-sns', 'aws-s3'],
     edges: [['aws-lambda', 'aws-dynamodb'], ['aws-lambda', 'aws-sqs'], ['aws-sqs', 'aws-sns']],
+  },
+  'microservices-aws': {
+    label: 'Microserviços AWS (ECS)',
+    components: ['aws-vpc', 'aws-subnet', 'aws-alb', 'aws-ecs', 'aws-ecr', 'aws-rds', 'aws-elasticache', 'aws-sqs', 'aws-s3'],
+    edges: [['aws-vpc', 'aws-subnet'], ['aws-alb', 'aws-ecs'], ['aws-ecs', 'aws-rds'], ['aws-ecs', 'aws-elasticache'], ['aws-ecs', 'aws-sqs'], ['aws-ecr', 'aws-ecs']],
+  },
+  'k8s-eks': {
+    label: 'Kubernetes AWS (EKS)',
+    components: ['aws-vpc', 'aws-subnet', 'aws-ecr', 'aws-alb', 'aws-ec2', 'aws-rds', 'aws-s3', 'aws-cw'],
+    edges: [['aws-vpc', 'aws-subnet'], ['aws-alb', 'aws-ec2'], ['aws-ec2', 'aws-rds'], ['aws-ec2', 'aws-s3'], ['aws-ec2', 'aws-cw'], ['aws-ecr', 'aws-ec2']],
+  },
+  'azure-infra': {
+    label: 'Infraestrutura Azure',
+    components: ['azure-vnet', 'azure-subnet', 'azure-appgw', 'azure-vm', 'azure-sql', 'azure-storage', 'azure-func', 'azure-nsg'],
+    edges: [['azure-vnet', 'azure-subnet'], ['azure-vnet', 'azure-nsg'], ['azure-appgw', 'azure-vm'], ['azure-vm', 'azure-sql'], ['azure-vm', 'azure-storage'], ['azure-vm', 'azure-func']],
+  },
+  'gcp-native': {
+    label: 'GCP Cloud Native',
+    components: ['gcp-vpc', 'gcp-subnet', 'gcp-gke', 'gcp-vm', 'gcp-sql', 'gcp-gcs', 'gcp-cloudrun'],
+    edges: [['gcp-vpc', 'gcp-subnet'], ['gcp-gke', 'gcp-vm'], ['gcp-vm', 'gcp-sql'], ['gcp-vm', 'gcp-gcs'], ['gcp-cloudrun', 'gcp-sql']],
+  },
+  'k8s-production': {
+    label: 'Kubernetes Produção',
+    components: ['k8s-namespace', 'k8s-deploy', 'k8s-service', 'k8s-ingress', 'k8s-configmap', 'k8s-secret', 'k8s-pvc', 'k8s-hpa'],
+    edges: [['k8s-namespace', 'k8s-deploy'], ['k8s-namespace', 'k8s-configmap'], ['k8s-namespace', 'k8s-secret'], ['k8s-deploy', 'k8s-service'], ['k8s-service', 'k8s-ingress'], ['k8s-deploy', 'k8s-hpa'], ['k8s-deploy', 'k8s-pvc']],
   },
 }
 
@@ -35,29 +88,79 @@ const WELCOME_MESSAGE: Message = {
   id: 'welcome',
   role: 'assistant',
   content: 'Oi! Posso ajudar a criar sua arquitetura na nuvem. Escolha um template ou descreva o que precisa.',
-  suggestions: ['VPC básica', 'Web App 3 camadas', 'API Serverless', 'Adicionar um banco RDS', 'Organizar layout'],
+  suggestions: [
+    'VPC básica', 'Web App 3 camadas', 'API Serverless', 'Microserviços AWS',
+    'Kubernetes AWS (EKS)', 'Infra Azure', 'GCP Cloud Native', 'K8s Produção',
+  ],
+}
+
+const CATEGORY_ALIASES: Record<string, string[]> = {
+  compute: ['vm', 'instância', 'instancia', 'servidor', 'compute', 'ec2', 'k8s', 'kubernetes', 'container', 'cluster'],
+  database: ['banco', 'db', 'database', 'sql', 'rds', 'cache', 'elasticache', 'dynamodb', 'redis'],
+  network: ['rede', 'vpc', 'subnet', 'dns', 'load balancer', 'alb', 'firewall', 'gateway'],
+  storage: ['armazenamento', 'storage', 'bucket', 's3', 'disco', 'volume', 'efs', 'ebs'],
+  serverless: ['lambda', 'function', 'serverless', 'cloud run', 'function app', 'função'],
+  security: ['segurança', 'security', 'firewall', 'sg', 'nsg', 'grupo de segurança', 'iam'],
+  integration: ['fila', 'queue', 'sqs', 'sns', 'mensageria', 'api', 'pubsub', 'event'],
+  monitoring: ['monitoramento', 'alarme', 'cloudwatch', 'grafana', 'metrics', 'log'],
 }
 
 function findComponents(query: string): { id: string; displayName: string; provider: string }[] {
   const q = query.toLowerCase()
   const results: { id: string; displayName: string; provider: string }[] = []
+  const seen = new Set<string>()
 
-  // Direct resource type matches
-  for (const c of allComponents) {
-    if (c.displayName.toLowerCase().includes(q) || c.resourceType.toLowerCase().includes(q)) {
-      results.push({ id: c.id, displayName: c.displayName, provider: c.provider })
+  // Check for category aliases first
+  for (const [category, aliases] of Object.entries(CATEGORY_ALIASES)) {
+    if (aliases.some(a => q.includes(a))) {
+      const categoryMatches = allComponents.filter(c => c.category === category)
+      for (const c of categoryMatches.slice(0, 5)) {
+        if (!seen.has(c.id)) {
+          seen.add(c.id)
+          results.push({ id: c.id, displayName: c.displayName, provider: c.provider })
+        }
+      }
+      return results
     }
-    if (results.length >= 3) break
+  }
+
+  // Direct displayName / resourceType / provider matches
+  for (const c of allComponents) {
+    if (c.displayName.toLowerCase().includes(q) || c.resourceType.toLowerCase().includes(q) || c.provider.includes(q)) {
+      if (!seen.has(c.id)) {
+        seen.add(c.id)
+        results.push({ id: c.id, displayName: c.displayName, provider: c.provider })
+      }
+    }
+    if (results.length >= 5) break
   }
   return results
 }
 
+const TEMPLATE_KEYWORDS: [string, string][] = [
+  ['vpc-basico', 'vpc'],
+  ['web-app-3-tier', '3 camadas'],
+  ['web-app-3-tier', 'web app'],
+  ['web-app-3-tier', 'webapp'],
+  ['serverless-api', 'serverless'],
+  ['microservices-aws', 'microserviço'],
+  ['microservices-aws', 'ecs'],
+  ['k8s-eks', 'eks'],
+  ['k8s-eks', 'kubernetes aws'],
+  ['azure-infra', 'azure'],
+  ['azure-infra', 'azurerm'],
+  ['gcp-native', 'gcp'],
+  ['gcp-native', 'google cloud'],
+  ['k8s-production', 'k8s produção'],
+  ['k8s-production', 'kubernetes produção'],
+]
+
 function detectIntent(input: string): 'template' | 'add' | 'layout' | 'clear' | 'unknown' {
   const lower = input.toLowerCase()
-  if (lower.includes('vpc') || lower.includes('web app') || lower.includes('serverless') || lower.includes('3 camadas')) return 'template'
-  if (lower.includes('adicionar') || lower.includes('add') || lower.includes('colocar') || lower.includes('criar')) return 'add'
-  if (lower.includes('organizar') || lower.includes('layout') || lower.includes('arrumar')) return 'layout'
-  if (lower.includes('limpar') || lower.includes('clear') || lower.includes('novo')) return 'clear'
+  if (TEMPLATE_KEYWORDS.some(([_, kw]) => lower.includes(kw))) return 'template'
+  if (lower.includes('adicionar') || lower.includes('add') || lower.includes('colocar') || lower.includes('criar') || lower.includes('inserir')) return 'add'
+  if (lower.includes('organizar') || lower.includes('layout') || lower.includes('arrumar') || lower.includes('auto')) return 'layout'
+  if (lower.includes('limpar') || lower.includes('clear') || lower.includes('novo') || lower.includes('reiniciar')) return 'clear'
   return 'unknown'
 }
 
@@ -81,10 +184,14 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
     if (!template) return
 
     const nodeIds: string[] = []
+    const countByCategory: Record<string, number> = {}
     for (const compId of template.components) {
       const comp = allComponents.find(c => c.id === compId)
       if (!comp) continue
-      addNode(comp, { x: 200 + Math.random() * 400, y: 200 + Math.random() * 300 })
+      const cat = comp.category || 'compute'
+      const offset = countByCategory[cat] ?? 0
+      countByCategory[cat] = offset + 1
+      addNode(comp, getGridPosition(cat, offset))
       const state = useCanvasStore.getState()
       const newNode = state.nodes[state.nodes.length - 1]
       if (newNode) nodeIds.push(newNode.id)
@@ -93,7 +200,6 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
     // Connect edges based on index mapping
     if (template.edges && nodeIds.length > 0) {
       for (const [srcIdx, tgtIdx] of template.edges) {
-        // Find by component ID (not array index)
         const srcCompIdx = template.components.findIndex(c => c === srcIdx)
         const tgtCompIdx = template.components.findIndex(c => c === tgtIdx)
         if (srcCompIdx >= 0 && tgtCompIdx >= 0 && nodeIds[srcCompIdx] && nodeIds[tgtCompIdx]) {
@@ -116,10 +222,14 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
       return
     }
 
+    const countByCategory: Record<string, number> = {}
     for (const match of matches) {
       const comp = allComponents.find(c => c.id === match.id)
       if (comp) {
-        addNode(comp, { x: 200 + Math.random() * 300, y: 200 + Math.random() * 200 })
+        const cat = comp.category || 'compute'
+        const offset = countByCategory[cat] ?? 0
+        countByCategory[cat] = offset + 1
+        addNode(comp, getGridPosition(cat, offset))
       }
     }
 
@@ -152,22 +262,24 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
       switch (intent) {
         case 'template': {
           const lower = userText.toLowerCase()
-          let templateKey = ''
-          if (lower.includes('vpc')) templateKey = 'vpc-basico'
-          else if (lower.includes('web') || lower.includes('3')) templateKey = 'web-app-3-tier'
-          else if (lower.includes('serverless')) templateKey = 'serverless-api'
+          const matched = TEMPLATE_KEYWORDS.find(([_, kw]) => lower.includes(kw))
+          const templateKey = matched ? matched[0] : ''
 
-          if (templateKey) {
+          if (templateKey && TEMPLATES[templateKey]) {
             await loadTemplate(templateKey)
             const template = TEMPLATES[templateKey]
             appendAssistant(
               `Pronto! Criei uma arquitetura de **${template.label}** com ${template.components.length} componentes e conexões automáticas.`,
-              ['Adicionar um banco RDS', 'Organizar layout', 'Exportar código'],
+              ['Organizar layout', 'Exportar código', 'Adicionar mais'],
             )
           } else {
             appendAssistant(
-              'Templates disponíveis: VPC básica, Web App 3 camadas, API Serverless.',
-              ['VPC básica', 'Web App 3 camadas', 'API Serverless'],
+              'Templates disponíveis:\n\n' +
+              '• **AWS**: VPC básica, Web App 3 camadas, API Serverless, Microserviços (ECS), Kubernetes (EKS)\n' +
+              '• **Azure**: Infraestrutura completa\n' +
+              '• **GCP**: Cloud Native\n' +
+              '• **Kubernetes**: Produção (Deployments, Services, Ingress)',
+              ['VPC básica', 'Web App 3 camadas', 'Microserviços AWS', 'Infra Azure', 'GCP Cloud Native', 'K8s Produção'],
             )
           }
           break
@@ -185,17 +297,20 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
         }
         case 'clear': {
           clearCanvas()
-          appendAssistant('Canvas limpo! Pronto para um novo design.', ['VPC básica', 'Web App 3 camadas', 'API Serverless'])
+          appendAssistant('Canvas limpo! Pronto para um novo design.', ['VPC básica', 'Web App 3 camadas', 'Microserviços AWS', 'Infra Azure'])
           break
         }
         default: {
           appendAssistant(
             'Não entendi. Posso ajudar com:\n\n' +
-            '• **Templates**: "criar VPC", "web app 3 camadas", "API serverless"\n' +
+            '• **Templates AWS**: "VPC básica", "web app 3 camadas", "serverless", "microserviços", "EKS"\n' +
+            '• **Azure**: "infra azure"\n' +
+            '• **GCP**: "GCP cloud native"\n' +
+            '• **K8s**: "K8s produção"\n' +
             '• **Componentes**: "adicionar EC2", "colocar RDS", "criar Lambda"\n' +
             '• **Ações**: "organizar layout", "limpar canvas"\n' +
             '• **Exportar**: código Terraform no painel abaixo',
-            ['VPC básica', 'Web App 3 camadas', 'API Serverless', 'Organizar layout'],
+            ['VPC básica', 'Web App 3 camadas', 'Microserviços AWS', 'Infra Azure', 'GCP Cloud Native', 'Organizar layout'],
           )
           break
         }
@@ -208,27 +323,28 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
   }, [input, addSingleComponent, autoLayout, clearCanvas, loadTemplate, appendAssistant])
 
   const handleSuggestion = useCallback(async (suggestion: string) => {
-    // Map suggestion text to template keys
-    if (suggestion === 'VPC básica') {
+    // Template suggestions map
+    const templateMap: Record<string, { key: string; msg: string; suggestions: string[] }> = {
+      'VPC básica': { key: 'vpc-basico', msg: 'Pronto! VPC básica criada com VPC, Subnets, Internet Gateway e Route Table.', suggestions: ['Organizar layout', 'Adicionar EC2'] },
+      'Web App 3 camadas': { key: 'web-app-3-tier', msg: 'Arquitetura 3 camadas criada! ALB → EC2 → RDS com Security Groups e S3.', suggestions: ['Organizar layout', 'Exportar código'] },
+      'API Serverless': { key: 'serverless-api', msg: 'API Serverless criada! Lambda → DynamoDB + SQS + SNS.', suggestions: ['Organizar layout', 'Exportar código'] },
+      'Microserviços AWS': { key: 'microservices-aws', msg: 'Microserviços AWS criados! ECS + ALB + RDS + ElastiCache + SQS + ECR.', suggestions: ['Organizar layout', 'Exportar código', 'Adicionar mais'] },
+      'Kubernetes AWS (EKS)': { key: 'k8s-eks', msg: 'Cluster EKS criado! VPC + ECR + ALB + RDS + S3 + CloudWatch.', suggestions: ['Organizar layout', 'Exportar código'] },
+      'Infra Azure': { key: 'azure-infra', msg: 'Infraestrutura Azure criada! VNet + App Gateway + VM + SQL + Storage + Functions.', suggestions: ['Organizar layout', 'Exportar código'] },
+      'GCP Cloud Native': { key: 'gcp-native', msg: 'Arquitetura GCP criada! VPC + GKE + Cloud SQL + Cloud Storage + Cloud Run.', suggestions: ['Organizar layout', 'Exportar código'] },
+      'K8s Produção': { key: 'k8s-production', msg: 'Kubernetes Produção criado! Deployments + Services + Ingress + ConfigMaps + Secrets + PVC + HPA.', suggestions: ['Organizar layout', 'Consolidar'] },
+    }
+
+    // Check if it's a template suggestion
+    const templateMatch = templateMap[suggestion]
+    if (templateMatch) {
       setInput('')
       setIsTyping(true)
       await new Promise(r => setTimeout(r, 300))
-      await loadTemplate('vpc-basico')
-      appendAssistant('Pronto! VPC básica criada com VPC, Subnets, Internet Gateway e Route Table.', ['Organizar layout', 'Adicionar EC2'])
+      await loadTemplate(templateMatch.key)
+      appendAssistant(templateMatch.msg, templateMatch.suggestions)
       setIsTyping(false)
-    } else if (suggestion === 'Web App 3 camadas') {
-      setIsTyping(true)
-      await new Promise(r => setTimeout(r, 300))
-      await loadTemplate('web-app-3-tier')
-      appendAssistant('Arquitetura 3 camadas criada! ALB → EC2 → RDS com Security Groups e S3.', ['Organizar layout', 'Exportar código'])
-      setIsTyping(false)
-    } else if (suggestion === 'API Serverless') {
-      setIsTyping(true)
-      await new Promise(r => setTimeout(r, 300))
-      await loadTemplate('serverless-api')
-      appendAssistant('API Serverless criada! Lambda → DynamoDB + SQS + SNS.', ['Organizar layout', 'Exportar código'])
-      setIsTyping(false)
-    } else if (suggestion === 'Organizar layout' || suggestion === 'Organizar layout') {
+    } else if (suggestion === 'Organizar layout') {
       autoLayout()
       appendAssistant('Layout organizado! ✅')
     } else if (suggestion === 'Exportar código') {
@@ -237,13 +353,9 @@ export function AIChatPanel({ onClose }: { onClose?: () => void }) {
       appendAssistant('Use ⌘S ou o botão de salvar na toolbar para salvar.')
     } else if (suggestion === 'Adicionar mais') {
       appendAssistant('O que mais deseja adicionar?', ['EC2', 'RDS', 'Lambda', 'S3', 'ALB'])
-    } else if (suggestion === 'Adicionar um banco RDS') {
-      const comp = allComponents.find(c => c.id === 'aws-rds')
-      if (comp) {
-        addNode(comp, { x: 500 + Math.random() * 100, y: 300 + Math.random() * 100 })
-        await new Promise(r => setTimeout(r, 50))
-      }
-      appendAssistant('RDS Database adicionado ao canvas!', ['Organizar layout'])
+    } else if (suggestion === 'Consolidar') {
+      await autoLayout()
+      appendAssistant('Layout consolidado! ✅')
     } else {
       // Treat as free text input
       setInput(suggestion)

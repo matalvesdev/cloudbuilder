@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 
 export interface ResourceModification {
   nodeId: string
@@ -43,7 +42,7 @@ export const useIncidentStore = create<IncidentState>()(
       addFixHistory: (entry) => {
         const newEntry: FixHistoryEntry = {
           ...entry,
-          id: nanoid(),
+          id: crypto.randomUUID(),
           appliedAt: new Date().toISOString(),
         }
         set((state) => ({ fixHistory: [...state.fixHistory, newEntry] }))

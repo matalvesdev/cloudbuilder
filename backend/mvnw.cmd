@@ -23,7 +23,7 @@
 
 @REM Determine the Java command
 @if "%JAVA_HOME%" == "" goto errorJavaHome
-set JAVA_EXE="%JAVA_HOME%\bin\java.exe"
+set JAVA_EXE=%JAVA_HOME%\bin\java.exe
 if not exist "%JAVA_EXE%" goto errorJavaExe
 goto init
 

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 
 export interface TeamMember {
   id: string
@@ -93,7 +92,7 @@ export const useApprovalStore = create<ApprovalState>()(
       approvalHistory: [],
 
       addTeamMember: (member) => {
-        const newMember: TeamMember = { ...member, id: nanoid() }
+        const newMember: TeamMember = { ...member, id: crypto.randomUUID() }
         set((state) => ({ teamMembers: [...state.teamMembers, newMember] }))
       },
 
@@ -122,7 +121,7 @@ export const useApprovalStore = create<ApprovalState>()(
             ),
           }))
         } else {
-          const newRule: ApprovalRule = { ...rule, id: nanoid() }
+          const newRule: ApprovalRule = { ...rule, id: crypto.randomUUID() }
           set((state) => ({ approvalRules: [...state.approvalRules, newRule] }))
         }
       },
@@ -142,7 +141,7 @@ export const useApprovalStore = create<ApprovalState>()(
       },
 
       requestApproval: (req) => {
-        const id = nanoid()
+        const id = crypto.randomUUID()
         const newReq: ApprovalRequest = {
           ...req,
           id,
@@ -153,7 +152,7 @@ export const useApprovalStore = create<ApprovalState>()(
           comment: null,
         }
         const historyEntry: ApprovalHistoryEntry = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           approvalRequestId: id,
           promotionId: req.promotionId,
           action: 'requested',
@@ -182,7 +181,7 @@ export const useApprovalStore = create<ApprovalState>()(
           approvalHistory: [
             ...state.approvalHistory,
             {
-              id: nanoid(),
+              id: crypto.randomUUID(),
               approvalRequestId: requestId,
               promotionId: state.approvalRequests.find((r) => r.id === requestId)?.promotionId ?? '',
               action: 'approved',
@@ -208,7 +207,7 @@ export const useApprovalStore = create<ApprovalState>()(
           approvalHistory: [
             ...state.approvalHistory,
             {
-              id: nanoid(),
+              id: crypto.randomUUID(),
               approvalRequestId: requestId,
               promotionId: state.approvalRequests.find((r) => r.id === requestId)?.promotionId ?? '',
               action: 'rejected',
@@ -231,7 +230,7 @@ export const useApprovalStore = create<ApprovalState>()(
           approvalHistory: [
             ...state.approvalHistory,
             {
-              id: nanoid(),
+              id: crypto.randomUUID(),
               approvalRequestId: requestId,
               promotionId: req.promotionId,
               action: 'cancelled',

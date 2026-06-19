@@ -23,7 +23,6 @@ import {
   MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { nanoid } from 'nanoid'
 import type {
   DRConfig,
   DRTestResult,
@@ -57,7 +56,7 @@ const STATUS_CONFIG: Record<DrStatus, { label: string; bg: string; text: string;
 
 function generateMockDrConfig(): DRConfig {
   return {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     environmentId: 'default',
     primaryRegion: 'us-east-1',
     secondaryRegion: 'us-west-2',
@@ -79,7 +78,7 @@ function generateMockDrConfig(): DRConfig {
 function generateMockTestResults(configId: string): DRTestResult[] {
   return [
     {
-      id: nanoid(),
+      id: crypto.randomUUID(),
       configId,
       testedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
       rto_actual: 47,
@@ -93,7 +92,7 @@ function generateMockTestResults(configId: string): DRTestResult[] {
       duration_seconds: 47,
     },
     {
-      id: nanoid(),
+      id: crypto.randomUUID(),
       configId,
       testedAt: new Date(Date.now() - 37 * 86400000).toISOString(),
       rto_actual: 52,
@@ -433,7 +432,7 @@ function DrSetupForm({ onSave }: { onSave: (config: DRConfig) => void }) {
     }))
 
     const config: DRConfig = {
-      id: nanoid(),
+      id: crypto.randomUUID(),
       environmentId: 'default',
       primaryRegion,
       secondaryRegion,
@@ -620,7 +619,7 @@ export function DisasterRecovery() {
     setIsSimulating(false)
     if (config) {
       const result: DRTestResult = {
-        id: nanoid(),
+        id: crypto.randomUUID(),
         configId: config.id,
         testedAt: new Date().toISOString(),
         rto_actual: 47,

@@ -24,6 +24,7 @@ import CloudNode from '../nodes/CloudNode'
 import { ConnectionEdge, EDGE_TYPE_STYLES, type ConnectionEdgeType } from '../components/edges'
 import type { CanvasNodeData } from '@/types/canvas.types'
 import { validateConnection } from '../validation/connectionRules'
+import { CursorsOverlay } from './CursorsOverlay'
 import {
   Box, LayoutGrid, Keyboard,
   AlignStartVertical, AlignEndVertical, AlignCenterVertical,
@@ -825,6 +826,9 @@ function CanvasFlow({ onNodeSelect, snapEnabled: externalSnapEnabled, onCommandP
           )}
         </Panel>
       </ReactFlow>
+
+      {/* Remote cursor overlay for multiplayer */}
+      <CursorsOverlay />
 
       {/* Context Menu overlay */}
       {contextMenu && (

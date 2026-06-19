@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import type {
   ConnectedRepo,
   RepoProvider,
@@ -122,7 +121,7 @@ export const useRepoStore = create<RepoState>()(
         if (existing) return existing
 
         const newRepo: ConnectedRepo = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           provider,
           token,
           ...repo,

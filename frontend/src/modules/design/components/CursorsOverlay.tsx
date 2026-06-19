@@ -32,7 +32,7 @@ export function CursorsOverlay() {
   useEffect(() => {
     if (!collaborationManager.isActive()) return
 
-    const ws = (collaborationManager as any).yjsBridge?.['ws'] as WebSocket | null
+    const ws = (collaborationManager as any).yjsBridge?.['wsAccessor'] as WebSocket | null
     if (!ws) return
 
     const handleMessage = (event: MessageEvent) => {

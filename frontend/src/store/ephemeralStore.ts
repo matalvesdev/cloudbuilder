@@ -2,8 +2,7 @@ import { create } from 'zustand'
 import type { EphemeralEnv, EphemeralCreateRequest, EphemeralStatus, ResourceSize } from '@/types/ephemeral.types'
 import { provisionApi } from '@/lib/provisionApi'
 import type { EphemeralEnvironment } from '@/lib/provisionApi'
-import { nanoid } from 'nanoid'
-
+import { nanoId } from '@/lib/utils'
 interface EphemeralState {
   environments: EphemeralEnv[]
   loading: boolean
@@ -80,14 +79,14 @@ export const useEphemeralStore = create<EphemeralState>((set, get) => ({
       const now = Date.now()
       const ttl = req.ttl_hours
       const local: EphemeralEnv = {
-        id: nanoid(),
+        id: crypto.randomUUID(),
         name: req.name,
         repoId: req.repoId || 'default',
         branchName: req.branchName,
         prNumber: req.prNumber || null,
         prUrl: req.prUrl || null,
         sourceEnvId: req.sourceEnvId || 'default',
-        baseUrl: `https://${req.name.toLowerCase().replace(/\s+/g, '-')}-${nanoid(6)}.cloudbuilder.dev`,
+        baseUrl: `https://${req.name.toLowerCase().replace(/\s+/g, '-')}-${nanoId(6)}.cloudbuilder.dev`,
         status: 'active',
         ttl_hours: ttl,
         createdAt: new Date(now).toISOString(),

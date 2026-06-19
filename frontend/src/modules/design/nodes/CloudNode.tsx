@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect, useCallback } from 'react'
+import { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import type { CanvasNodeData } from '@/types/canvas.types'
 import { ValidationBadge } from '../validation'
@@ -7,7 +7,8 @@ import CanvasNodeToolbar from './NodeToolbar'
 import { useCanvasStore } from '@/store/canvasStore'
 import { useCollaborationStore } from '@/store/collaborationStore'
 import { cn } from '@/lib/utils'
-import { Lock, Check, X, MessageCircle } from 'lucide-react'
+import { Lock, Check, X, MessageCircle, DollarSign } from 'lucide-react'
+import { getResourcePrice } from '../components/CostEstimationBar'
 
 type CanvasNode = NodeProps<Node<CanvasNodeData>>
 
@@ -73,6 +74,8 @@ function CloudNode(props: CanvasNode) {
   const stopEditing = useCanvasStore((s) => s.stopEditing)
   const commentCount = useCollaborationStore((s) => s.comments.filter(c => c.nodeId === id && !c.resolved).length)
   const setSelectedCommentNodeId = useCollaborationStore((s) => s.setSelectedCommentNodeId)
+  const highlightedIncidentNodes = useCanvasStore((s) => s.highlightedIncidentNodes)
+  const isIncidentHighlighted = highlightedIncidentNodes.includes(id)
 
   const [editValue, setEditValue] = useState(data.label)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -108,13 +111,15 @@ function CloudNode(props: CanvasNode) {
 
   const properties = Object.entries(data.properties || {}).slice(0, 2)
   const isLocked = data?.locked ?? false
+  const estimatedCost = useMemo(() => getResourcePrice(data.resourceType || ''), [data.resourceType])
 
   return (
     <div
       className={cn(
         'rounded-xl border-[1.5px] bg-white card-shadow w-56 transition-all',
         selected ? `${theme.border} ring-2 ring-brand-lime/40 shadow-md` : 'border-slate-200 hover:border-slate-300',
-        isLocked && 'opacity-85'
+        isLocked && 'opacity-85',
+        isIncidentHighlighted && 'border-red-400 ring-2 ring-red-300 animate-pulse shadow-lg shadow-red-200/50'
       )}
     >
       <CanvasNodeToolbar {...props} />
@@ -176,6 +181,12 @@ function CloudNode(props: CanvasNode) {
               <MessageCircle className="w-3 h-3" />
               <span className="text-[9px] font-bold">{commentCount}</span>
             </button>
+          )}
+          {estimatedCost > 0 && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[9px] font-bold border border-emerald-200/50 shrink-0">
+              <DollarSign className="w-2.5 h-2.5" />
+              {estimatedCost.toFixed(0)}
+            </span>
           )}
           <ValidationBadge status={data.validationStatus} />
         </div>

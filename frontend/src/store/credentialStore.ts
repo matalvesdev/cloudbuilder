@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import type { ProviderCredential, Environment, Provider, ProviderCredentialStatus, Deployment } from '@/types/settings.types'
 
 interface CredentialState {
@@ -41,7 +40,7 @@ export const useCredentialStore = create<CredentialState>()(
         const maskedSecret = `****${cred.secret.slice(-4)}`
         const newCred: ProviderCredential = {
           ...cred,
-          id: nanoid(),
+          id: crypto.randomUUID(),
           maskedSecret,
           status: 'unknown' as ProviderCredentialStatus,
           lastTestedAt: null,
@@ -96,7 +95,7 @@ export const useCredentialStore = create<CredentialState>()(
         const now = new Date().toISOString()
         const newEnv: Environment = {
           ...env,
-          id: nanoid(),
+          id: crypto.randomUUID(),
           status: 'PENDING',
           canvasVersion: 1,
           createdAt: now,
@@ -126,7 +125,7 @@ export const useCredentialStore = create<CredentialState>()(
       addDeployment: (dep) => {
         const newDep: Deployment = {
           ...dep,
-          id: nanoid(),
+          id: crypto.randomUUID(),
         }
         set((state) => ({ deployments: [...state.deployments, newDep] }))
       },

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import type { DriftReport, DriftResource, DriftSummary } from '@/types/drift.types'
 import { useCanvasStore } from './canvasStore'
 
@@ -143,7 +142,7 @@ export const useDriftStore = create<DriftState>()(
           const node = canvasNodes[0]
           const props = node.data.properties || {}
           mockResources.push({
-            id: nanoid(),
+            id: crypto.randomUUID(),
             resourceName: node.data.label || node.data.resourceType,
             resourceType: node.data.resourceType,
             provider: node.data.provider,
@@ -171,7 +170,7 @@ export const useDriftStore = create<DriftState>()(
           if (canvasNodes.length > 1) {
             const node2 = canvasNodes[1]
             mockResources.push({
-              id: nanoid(),
+              id: crypto.randomUUID(),
               resourceName: node2.data.label || node2.data.resourceType,
               resourceType: node2.data.resourceType,
               provider: node2.data.provider,
@@ -192,7 +191,7 @@ export const useDriftStore = create<DriftState>()(
           }
         } else {
           mockResources.push({
-            id: nanoid(),
+            id: crypto.randomUUID(),
             resourceName: 'web-server-01',
             resourceType: 'aws_instance',
             provider: 'aws',
@@ -206,7 +205,7 @@ export const useDriftStore = create<DriftState>()(
             status: 'DETECTED',
           })
           mockResources.push({
-            id: nanoid(),
+            id: crypto.randomUUID(),
             resourceName: 'app-db',
             resourceType: 'aws_db_instance',
             provider: 'aws',
@@ -219,7 +218,7 @@ export const useDriftStore = create<DriftState>()(
             status: 'DETECTED',
           })
           mockResources.push({
-            id: nanoid(),
+            id: crypto.randomUUID(),
             resourceName: 'security-group-api',
             resourceType: 'aws_security_group',
             provider: 'aws',
@@ -232,7 +231,7 @@ export const useDriftStore = create<DriftState>()(
             status: 'DETECTED',
           })
           mockResources.push({
-            id: nanoid(),
+            id: crypto.randomUUID(),
             resourceName: 'redis-cache',
             resourceType: 'aws_elasticache_cluster',
             provider: 'aws',
@@ -247,7 +246,7 @@ export const useDriftStore = create<DriftState>()(
         }
 
         const report: DriftReport = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           environmentId: 'production',
           canvasId: canvas.canvasId || 'unknown',
           canvasVersion: canvas.canvasVersion,

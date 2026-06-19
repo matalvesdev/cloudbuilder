@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
+import { nanoId } from '@/lib/utils'
 import type {
   TeamMember,
   TeamMemberRole,
@@ -12,15 +12,15 @@ import type {
 const NOW = () => new Date().toISOString()
 
 const MOCK_MEMBERS: TeamMember[] = [
-  { id: nanoid(), name: 'Thiago', email: 'thiago@cloudbuilder.io', avatar: 'T', role: 'owner', status: 'online', lastSeen: NOW() },
-  { id: nanoid(), name: 'Ana', email: 'ana@cloudbuilder.io', avatar: 'A', role: 'editor', status: 'online', lastSeen: NOW() },
-  { id: nanoid(), name: 'Pedro', email: 'pedro@cloudbuilder.io', avatar: 'P', role: 'viewer', status: 'offline', lastSeen: new Date(Date.now() - 3600000).toISOString() },
-  { id: nanoid(), name: 'Camila', email: 'camila@cloudbuilder.io', avatar: 'C', role: 'editor', status: 'away', lastSeen: new Date(Date.now() - 600000).toISOString() },
+  { id: crypto.randomUUID(), name: 'Thiago', email: 'thiago@cloudbuilder.io', avatar: 'T', role: 'owner', status: 'online', lastSeen: NOW() },
+  { id: crypto.randomUUID(), name: 'Ana', email: 'ana@cloudbuilder.io', avatar: 'A', role: 'editor', status: 'online', lastSeen: NOW() },
+  { id: crypto.randomUUID(), name: 'Pedro', email: 'pedro@cloudbuilder.io', avatar: 'P', role: 'viewer', status: 'offline', lastSeen: new Date(Date.now() - 3600000).toISOString() },
+  { id: crypto.randomUUID(), name: 'Camila', email: 'camila@cloudbuilder.io', avatar: 'C', role: 'editor', status: 'away', lastSeen: new Date(Date.now() - 600000).toISOString() },
 ]
 
 const MOCK_COMMENTS: Comment[] = [
   {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     nodeId: null,
     authorId: MOCK_MEMBERS[0].id,
     authorName: MOCK_MEMBERS[0].name,
@@ -30,7 +30,7 @@ const MOCK_COMMENTS: Comment[] = [
     resolved: false,
   },
   {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     nodeId: null,
     authorId: MOCK_MEMBERS[1].id,
     authorName: MOCK_MEMBERS[1].name,
@@ -40,7 +40,7 @@ const MOCK_COMMENTS: Comment[] = [
     resolved: false,
   },
   {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     nodeId: null,
     authorId: MOCK_MEMBERS[2].id,
     authorName: MOCK_MEMBERS[2].name,
@@ -77,7 +77,7 @@ export const useCollaborationStore = create<CollaborationState>()(
 
       addComment: (nodeId, authorId, authorName, authorAvatar, content) => {
         const newComment: Comment = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           nodeId,
           authorId,
           authorName,
@@ -103,7 +103,7 @@ export const useCollaborationStore = create<CollaborationState>()(
 
       inviteMember: (name, email, role) => {
         const newMember: TeamMember = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           name,
           email,
           avatar: name.charAt(0).toUpperCase(),
@@ -127,10 +127,10 @@ export const useCollaborationStore = create<CollaborationState>()(
       },
 
       generateShareLink: (designId, createdBy) => {
-        const token = nanoid(32)
+        const token = nanoId(32)
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         const newLink: ShareLink = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           designId,
           token,
           expiresAt,

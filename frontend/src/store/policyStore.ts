@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { nanoid } from 'nanoid'
 import type { Node } from '@xyflow/react'
 import type { CanvasNodeData } from '@/types/canvas.types'
 import type { Policy, PolicyViolation, PolicyCategory, PolicySeverity } from '@/types/policy.types'
@@ -216,7 +215,7 @@ export const usePolicyStore = create<PolicyState>((set, get) => ({
 
         if (violated) {
           newViolations.push({
-            id: nanoid(),
+            id: crypto.randomUUID(),
             policyId: policy.id,
             resourceId: node.id,
             resourceName: node.data.label || resourceType,

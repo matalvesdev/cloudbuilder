@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { nanoid } from 'nanoid'
 import type { Project, ProjectMember, ProjectRole, InviteRequest } from '@/types/tenant.types'
 
 interface TenantState {
@@ -20,7 +19,7 @@ interface TenantState {
 
 function createDefaultProject(): Project {
   return {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     name: 'Projeto Padrão',
     description: 'Projeto principal da organização',
     memberCount: 1,
@@ -31,7 +30,7 @@ function createDefaultProject(): Project {
 
 function createDefaultMember(projectId: string): ProjectMember {
   return {
-    id: nanoid(),
+    id: crypto.randomUUID(),
     projectId,
     userId: 'current-user',
     userName: 'Admin',
@@ -62,7 +61,7 @@ export const useTenantStore = create<TenantState>()(
 
       createProject: (name, description) => {
         const project: Project = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           name,
           description,
           memberCount: 1,
@@ -70,7 +69,7 @@ export const useTenantStore = create<TenantState>()(
           createdAt: new Date().toISOString(),
         }
         const owner: ProjectMember = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           projectId: project.id,
           userId: 'current-user',
           userName: 'Admin',
@@ -92,9 +91,9 @@ export const useTenantStore = create<TenantState>()(
 
       inviteMember: (projectId, invite) => {
         const member: ProjectMember = {
-          id: nanoid(),
+          id: crypto.randomUUID(),
           projectId,
-          userId: nanoid(),
+          userId: crypto.randomUUID(),
           userName: invite.email.split('@')[0],
           userEmail: invite.email,
           role: invite.role,

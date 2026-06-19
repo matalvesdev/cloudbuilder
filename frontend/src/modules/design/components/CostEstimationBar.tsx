@@ -142,7 +142,7 @@ const PROVIDER_COLORS: Record<ProviderType, string> = {
   k8s: 'text-indigo-500 bg-indigo-50 border-indigo-200',
 }
 
-function getResourcePrice(resourceType: string): number {
+export function getResourcePrice(resourceType: string): number {
   // Exact match first
   if (MOCK_PRICING[resourceType] !== undefined) return MOCK_PRICING[resourceType]!
 

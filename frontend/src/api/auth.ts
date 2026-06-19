@@ -37,6 +37,10 @@ export function logout(): void {
   // Não usa window.location.href - SPA sem router, store gerencia estado
 }
 
+export async function updateProfile(name: string): Promise<{ id: string; name: string; email: string }> {
+  return api.put('/auth/profile', { name })
+}
+
 export async function forgotPassword(email: string): Promise<{ message: string }> {
   return api.post('/auth/forgot-password', { email }, { skipAuth: true })
 }

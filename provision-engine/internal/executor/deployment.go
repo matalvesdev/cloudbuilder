@@ -29,8 +29,13 @@ const (
 	StatusDestroyed  DeploymentStatus = iota
 )
 
+var statusNames = []string{"PENDING", "INIT", "PLANNING", "PLANNED", "APPLYING", "APPLIED", "FAILED", "DESTROYING", "DESTROYED"}
+
 func (s DeploymentStatus) String() string {
-	return [...]string{"PENDING", "INIT", "PLANNING", "PLANNED", "APPLYING", "APPLIED", "FAILED", "DESTROYING", "DESTROYED"}[s]
+	if int(s) < len(statusNames) {
+		return statusNames[s]
+	}
+	return "UNKNOWN"
 }
 
 func (dm *DeploymentManager) WriteCode(files map[string]string) error {

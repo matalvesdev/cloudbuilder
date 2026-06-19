@@ -30,9 +30,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCredentialStore } from '@/store/credentialStore'
+import { useRepoStore } from '@/store/repoStore'
 import { useAuthStore } from '@/store/authStore'
 import { useSystemSettingsStore } from '@/store/systemSettingsStore'
 import { usePermission } from '@/hooks/usePermission'
+import { updateProfile } from '@/api/auth'
+import { showSuccess, showApiError } from '@/lib/toast'
 import type { ThemeMode, AppLanguage } from '@/store/systemSettingsStore'
 import {
   PROVIDER_LABELS,
@@ -412,6 +415,7 @@ function EnvironmentFormModal({
 
 export function SettingsModule() {
   const { credentials, environments, removeCredential, testCredential, removeEnvironment, deployments } = useCredentialStore()
+  const { connectedRepos } = useRepoStore()
   const { user, logout } = useAuthStore()
   const { settings, updateTheme, updateLanguage, updateNotification } = useSystemSettingsStore()
   const { hasRole } = usePermission()
@@ -431,7 +435,23 @@ export function SettingsModule() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [profileSaved, setProfileSaved] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
   const [passwordChanged, setPasswordChanged] = useState(false)
+
+  const handleSaveProfile = async () => {
+    if (!profileName.trim() || profileSaving) return
+    setProfileSaving(true)
+    try {
+      const result = await updateProfile(profileName.trim())
+      if (user) useAuthStore.setState({ user: { ...user, name: result.name } })
+      setProfileSaved(true)
+      showSuccess('Perfil atualizado com sucesso')
+    } catch (err) {
+      showApiError(err, 'Erro ao salvar perfil')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
 
   const handleTestConnection = async (id: string) => {
     setTestingId(id)
@@ -456,73 +476,130 @@ export function SettingsModule() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 bg-slate-100/80 rounded-full p-0.5 w-fit">
+      {/* Setup Progress — admin only */}
+      {isAdmin && (
+        <div className="mb-6 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Progresso da Configuração</p>
+            <span className={cn(
+              'text-[10px] font-bold px-2 py-0.5 rounded-full',
+              credentials.length > 0 && environments.length > 0 && connectedRepos.length > 0
+                ? 'bg-green-50 text-green-700'
+                : 'bg-amber-50 text-amber-700'
+            )}>
+              {[credentials.length > 0, environments.length > 0, connectedRepos.length > 0].filter(Boolean).length}/3
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {[
+              { label: 'Credenciais', done: credentials.length > 0, count: credentials.length },
+              { label: 'Ambientes', done: environments.length > 0, count: environments.length },
+              { label: 'Repositórios', done: connectedRepos.length > 0, count: connectedRepos.length },
+            ].map((item) => (
+              <div key={item.label} className="flex-1">
+                <div className={cn(
+                  'h-2 rounded-full transition-all',
+                  item.done ? 'bg-brand-lime' : 'bg-slate-200'
+                )} />
+                <div className="flex items-center justify-between mt-1">
+                  <span className={cn(
+                    'text-[10px] font-medium',
+                    item.done ? 'text-brand-navy' : 'text-slate-400'
+                  )}>{item.label}</span>
+                  <span className="text-[9px] text-slate-400">{item.count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab Section: Administração */}
+      <div className="mb-6">
         {isAdmin && (
-          <>
-            <button
-              onClick={() => setTab('credentials')}
-              className={cn(
-                'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
-                tab === 'credentials' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
-              )}
-            >
-              <Key className="w-3.5 h-3.5" />
-              Credenciais
-            </button>
-            <button
-              onClick={() => setTab('environments')}
-              className={cn(
-                'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
-                tab === 'environments' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
-              )}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              Ambientes
-            </button>
-            <button
-              onClick={() => setTab('repositories')}
-              className={cn(
-                'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
-                tab === 'repositories' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
-              )}
-            >
-              <GitBranch className="w-3.5 h-3.5" />
-              Repositórios
-            </button>
-            <button
-              onClick={() => setTab('multitenant')}
-              className={cn(
-                'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
-                tab === 'multitenant' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
-              )}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              Multitenancy
-            </button>
-            <div className="w-px h-5 bg-slate-200 mx-1" />
-          </>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full bg-brand-navy/30" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Administração</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
         )}
-        <button
-          onClick={() => setTab('profile')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
-            tab === 'profile' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+        <div className="flex items-center gap-1 bg-slate-100/80 rounded-full p-0.5 w-fit">
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setTab('credentials')}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
+                  tab === 'credentials' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+                )}
+              >
+                <Key className="w-3.5 h-3.5" />
+                Credenciais
+              </button>
+              <button
+                onClick={() => setTab('environments')}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
+                  tab === 'environments' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+                )}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                Ambientes
+              </button>
+              <button
+                onClick={() => setTab('repositories')}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
+                  tab === 'repositories' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+                )}
+              >
+                <GitBranch className="w-3.5 h-3.5" />
+                Repositórios
+              </button>
+              <button
+                onClick={() => setTab('multitenant')}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
+                  tab === 'multitenant' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+                )}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Multitenancy
+              </button>
+            </>
           )}
-        >
-          <User className="w-3.5 h-3.5" />
-          Perfil
-        </button>
-        <button
-          onClick={() => setTab('system')}
-          className={cn(
-            'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
-            tab === 'system' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
-          )}
-        >
-          <Palette className="w-3.5 h-3.5" />
-          Sistema
-        </button>
+        </div>
+      </div>
+
+      {/* Tab Section: Pessoal */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-2 h-2 rounded-full bg-brand-navy/30" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Pessoal</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+        <div className="flex items-center gap-1 bg-slate-100/80 rounded-full p-0.5 w-fit">
+          <button
+            onClick={() => setTab('profile')}
+            className={cn(
+              'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
+              tab === 'profile' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+            )}
+          >
+            <User className="w-3.5 h-3.5" />
+            Perfil
+          </button>
+          <button
+            onClick={() => setTab('system')}
+            className={cn(
+              'flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-semibold transition-all',
+              tab === 'system' ? 'bg-brand-navy text-brand-lime shadow-sm' : 'text-slate-500 hover:text-brand-navy'
+            )}
+          >
+            <Palette className="w-3.5 h-3.5" />
+            Sistema
+          </button>
+        </div>
       </div>
 
       {tab === 'credentials' && (
@@ -539,21 +616,26 @@ export function SettingsModule() {
           </div>
 
           {credentials.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-ice-blue flex items-center justify-center mb-4">
-                <Cloud className="w-7 h-7 text-brand-navy" />
+            <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+              <div className="flex flex-col items-center text-center max-w-sm mx-auto">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-4 border border-amber-200">
+                  <Cloud className="w-8 h-8 text-amber-500" />
+                </div>
+                <p className="text-base font-bold text-brand-navy mb-1">Nenhuma credencial configurada</p>
+                <p className="text-xs text-slate-400 mb-5 max-w-xs leading-relaxed">
+                  Você precisa de ao menos uma credencial (AWS, Azure ou GCP) para provisionar infraestrutura.
+                  Configure agora ou use o assistente de configuração rápida.
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => { setEditCredId(null); setShowCredForm(true) }}
+                    className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Adicionar Manualmente
+                  </button>
+                </div>
               </div>
-              <p className="text-sm font-semibold text-brand-navy mb-1">Nenhuma credencial configurada</p>
-              <p className="text-xs text-slate-400 mb-4 max-w-sm">
-                Adicione suas credenciais AWS, Azure ou GCP para começar a provisionar infraestrutura real.
-              </p>
-              <button
-                onClick={() => setShowCredForm(true)}
-                className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar Credencial
-              </button>
             </div>
           ) : (
             <div className="grid gap-3">
@@ -654,15 +736,33 @@ export function SettingsModule() {
           </div>
 
           {environments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-ice-blue flex items-center justify-center mb-4">
-                <Box className="w-7 h-7 text-brand-navy" />
+            <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+              <div className="flex flex-col items-center text-center max-w-sm mx-auto">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-4 border border-amber-200">
+                  <Box className="w-8 h-8 text-amber-500" />
+                </div>
+                <p className="text-base font-bold text-brand-navy mb-1">Nenhum ambiente configurado</p>
+                <p className="text-xs text-slate-400 mb-2 max-w-xs leading-relaxed">
+                  Ambientes definem onde sua infraestrutura será provisionada (desenvolvimento, staging, produção).
+                </p>
+                {credentials.length > 0 ? (
+                  <p className="text-[11px] text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 mb-4">
+                    {credentials.length} credencial(is) disponível(is) para usar
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-4">
+                    Crie uma credencial primeiro para poder criar ambientes
+                  </p>
+                )}
+                <button
+                  onClick={() => setShowEnvForm(true)}
+                  disabled={credentials.length === 0}
+                  className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Novo Ambiente
+                </button>
               </div>
-              <p className="text-sm font-semibold text-brand-navy mb-1">Nenhum ambiente configurado</p>
-              <p className="text-xs text-slate-400 mb-4 max-w-sm">
-                Ambientes representam onde sua infraestrutura será provisionada (dev, staging, produção).
-                É necessário ter ao menos uma credencial válida.
-              </p>
             </div>
           ) : (
             <div className="grid gap-3">
@@ -745,21 +845,28 @@ export function SettingsModule() {
         <div className="max-w-2xl">
           {/* Informações do usuário */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-brand-navy flex items-center justify-center">
-                <span className="text-xl font-bold text-brand-lime">
-                  {user?.name?.charAt(0)?.toUpperCase() || '?'}
-                </span>
+            <div className="flex items-center gap-5 mb-6">
+              <div className="relative group">
+                <div className="w-16 h-16 rounded-2xl bg-brand-navy flex items-center justify-center shadow-md shadow-brand-navy/10">
+                  <span className="text-2xl font-bold text-brand-lime">
+                    {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-brand-navy">{user?.name || 'Usuário'}</h3>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-brand-navy">{user?.name || 'Usuário'}</h3>
                 <p className="text-sm text-slate-500">{user?.email}</p>
-                {user?.tenantName && (
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    <Building2 className="w-3 h-3 inline mr-1" />
-                    {user.tenantName}
+                <div className="flex items-center gap-3 mt-1">
+                  {user?.tenantName && (
+                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                      <Building2 className="w-3 h-3" />
+                      {user.tenantName}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-400">
+                    Membro desde junho de 2026
                   </p>
-                )}
+                </div>
               </div>
             </div>
 
@@ -778,6 +885,19 @@ export function SettingsModule() {
                 </span>
               ))}
             </div>
+
+            {/* Team callout if no tenant */}
+            {!user?.tenantName && (
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-ice-blue/30 border border-ice-blue">
+                <Building2 className="w-4 h-4 text-brand-navy shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-brand-navy">Você não está vinculado a um time</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Convidar membros para seu projeto ou criar um time na aba Multitenancy.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Editar nome */}
@@ -807,11 +927,13 @@ export function SettingsModule() {
                 <p className="text-[10px] text-slate-400 mt-1">O email não pode ser alterado.</p>
               </div>
               <button
-                onClick={() => setProfileSaved(true)}
-                disabled={!profileName.trim() || profileName === user?.name}
+                onClick={handleSaveProfile}
+                disabled={!profileName.trim() || profileName === user?.name || profileSaving}
                 className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {profileSaved ? (
+                {profileSaving ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando</>
+                ) : profileSaved ? (
                   <><Check className="w-3.5 h-3.5" /> Salvo</>
                 ) : (
                   <><Save className="w-3.5 h-3.5" /> Salvar</>
