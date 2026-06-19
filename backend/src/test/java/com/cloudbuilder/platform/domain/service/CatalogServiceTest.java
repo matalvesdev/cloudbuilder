@@ -70,7 +70,7 @@ class CatalogServiceTest {
 
     @Test
     void getItem_WhenFound_ShouldReturnItem() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var item = new CatalogItem("VPC", "network", "VPC template", "{}", "1.0");
         when(repository.findById(id)).thenReturn(Optional.of(item));
 
@@ -82,7 +82,7 @@ class CatalogServiceTest {
 
     @Test
     void getItem_WhenNotFound_ShouldThrow() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> catalogService.getItem(id));
@@ -90,7 +90,7 @@ class CatalogServiceTest {
 
     @Test
     void updateItem_ShouldUpdateVersionAndStatus() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var item = new CatalogItem("VPC", "network", "VPC template", "{}", "1.0");
         when(repository.findById(id)).thenReturn(Optional.of(item));
         when(repository.save(any(CatalogItem.class))).thenReturn(item);
@@ -104,7 +104,7 @@ class CatalogServiceTest {
 
     @Test
     void deleteItem_ShouldDeleteById() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
 
         catalogService.deleteItem(id);
 

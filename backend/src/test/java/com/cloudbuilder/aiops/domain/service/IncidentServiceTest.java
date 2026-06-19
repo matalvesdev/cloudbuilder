@@ -47,7 +47,7 @@ class IncidentServiceTest {
 
     @Test
     void getIncident_WhenFound_ShouldReturn() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var incident = new Incident("env-1", "Test", "Description", "critical");
         when(incidentRepository.findById(id)).thenReturn(Optional.of(incident));
 
@@ -59,7 +59,7 @@ class IncidentServiceTest {
 
     @Test
     void getIncident_WhenNotFound_ShouldThrow() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         when(incidentRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> incidentService.getIncident(id));
@@ -92,7 +92,7 @@ class IncidentServiceTest {
 
     @Test
     void resolveIncident_ShouldMarkResolved() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var incident = new Incident("env-1", "Test", "Desc", "critical");
         when(incidentRepository.findById(id)).thenReturn(Optional.of(incident));
         when(incidentRepository.save(any(Incident.class))).thenReturn(incident);
@@ -106,7 +106,7 @@ class IncidentServiceTest {
 
     @Test
     void analyzeIncident_ShouldClassifyAndSetRca() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var incident = new Incident("env-1", "Falha de rede", "Problema de conexão com banco de dados", "critical");
         when(incidentRepository.findById(id)).thenReturn(Optional.of(incident));
         when(incidentRepository.save(any(Incident.class))).thenReturn(incident);

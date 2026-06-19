@@ -52,7 +52,7 @@ class CanvasServiceTest {
 
     @Test
     void getCanvas_WhenFound_ShouldReturnCanvas() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var canvas = new Canvas("tenant-1", "Test", "Desc", "user-1");
         when(canvasRepository.findById(id)).thenReturn(Optional.of(canvas));
 
@@ -64,7 +64,7 @@ class CanvasServiceTest {
 
     @Test
     void getCanvas_WhenNotFound_ShouldThrowException() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         when(canvasRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class, () -> canvasService.getCanvas(id));
@@ -72,7 +72,7 @@ class CanvasServiceTest {
 
     @Test
     void deleteCanvas_ShouldDeleteExistingCanvas() {
-        var id = UUID.randomUUID();
+        var id = UUID.randomUUID().toString();
         var canvas = new Canvas("tenant-1", "Test", "Desc", "user-1");
         when(canvasRepository.findById(id)).thenReturn(Optional.of(canvas));
 

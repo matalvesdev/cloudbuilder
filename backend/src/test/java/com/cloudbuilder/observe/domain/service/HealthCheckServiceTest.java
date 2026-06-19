@@ -124,7 +124,7 @@ class HealthCheckServiceTest {
 
     @Test
     void resolveAlert_WhenFound_ShouldMarkResolved() {
-        var alertId = UUID.randomUUID();
+        var alertId = UUID.randomUUID().toString();
         var alert = new Alert("env-1", "warning", "Test", "health-check");
         when(alertRepository.findById(alertId)).thenReturn(Optional.of(alert));
         when(alertRepository.save(any(Alert.class))).thenReturn(alert);
@@ -138,7 +138,7 @@ class HealthCheckServiceTest {
 
     @Test
     void resolveAlert_WhenNotFound_ShouldThrow() {
-        var alertId = UUID.randomUUID();
+        var alertId = UUID.randomUUID().toString();
         when(alertRepository.findById(alertId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () -> healthCheckService.resolveAlert(alertId));
