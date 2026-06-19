@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
   Save,
   CheckCircle,
@@ -34,9 +34,9 @@ import {
   FileJson,
   PanelRightOpen,
 } from 'lucide-react'
-import { toPng } from 'html-to-image'
+
 import { ReactFlowProvider } from '@xyflow/react'
-import { Toaster, toast } from 'react-hot-toast'
+import { showSuccess, showError, showInfo, showWarning } from '@/lib/toast'
 import { CanvasView } from './components/CanvasView'
 import { ComponentPalette } from './components/ComponentPalette'
 import { PropertiesPanel } from './components/PropertiesPanel'
@@ -54,7 +54,7 @@ import { CanvasCommandPalette } from './components/CanvasCommandPalette'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { TerraformImportDialog } from './components/TerraformImportDialog'
 import { VersionHistoryPanel } from './components/VersionHistoryPanel'
-import { CostEstimationBar } from './components/CostEstimationBar'
+import { CostEstimationBar, getResourcePrice } from './components/CostEstimationBar'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 import {
@@ -108,6 +108,15 @@ export function DesignModule() {
   const [showObservability, setShowObservability] = useState(false)
   const [showCostEstimation, setShowCostEstimation] = useState(false)
   const [showMetrics, setShowMetrics] = useState(false)
+
+  // ── Shift-left cost: live total from canvas nodes ──────────
+  const totalEstimatedCost = useMemo(() => {
+    return nodes.reduce((sum, n) => sum + getResourcePrice(n.data?.resourceType || ''), 0)
+  }, [nodes])
+
+  const BUDGET_THRESHOLD = 500 // USD/mo — configurable
+  const isOverBudget = totalEstimatedCost > BUDGET_THRESHOLD
+  const [budgetDismissed, setBudgetDismissed] = useState(false)
 
   useEffect(() => {
     try {
@@ -187,38 +196,49 @@ export function DesignModule() {
       localStorage.setItem(historyKey, JSON.stringify(updated))
     } catch { /* localStorage might be full */ }
     state.setCanvas(design)
-    toast.success('Design salvo com sucesso!', { duration: 2000 })
+    showSuccess('Design salvo com sucesso!')
   }, [])
 
   const handleExport = useCallback(() => {
     downloadCanvasJson()
-    toast.success('Design exportado!', { duration: 2000 })
+    showSuccess('Design exportado!')
   }, [])
 
   const handleExportImage = useCallback(async () => {
-    const el = document.querySelector('.react-flow')
+    const el = document.querySelector('.react-flow') as HTMLElement | null
     if (!el) return
     try {
-      const dataUrl = await toPng(el as HTMLElement, {
-        backgroundColor: '#f8fafc',
-        pixelRatio: 2,
-        filter: (node) => {
-          // Skip minimap and controls overlay
-          if (node instanceof HTMLElement) {
-            if (node.classList?.contains('react-flow__minimap')) return false
-            if (node.classList?.contains('react-flow__controls')) return false
-          }
-          return true
-        },
+      // Native DOM-to-image using foreignObject SVG (no html-to-image dep)
+      const rect = el.getBoundingClientRect()
+      const clone = el.cloneNode(true) as HTMLElement
+      // Remove minimap and controls from clone
+      clone.querySelectorAll('.react-flow__minimap, .react-flow__controls').forEach(n => n.remove())
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
+        <foreignObject width="100%" height="100%">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:${rect.width}px;height:${rect.height}px;overflow:hidden;background:#f8fafc">${clone.outerHTML}</div>
+        </foreignObject>
+      </svg>`
+      const canvas = document.createElement('canvas')
+      canvas.width = rect.width * 2
+      canvas.height = rect.height * 2
+      const ctx = canvas.getContext('2d')!
+      ctx.scale(2, 2)
+      const img = new Image()
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => { ctx.drawImage(img, 0, 0); URL.revokeObjectURL(url); resolve() }
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('SVG render failed')) }
+        img.src = url
       })
       const link = document.createElement('a')
       link.download = `cloudbuilder-canvas-${Date.now()}.png`
-      link.href = dataUrl
+      link.href = canvas.toDataURL('image/png')
       link.click()
-      toast.success('Imagem exportada!', { duration: 2000 })
+      showSuccess('Imagem exportada!')
     } catch (err) {
       console.error('Falha ao exportar imagem:', err)
-      toast.error('Falha ao exportar imagem', { duration: 3000 })
+      showError('Falha ao exportar imagem')
     }
   }, [])
 
@@ -275,16 +295,16 @@ export function DesignModule() {
         // Auto-layout after a tick to let ReactFlow render nodes first
         await new Promise(r => setTimeout(r, 50))
         await useCanvasStore.getState().autoLayout()
-        toast.success(`${resources.length} recursos importados com sucesso!`, { duration: 3000 })
+        showSuccess(`${resources.length} recursos importados com sucesso!`)
       } else {
         // Canvas export JSON (.cloudbuilder.json ou .json)
         await importCanvasFromFile(file)
-        toast.success('Design importado com sucesso!', { duration: 2000 })
+        showSuccess('Design importado com sucesso!')
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Falha ao importar'
       console.error('Falha ao importar:', err)
-      toast.error(message, { duration: 4000 })
+      showError(message)
     }
     e.target.value = ''
   }, [])
@@ -299,7 +319,7 @@ export function DesignModule() {
 
   const confirmClear = useCallback(() => {
     clearCanvas()
-    toast.success('Novo design criado!', { duration: 2000 })
+    showSuccess('Novo design criado!')
   }, [clearCanvas])
 
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([])
@@ -316,11 +336,11 @@ export function DesignModule() {
     const errorCount = issues.filter(i => i.severity === 'ERROR').length
     const warningCount = issues.filter(i => i.severity === 'WARNING').length
     if (issues.length === 0) {
-      toast.success('Design válido!', { duration: 2000 })
+      showSuccess('Design válido!')
     } else if (errorCount > 0) {
-      toast.error(`${errorCount} erro(s) encontrado(s)`, { duration: 3000 })
+      showError(`${errorCount} erro(s) encontrado(s)`)
     } else if (warningCount > 0) {
-      toast(`${warningCount} aviso(s) encontrado(s)`, { icon: '⚠️', duration: 3000 })
+      showWarning(`${warningCount} aviso(s) encontrado(s)`)
     }
     if (issues.length > 0) setShowValidation(true)
   }, [])
@@ -355,19 +375,6 @@ export function DesignModule() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative">
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          style: {
-            borderRadius: '12px',
-            background: '#0a1128',
-            color: '#fff',
-            fontSize: '13px',
-            fontWeight: 500,
-          },
-          success: { iconTheme: { primary: '#ccff00', secondary: '#0a1128' } },
-        }}
-      />
       <input ref={fileInputRef} type="file" accept=".cloudbuilder.json,.json,.tf,.tf.json" className="hidden" onChange={handleFileChange} />
 
       <CanvasCommandPalette
@@ -430,6 +437,26 @@ export function DesignModule() {
                 onCommandPalette={() => setCommandPaletteOpen(true)}
               />
             </ReactFlowProvider>
+
+          {/* Budget warning banner */}
+          {isOverBudget && !budgetDismissed && (
+            <div className="absolute top-[60px] left-1/2 -translate-x-1/2 z-10 max-w-[500px] w-full px-4">
+              <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl shadow-sm">
+                <DollarSign className="w-4 h-4 text-red-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-red-700 truncate">
+                    Custo estimado de ~${totalEstimatedCost.toFixed(0)}/mês excede o limite de ${BUDGET_THRESHOLD}/mês
+                  </p>
+                </div>
+                <button
+                  onClick={() => setBudgetDismissed(true)}
+                  className="shrink-0 p-1 rounded-full hover:bg-red-100 text-red-400 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Floating toolbar — grouped by category with horizontal scroll */}
           <div className="absolute top-[14px] left-1/2 -translate-x-1/2 z-10 max-w-[calc(100vw-560px)]">
@@ -694,6 +721,30 @@ export function DesignModule() {
                     </div>
                   )
                 })()}
+
+                {/* Cost indicator — always visible */}
+                {nodes.length > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setShowCostEstimation(!showCostEstimation)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border shrink-0 transition-all',
+                          isOverBudget
+                            ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        )}
+                      >
+                        <DollarSign className="w-3 h-3" />
+                        ~${totalEstimatedCost.toFixed(0)}
+                        <span className="text-[8px] font-normal opacity-60">/mo</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {isOverBudget ? 'Custo excede limite — clique para detalhes' : 'Custo mensal estimado'}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
 
                 {/* Command palette + GitHub + Metrics — always visible */}
                 <Tooltip>

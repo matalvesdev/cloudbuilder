@@ -9,6 +9,11 @@ async function setupApp(page: Page, mocks: Record<string, unknown> = {}) {
     // Auth token
     localStorage.setItem('cloudbuilder-auth-token', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXYifQ.fake')
     localStorage.setItem('cloudbuilder-refresh-token', 'fake-refresh')
+    // Skip onboarding (zustand/persist key)
+    localStorage.setItem('cloudbuilder-onboarding-storage', JSON.stringify({
+      state: { progress: { stage: 'skipped', completedSteps: [] }, repoConfig: null, tourCompleted: false, hasSeenWelcome: true },
+      version: 0,
+    }))
 
     // Mock user for /auth/me
     const mockUser = JSON.stringify({
@@ -122,5 +127,40 @@ test.describe('Modules — desmockagem smoke tests', () => {
     await expect(page.locator('nav').first()).toBeVisible({ timeout: 15000 })
     // Design is the default active module
     await expect(page.locator('text=Design').or(page.locator('[data-testid*="canvas"]')).first()).toBeVisible({ timeout: 8000 })
+  })
+
+  test('DocsModule — renderiza árvore de documentação', async ({ page }) => {
+    await setupApp(page, {
+      '/api/v1/docs/tree': [
+        { name: 'Visão Geral', path: 'overview.md', type: 'directory', title: 'Visão Geral', children: [
+          { name: 'Arquitetura', path: 'architecture.md', type: 'directory', title: 'Arquitetura', children: [
+            { name: 'ADR-001.md', path: 'adr-001.md', type: 'file', title: 'ADR-001: Decisão Arquitetural' },
+          ]},
+        ]},
+        { name: 'Guias', path: 'guides.md', type: 'directory', title: 'Guias', children: [
+          { name: 'Quickstart.md', path: 'quickstart.md', type: 'file', title: 'Quickstart' },
+        ]},
+      ],
+      '/api/v1/docs/content?path=architecture.md': {
+        path: 'architecture.md', title: 'Arquitetura do CloudBuilder',
+        content: '# Arquitetura\n\n## Stack\n\nBackend em Java 21 + Spring Boot.',
+        lastModified: '2026-06-17T10:00:00Z',
+      },
+      '/api/v1/docs/content?path=adr-001.md': {
+        path: 'adr-001.md', title: 'ADR-001: Decisão Arquitetural',
+        content: '# ADR-001\n\nDecidimos usar Spring Boot.',
+        lastModified: '2026-06-17T10:00:00Z',
+      },
+    })
+    await goToModule(page, 'Docs')
+    await expect(page.locator('text=Documentação').first()).toBeVisible({ timeout: 8000 })
+    // sidebar tree renders with doc titles
+    await expect(page.locator('text=Visão Geral').first()).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('text=Guias').first()).toBeVisible({ timeout: 5000 })
+    // expand a folder and click a document
+    await page.locator('text=Visão Geral').first().click()
+    await expect(page.locator('text=Arquitetura').first()).toBeVisible({ timeout: 5000 })
+    await page.locator('text=Arquitetura').first().click()
+    await expect(page.locator('text=ADR-001: Decisão Arquitetural').first()).toBeVisible({ timeout: 5000 })
   })
 })

@@ -10,7 +10,6 @@ import {
   addEdge,
   type XYPosition,
 } from '@xyflow/react'
-import { nanoid } from 'nanoid'
 import type { CanvasNodeData, CanvasDesign, CanvasNodeProperties } from '@/types/canvas.types'
 
 // ─── Performance: rAF batching for bulk position updates ──────────────
@@ -57,13 +56,59 @@ function cloneEntry(nodes: Node<CanvasNodeData>[], edges: Edge[]) {
   return structuredClone({ nodes, edges })
 }
 
-// ─── Import dagre dynamically only when needed (reduces bundle size) ──
-let dagrePromise: Promise<typeof import('dagre')> | null = null
-function getDagre() {
-  if (!dagrePromise) {
-    dagrePromise = import('dagre')
+// ─── Inline SimpleDagre (no external 'dagre' dependency) ──────────────
+function simpleDagreLayout(
+  nodes: Node<CanvasNodeData>[],
+  edges: Edge[],
+  opts: { rankdir: 'TB' | 'LR'; nodesep: number; ranksep: number; marginx: number; marginy: number; nodeWidth: number; nodeHeight: number },
+): Array<{ id: string; x: number; y: number }> {
+  // Build adjacency
+  const children = new Map<string, Set<string>>()
+  const nodeMap = new Map<string, { width: number; height: number }>()
+  for (const n of nodes) {
+    children.set(n.id, new Set())
+    nodeMap.set(n.id, { width: opts.nodeWidth, height: opts.nodeHeight })
   }
-  return dagrePromise
+  for (const e of edges) {
+    if (children.has(e.source)) children.get(e.source)!.add(e.target)
+    if (!children.has(e.target)) children.set(e.target, new Set())
+  }
+
+  // Topological sort for ranks
+  const ranks = new Map<string, number>()
+  const visited = new Set<string>()
+  const temp = new Set<string>()
+  function visit(nodeId: string): number {
+    if (temp.has(nodeId)) return 0
+    if (visited.has(nodeId)) return ranks.get(nodeId) || 0
+    temp.add(nodeId)
+    let maxRank = 0
+    for (const child of children.get(nodeId) || []) maxRank = Math.max(maxRank, visit(child) + 1)
+    temp.delete(nodeId)
+    visited.add(nodeId)
+    ranks.set(nodeId, maxRank)
+    return maxRank
+  }
+  for (const id of children.keys()) if (!visited.has(id)) visit(id)
+
+  // Group by rank and assign positions
+  const rankGroups = new Map<number, string[]>()
+  for (const [id, rank] of ranks) {
+    if (!rankGroups.has(rank)) rankGroups.set(rank, [])
+    rankGroups.get(rank)!.push(id)
+  }
+  const sortedRanks = Array.from(rankGroups.keys()).sort((a, b) => a - b)
+  const positions: Array<{ id: string; x: number; y: number }> = []
+  for (let i = 0; i < sortedRanks.length; i++) {
+    const ids = rankGroups.get(sortedRanks[i]) || []
+    const totalWidth = ids.length * opts.nodeWidth + (ids.length - 1) * opts.nodesep
+    let startX = opts.marginx + totalWidth / 2 - opts.nodeWidth / 2
+    for (const id of ids) {
+      positions.push({ id, x: startX, y: opts.marginy + i * (opts.nodeHeight + opts.ranksep) })
+      startX += opts.nodeWidth + opts.nodesep
+    }
+  }
+  return positions
 }
 
 // Web Worker for autoLayout (offloads to background thread)
@@ -139,6 +184,10 @@ interface CanvasState {
   setGeneratedCode: (code: GeneratedCodeTab[]) => void
   startEditing: (nodeId: string) => void
   stopEditing: () => void
+
+  highlightedIncidentNodes: string[]
+  setHighlightedIncidentNodes: (nodeIds: string[]) => void
+  clearHighlightedIncidentNodes: () => void
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -153,6 +202,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   undoStack: [],
   redoStack: [],
   generatedCode: [],
+  highlightedIncidentNodes: [],
 
   onNodesChange: (changes) => {
     const nextNodes = applyNodeChanges(changes, get().nodes) as Node<CanvasNodeData>[]
@@ -174,7 +224,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   addNode: (componentData, position) => {
     const newNode: Node<CanvasNodeData> = {
-      id: nanoid(),
+      id: crypto.randomUUID(),
       type: componentData.provider,
       position,
       width: 224,
@@ -325,7 +375,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   addEdgeWithType: (source, target, edgeType) => {
     const newEdge = {
-      id: nanoid(),
+      id: crypto.randomUUID(),
       source,
       target,
       type: 'connection' as const,
@@ -501,39 +551,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       }
     }
 
-    // Sync fallback using dynamic dagre import
+    // Sync fallback using inline SimpleDagre (no external dep)
     try {
-      const { default: dagre } = await getDagre()
-      const g = new dagre.graphlib.Graph()
-      g.setDefaultEdgeLabel(() => ({}))
-      g.setGraph({
+      const positions = simpleDagreLayout(nodes, edges, {
         rankdir: 'TB',
         nodesep: 60,
         ranksep: 80,
         marginx: 60,
         marginy: 60,
+        nodeWidth,
+        nodeHeight,
       })
-
-      nodes.forEach((n) => {
-        g.setNode(n.id, { width: nodeWidth, height: nodeHeight })
-      })
-
-      edges.forEach((e) => {
-        g.setEdge(e.source, e.target)
-      })
-
-      dagre.layout(g)
-
+      const positionMap = new Map(positions.map(p => [p.id, { x: p.x, y: p.y }]))
       const updated = nodes.map((n) => {
-        const dagreNode = g.node(n.id)
-        if (!dagreNode) return n
-        return {
-          ...n,
-          position: {
-            x: dagreNode.x - nodeWidth / 2,
-            y: dagreNode.y - nodeHeight / 2,
-          },
-        }
+        const pos = positionMap.get(n.id)
+        if (!pos) return n
+        return { ...n, position: pos }
       })
       set({ nodes: updated as Node<CanvasNodeData>[] })
       get().pushHistory()
@@ -569,7 +602,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     const idMap = new Map<string, string>()
     const newNodes = selected.map((n) => {
-      const newId = nanoid()
+      const newId = crypto.randomUUID()
       idMap.set(n.id, newId)
       return {
         ...n,
@@ -582,7 +615,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       .filter(e => idMap.has(e.source) && idMap.has(e.target))
       .map(e => ({
         ...e,
-        id: nanoid(),
+        id: crypto.randomUUID(),
         source: idMap.get(e.source)!,
         target: idMap.get(e.target)!,
       }))
@@ -599,7 +632,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { nodes, edges } = get()
     const node = nodes.find(n => n.id === nodeId)
     if (!node) return
-    const newId = nanoid()
+    const newId = crypto.randomUUID()
     const newNode = {
       ...node,
       id: newId,
@@ -609,7 +642,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const relatedEdges = edges.filter(e => e.source === nodeId || e.target === nodeId)
     const newEdges = relatedEdges.map(e => ({
       ...e,
-      id: nanoid(),
+      id: crypto.randomUUID(),
       source: e.source === nodeId ? newId : e.source,
       target: e.target === nodeId ? newId : e.target,
     }))
@@ -639,5 +672,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   stopEditing: () => {
     set({ editingNodeId: null })
+  },
+
+  setHighlightedIncidentNodes: (nodeIds) => {
+    set({ highlightedIncidentNodes: nodeIds })
+  },
+  clearHighlightedIncidentNodes: () => {
+    set({ highlightedIncidentNodes: [] })
   },
 }))

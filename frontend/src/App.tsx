@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense, lazy, ComponentType } from 'react'
+import { useEffect, useState, useMemo, Suspense, lazy, ComponentType } from 'react'
 import {
   LayoutDashboard,
   Box,
@@ -12,19 +12,33 @@ import {
   Shield,
   Activity,
   ChevronRight,
+  ChevronDown,
   Settings,
   Building2,
   Check,
+  BookOpen,
+  Search,
+  X,
+  ArrowRight,
 } from 'lucide-react'
 import { useUiStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { useTenantStore } from '@/store/tenantStore'
+import { useOnboardingStore } from '@/store/onboardingStore'
+import { useCredentialStore } from '@/store/credentialStore'
+import { useRepoStore } from '@/store/repoStore'
 import { LoginPage } from '@/modules/auth/LoginPage'
 import { RegisterPage } from '@/modules/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/modules/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/modules/auth/ResetPasswordPage'
+import { OnboardingWelcome } from '@/modules/onboarding/OnboardingWelcome'
+import { OnboardingTour } from '@/modules/onboarding/OnboardingTour'
+import { GatewaySetup } from '@/modules/onboarding/GatewaySetup'
+import { ToastProvider } from '@/lib/toast'
 import { TenantSelector } from '@/components/TenantSelector'
 import { ProtectedContent } from '@/components/ProtectedContent'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { OfflineBanner } from '@/components/OfflineBanner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +62,7 @@ const AIOpsModule = lazyImport(() => import('@/modules/aiops/AIOpsModule'), 'AIO
 const AuditModule = lazyImport(() => import('@/modules/audit/AuditModule'), 'AuditModule')
 const IAMModule = lazyImport(() => import('@/modules/iam/IAMModule'), 'IAMModule')
 const SettingsModule = lazyImport(() => import('@/modules/settings/SettingsModule'), 'SettingsModule')
+const DocsModule = lazyImport(() => import('@/modules/docs/DocsModule'), 'DocsModule')
 
 function ModuleFallback() {
   return (
@@ -73,19 +88,51 @@ const moduleHierarchy: Record<string, { section: string; path: string[] }> = {
   audit: { section: 'Governança', path: ['Governança', 'Auditoria'] },
   iam: { section: 'Governança', path: ['Governança', 'IAM'] },
   settings: { section: 'Sistema', path: ['Sistema', 'Configurações'] },
+  docs: { section: 'Sistema', path: ['Sistema', 'Documentação'] },
 }
 
-const modules = [
-  { id: 'dashboard' as const, label: 'Dashboard', icon: Activity },
-  { id: 'design' as const, label: 'Design', icon: LayoutDashboard },
-  { id: 'provision' as const, label: 'Provisionar', icon: Box },
-  { id: 'observe' as const, label: 'Observar', icon: Eye },
-  { id: 'cost' as const, label: 'Custos', icon: DollarSign },
-  { id: 'platform' as const, label: 'Plataforma', icon: Cpu },
-  { id: 'aiops' as const, label: 'AIOps', icon: BrainCircuit },
-  { id: 'audit' as const, label: 'Auditoria', icon: ScrollText },
-  { id: 'iam' as const, label: 'IAM', icon: Shield },
-  { id: 'settings' as const, label: 'Config', icon: Settings },
+const navGroups = [
+  {
+    label: 'Visão Geral',
+    items: [
+      { id: 'dashboard' as const, label: 'Dashboard', icon: Activity },
+    ],
+  },
+  {
+    label: 'Infraestrutura',
+    items: [
+      { id: 'design' as const, label: 'Design', icon: LayoutDashboard },
+      { id: 'provision' as const, label: 'Provisionar', icon: Box },
+    ],
+  },
+  {
+    label: 'Operações',
+    items: [
+      { id: 'observe' as const, label: 'Observar', icon: Eye },
+      { id: 'cost' as const, label: 'Custos', icon: DollarSign },
+      { id: 'aiops' as const, label: 'AIOps', icon: BrainCircuit },
+    ],
+  },
+  {
+    label: 'Plataforma',
+    items: [
+      { id: 'platform' as const, label: 'Plataforma', icon: Cpu },
+    ],
+  },
+  {
+    label: 'Governança',
+    items: [
+      { id: 'audit' as const, label: 'Auditoria', icon: ScrollText },
+      { id: 'iam' as const, label: 'IAM', icon: Shield },
+    ],
+  },
+  {
+    label: 'Sistema',
+    items: [
+      { id: 'docs' as const, label: 'Docs', icon: BookOpen },
+      { id: 'settings' as const, label: 'Config', icon: Settings },
+    ],
+  },
 ]
 
 const moduleLabels: Record<string, string> = {
@@ -99,6 +146,7 @@ const moduleLabels: Record<string, string> = {
   audit: 'Auditoria',
   iam: 'IAM',
   settings: 'Configurações',
+  docs: 'Documentação',
 }
 
 const moduleRoles: Record<string, string[]> = {
@@ -108,25 +156,60 @@ const moduleRoles: Record<string, string[]> = {
 }
 
 const moduleComponents: Record<string, React.ReactNode> = {
-  dashboard: <Suspense fallback={<ModuleFallback />}><DashboardModule /></Suspense>,
-  design: <Suspense fallback={<ModuleFallback />}><DesignModule /></Suspense>,
-  provision: <Suspense fallback={<ModuleFallback />}><ProvisionModule /></Suspense>,
-  observe: <Suspense fallback={<ModuleFallback />}><ObserveModule /></Suspense>,
-  cost: <Suspense fallback={<ModuleFallback />}><CostModule /></Suspense>,
-  platform: <Suspense fallback={<ModuleFallback />}><PlatformModule /></Suspense>,
-  aiops: <Suspense fallback={<ModuleFallback />}><AIOpsModule /></Suspense>,
-  audit: <ProtectedContent roles={['admin']}><Suspense fallback={<ModuleFallback />}><AuditModule /></Suspense></ProtectedContent>,
-  iam: <ProtectedContent roles={['admin']}><Suspense fallback={<ModuleFallback />}><IAMModule /></Suspense></ProtectedContent>,
-  settings: <Suspense fallback={<ModuleFallback />}><SettingsModule /></Suspense>,
+  dashboard: <ErrorBoundary moduleName="Dashboard"><Suspense fallback={<ModuleFallback />}><DashboardModule /></Suspense></ErrorBoundary>,
+  design: <ErrorBoundary moduleName="Design"><Suspense fallback={<ModuleFallback />}><DesignModule /></Suspense></ErrorBoundary>,
+  provision: <ErrorBoundary moduleName="Provisionamento"><Suspense fallback={<ModuleFallback />}><ProvisionModule /></Suspense></ErrorBoundary>,
+  observe: <ErrorBoundary moduleName="Observabilidade"><Suspense fallback={<ModuleFallback />}><ObserveModule /></Suspense></ErrorBoundary>,
+  cost: <ErrorBoundary moduleName="Custos"><Suspense fallback={<ModuleFallback />}><CostModule /></Suspense></ErrorBoundary>,
+  platform: <ErrorBoundary moduleName="Plataforma"><Suspense fallback={<ModuleFallback />}><PlatformModule /></Suspense></ErrorBoundary>,
+  aiops: <ErrorBoundary moduleName="AIOps"><Suspense fallback={<ModuleFallback />}><AIOpsModule /></Suspense></ErrorBoundary>,
+  audit: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="Auditoria"><Suspense fallback={<ModuleFallback />}><AuditModule /></Suspense></ErrorBoundary></ProtectedContent>,
+  iam: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="IAM"><Suspense fallback={<ModuleFallback />}><IAMModule /></Suspense></ErrorBoundary></ProtectedContent>,
+  docs: <ErrorBoundary moduleName="Documentação"><Suspense fallback={<ModuleFallback />}><DocsModule /></Suspense></ErrorBoundary>,
+  settings: <ErrorBoundary moduleName="Configurações"><Suspense fallback={<ModuleFallback />}><SettingsModule /></Suspense></ErrorBoundary>,
 }
 
 function App() {
   const { activeModule, setActiveModule } = useUiStore()
   const { isAuthenticated, isLoading, checkAuth, logout, user } = useAuthStore()
   const { projects, activeProjectId, switchProject, getActiveProject } = useTenantStore()
+  const { progress, hasSeenWelcome, setStage, skipOnboarding, markTourCompleted, resetToWelcome } = useOnboardingStore()
+  const { credentials, environments } = useCredentialStore()
+  const { connectedRepos } = useRepoStore()
   const [showProjectMenu, setShowProjectMenu] = useState(false)
+  const [showSetupPopover, setShowSetupPopover] = useState(false)
+  const [query, setQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
+
+  interface NavItem { id: string; label: string; icon: React.ElementType }
+  // Flatten nav items for search
+  const allNavItems = useMemo<NavItem[]>(
+    () => navGroups.flatMap(g => g.items as unknown as NavItem[]),
+    []
+  )
+  const searchResults = useMemo<NavItem[]>(() => {
+    if (!query.trim()) return []
+    const q = query.toLowerCase()
+    return allNavItems.filter(
+      (item) => item.label.toLowerCase().includes(q) || item.id.includes(q)
+    )
+  }, [query, allNavItems])
+
+  const hasCredentials = credentials.length > 0
+  const hasEnvironments = environments.length > 0
+  const hasRepos = connectedRepos.length > 0
+  const configuredCount = [hasCredentials, hasEnvironments, hasRepos].filter(Boolean).length
+  const totalConfigItems = 3
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>('login')
   const [resetToken, setResetToken] = useState<string | null>(null)
+
+  // Onboarding routing: only applies when authenticated and not yet completed
+  type OnboardingView = 'welcome' | 'tour' | 'gateway' | 'done'
+  const [onboardingView, setOnboardingView] = useState<OnboardingView>(() => {
+    if (progress.stage === 'complete' || progress.stage === 'skipped') return 'done'
+    if (progress.stage === 'gateway-setup') return 'gateway'
+    return 'welcome'
+  })
 
   useEffect(() => {
     // Check for reset-password token in URL params (hash-based)
@@ -174,7 +257,38 @@ function App() {
     />
   }
 
+  // Onboarding flow — after auth, before main app
+  if (onboardingView !== 'done') {
+    if (onboardingView === 'welcome') {
+      return (
+        <OnboardingWelcome
+          onStartTour={() => setOnboardingView('tour')}
+          onStartSetup={() => { setStage('gateway-setup'); setOnboardingView('gateway') }}
+          onSkip={() => { skipOnboarding(); setOnboardingView('done') }}
+        />
+      )
+    }
+    if (onboardingView === 'tour') {
+      return (
+        <OnboardingTour
+          onComplete={() => { markTourCompleted(); setOnboardingView('done') }}
+          onSkip={() => setOnboardingView('done')}
+        />
+      )
+    }
+    if (onboardingView === 'gateway') {
+      return (
+        <GatewaySetup
+          onComplete={() => setOnboardingView('done')}
+          onSkip={() => { skipOnboarding(); setOnboardingView('done') }}
+        />
+      )
+    }
+  }
+
   return (
+    <ToastProvider>
+    <ErrorBoundary moduleName="Geral">
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-slate-50 relative">
       {/* Dot grid background */}
       <div className="fixed inset-0 dot-grid pointer-events-none z-0 opacity-60" />
@@ -248,28 +362,179 @@ function App() {
         {/* Visual separator */}
         <div className="w-px h-6 bg-slate-200 mx-1 shrink-0" />
 
-        <nav className="flex items-center bg-slate-100/80 rounded-full p-0.5 gap-0.5 overflow-x-auto shrink-0">
-          {modules.map((mod) => (
-            <ProtectedContent key={mod.id} roles={moduleRoles[mod.id]}>
-              <Button
-                variant={activeModule === mod.id ? 'default' : 'ghost'}
-                size="sm"
-                className={`
-                  h-8 gap-1.5 text-sm rounded-full px-3.5 transition-all shrink-0
-                  ${activeModule === mod.id
-                    ? 'bg-brand-navy text-brand-lime hover:bg-brand-navy hover:text-brand-lime shadow-sm'
-                    : 'text-slate-500 hover:text-brand-navy hover:bg-white/80'
-                  }
-                `}
-                onClick={() => setActiveModule(mod.id)}
-              >
-                <mod.icon className="h-4 w-4" />
-                <span className="text-xs font-semibold">{mod.label}</span>
-              </Button>
-            </ProtectedContent>
-          ))}
+        <nav className="flex items-center gap-0.5 shrink-0">
+          {navGroups.map((group) => {
+            const visibleItems = group.items.filter((item) => {
+              const reqRoles = moduleRoles[item.id]
+              return !reqRoles || !user?.roles || reqRoles.some((r) => user.roles.includes(r))
+            })
+            if (visibleItems.length === 0) return null
+
+            if (visibleItems.length === 1) {
+              const item = visibleItems[0]
+              const isActive = activeModule === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveModule(item.id)}
+                  className={`
+                    relative h-8 px-3 text-xs font-semibold transition-all flex items-center gap-1.5 rounded-lg shrink-0
+                    ${isActive
+                      ? 'text-brand-navy bg-brand-navy/5'
+                      : 'text-slate-500 hover:text-brand-navy hover:bg-slate-100'
+                    }
+                  `}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                  {isActive && <span className="absolute bottom-0.5 left-1.5 right-1.5 h-0.5 bg-brand-lime rounded-full" />}
+                </button>
+              )
+            }
+
+            const isGroupActive = visibleItems.some((item) => activeModule === item.id)
+            return (
+              <div key={group.label} className="relative group shrink-0">
+                <button
+                  className={`
+                    relative h-8 px-3 text-xs font-semibold transition-all flex items-center gap-1.5 rounded-lg cursor-default
+                    ${isGroupActive
+                      ? 'text-brand-navy bg-brand-navy/5'
+                      : 'text-slate-500 hover:text-brand-navy hover:bg-slate-100'
+                    }
+                  `}
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown className="h-3 w-3 opacity-50 group-hover:opacity-80 transition-opacity" />
+                  {isGroupActive && <span className="absolute bottom-0.5 left-1.5 right-1.5 h-0.5 bg-brand-lime rounded-full" />}
+                </button>
+                <div className="absolute left-0 top-full mt-1 min-w-[11rem] bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1 overflow-hidden">
+                  <div className="py-0.5">
+                    {visibleItems.map((item) => {
+                      const isItemActive = activeModule === item.id
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setActiveModule(item.id)}
+                          className={`
+                            w-full flex items-center gap-3 px-3.5 py-2 text-xs font-medium transition-colors whitespace-nowrap
+                            ${isItemActive
+                              ? 'text-brand-navy bg-brand-navy/5 font-semibold'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy'
+                            }
+                          `}
+                        >
+                          <span className={cn(
+                            'flex items-center justify-center w-6 h-6 rounded-lg shrink-0',
+                            isItemActive ? 'bg-brand-navy/10' : 'bg-slate-100'
+                          )}>
+                            <item.icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="flex-1 text-left">{item.label}</span>
+                          {isItemActive && <span className="w-1.5 h-1.5 rounded-full bg-brand-lime shrink-0" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </nav>
+
+        {/* Global Search Bar */}
+        <div className="relative flex-1 max-w-xs mx-3 shrink-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setShowSearch(true)}
+            onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+            placeholder="Pesquisar módulos, recursos..."
+            className="w-full h-8 pl-8 pr-3 rounded-lg bg-slate-100 border border-transparent text-xs text-brand-navy placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-200 focus:shadow-sm transition-all"
+          />
+          {query.length > 0 && (
+            <button onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {showSearch && query.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-slate-200 shadow-lg z-50 py-2 max-h-72 overflow-y-auto">
+              {searchResults.length === 0 ? (
+                <div className="px-3.5 py-3 text-xs text-slate-400 text-center">Nenhum resultado encontrado</div>
+              ) : (
+                searchResults.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => { setActiveModule(r.id as 'design' | 'provision' | 'observe' | 'cost' | 'platform' | 'aiops' | 'audit' | 'iam' | 'dashboard' | 'docs' | 'settings'); setQuery(''); setShowSearch(false) }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <r.icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium text-brand-navy">{r.label}</span>
+                    <ArrowRight className="w-3 h-3 text-slate-300 ml-auto shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="ml-auto flex items-center gap-3">
+          {/* Setup Status Indicator */}
+          <div className="relative hidden sm:block">
+            <button
+              onClick={() => setShowSetupPopover(!showSetupPopover)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full text-[10px] font-semibold border transition-all',
+                configuredCount === totalConfigItems
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : configuredCount > 0
+                    ? 'bg-amber-50 border-amber-200 text-amber-700'
+                    : 'bg-red-50 border-red-200 text-red-700'
+              )}
+            >
+              <span className={cn(
+                'w-1.5 h-1.5 rounded-full',
+                configuredCount === totalConfigItems ? 'bg-green-500' :
+                configuredCount > 0 ? 'bg-amber-500' : 'bg-red-500'
+              )} />
+              {configuredCount}/{totalConfigItems}
+            </button>
+            {showSetupPopover && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowSetupPopover(false)} />
+                <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl border border-slate-200 shadow-lg z-50 p-3 space-y-2">
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Configuração</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={cn('w-1.5 h-1.5 rounded-full', hasCredentials ? 'bg-green-500' : 'bg-slate-300')} />
+                      <span className={hasCredentials ? 'text-brand-navy font-medium' : 'text-slate-400'}>Credenciais</span>
+                      <span className="ml-auto text-slate-400">{credentials.length}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={cn('w-1.5 h-1.5 rounded-full', hasEnvironments ? 'bg-green-500' : 'bg-slate-300')} />
+                      <span className={hasEnvironments ? 'text-brand-navy font-medium' : 'text-slate-400'}>Ambientes</span>
+                      <span className="ml-auto text-slate-400">{environments.length}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={cn('w-1.5 h-1.5 rounded-full', hasRepos ? 'bg-green-500' : 'bg-slate-300')} />
+                      <span className={hasRepos ? 'text-brand-navy font-medium' : 'text-slate-400'}>Repositórios</span>
+                      <span className="ml-auto text-slate-400">{connectedRepos.length}</span>
+                    </div>
+                  </div>
+                  {configuredCount < totalConfigItems && (
+                    <button
+                      onClick={() => { setShowSetupPopover(false); resetToWelcome(); setOnboardingView('welcome') }}
+                      className="w-full mt-1 inline-flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all"
+                    >
+                      Continuar Configuração
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -290,6 +555,22 @@ function App() {
                 <p className="text-xs text-slate-400">{user?.email}</p>
               </div>
               <div className="p-1">
+                {(configuredCount < totalConfigItems || progress.stage === 'skipped') && (
+                  <button
+                    onClick={() => { resetToWelcome(); setOnboardingView('welcome') }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-brand-navy hover:bg-ice-blue/50 rounded-lg transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Reabrir Configuração
+                  </button>
+                )}
+                <button
+                  onClick={() => { setActiveModule('settings') }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  Configurações
+                </button>
                 <button
                   onClick={logout}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -302,10 +583,13 @@ function App() {
           </div>
         </div>
       </header>
+      <OfflineBanner />
       <main className="flex-1 overflow-hidden">
         {moduleComponents[activeModule]}
       </main>
     </div>
+    </ErrorBoundary>
+    </ToastProvider>
   )
 }
 
