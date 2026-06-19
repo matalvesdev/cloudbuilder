@@ -9,7 +9,7 @@ import java.util.UUID;
 public class CanvasNode {
 
     @Id
-    private UUID id;
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "canvas_id", nullable = false)
@@ -38,7 +38,7 @@ public class CanvasNode {
     protected CanvasNode() {}
 
     public CanvasNode(Canvas canvas, String componentDefinitionId, double positionX, double positionY, String properties) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.canvas = canvas;
         this.componentDefinitionId = componentDefinitionId;
         this.positionX = positionX;
@@ -47,7 +47,7 @@ public class CanvasNode {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public Canvas getCanvas() { return canvas; }
     public void setCanvas(Canvas canvas) { this.canvas = canvas; }
     public String getComponentDefinitionId() { return componentDefinitionId; }

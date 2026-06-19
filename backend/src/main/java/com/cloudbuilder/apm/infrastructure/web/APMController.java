@@ -75,7 +75,7 @@ public class APMController {
             int spanCount = rng.nextInt(1, 4);
             for (int j = 0; j < spanCount; j++) {
                 spans.add(new SpanDTO(
-                    UUID.randomUUID().toString().substring(0, 8),
+                    UUID.randomUUID().toString().toString().substring(0, 8),
                     j == 0 ? operation : "internal." + operation,
                     j == 0 ? service : pick(SERVICES),
                     startTime + (j * duration / spanCount),
@@ -86,7 +86,7 @@ public class APMController {
             }
 
             traces.add(new TraceDTO(
-                UUID.randomUUID().toString().substring(0, 12),
+                UUID.randomUUID().toString().toString().substring(0, 12),
                 service,
                 operation,
                 startTime,
@@ -120,7 +120,7 @@ public class APMController {
         for (int i = 0; i < alertCount; i++) {
             int idx = rng.nextInt(titles.length);
             alerts.add(new AlertDTO(
-                UUID.randomUUID().toString().substring(0, 8),
+                UUID.randomUUID().toString().toString().substring(0, 8),
                 severities[rng.nextInt(severities.length)],
                 titles[idx],
                 messages[idx],

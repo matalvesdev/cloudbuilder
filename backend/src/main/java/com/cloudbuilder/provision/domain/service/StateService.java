@@ -10,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class StateService {
@@ -28,7 +26,7 @@ public class StateService {
         this.objectMapper = objectMapper;
     }
 
-    public ManagedResource recordResource(UUID environmentId, String terraformAddress,
+    public ManagedResource recordResource(String environmentId, String terraformAddress,
                                           String resourceType, String provider,
                                           String properties) {
         var environment = environmentRepository.findById(environmentId)
@@ -40,14 +38,14 @@ public class StateService {
         return managedResourceRepository.save(resource);
     }
 
-    public ManagedResource updateResourceStatus(UUID resourceId, String status) {
+    public ManagedResource updateResourceStatus(String resourceId, String status) {
         ManagedResource resource = managedResourceRepository.findById(resourceId)
             .orElseThrow(() -> new IllegalArgumentException("Resource not found: " + resourceId));
         resource.setStatus(status);
         return managedResourceRepository.save(resource);
     }
 
-    public ManagedResource updateResourceState(UUID resourceId, String stateJson) {
+    public ManagedResource updateResourceState(String resourceId, String stateJson) {
         ManagedResource resource = managedResourceRepository.findById(resourceId)
             .orElseThrow(() -> new IllegalArgumentException("Resource not found: " + resourceId));
         resource.setStateJson(stateJson);
@@ -56,7 +54,7 @@ public class StateService {
     }
 
     @Transactional(readOnly = true)
-    public List<ManagedResource> getResourcesByEnvironment(UUID environmentId) {
+    public List<ManagedResource> getResourcesByEnvironment(String environmentId) {
         return managedResourceRepository.findByEnvironmentId(environmentId);
     }
 
@@ -66,7 +64,7 @@ public class StateService {
             .orElseThrow(() -> new IllegalArgumentException("Resource not found: " + address));
     }
 
-    public List<ManagedResource> syncResourcesFromState(UUID environmentId, String stateJson) {
+    public List<ManagedResource> syncResourcesFromState(String environmentId, String stateJson) {
         var environment = environmentRepository.findById(environmentId)
             .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + environmentId));
 
@@ -133,6 +131,6 @@ public class StateService {
         if (lastSlash >= 0) {
             provider = provider.substring(lastSlash + 1);
         }
-        return provider.replace("]", "").trim();
+        return provider.replace("]", "").replace("\"", "").trim();
     }
 }

@@ -9,10 +9,10 @@ import java.util.UUID;
 public class Permission {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "role_id", nullable = false)
-    private UUID roleId;
+    private String roleId;
 
     @Column(nullable = false)
     private String action;
@@ -22,18 +22,18 @@ public class Permission {
 
     public Permission() {}
 
-    public Permission(UUID roleId, String action, String resource) {
-        this.id = UUID.randomUUID();
+    public Permission(String roleId, String action, String resource) {
+        this.id = UUID.randomUUID().toString();
         this.roleId = roleId;
         this.action = action;
         this.resource = resource;
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public UUID getRoleId() { return roleId; }
-    public void setRoleId(UUID roleId) { this.roleId = roleId; }
+    public String getRoleId() { return roleId; }
+    public void setRoleId(String roleId) { this.roleId = roleId; }
 
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }

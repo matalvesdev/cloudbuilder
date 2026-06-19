@@ -9,7 +9,7 @@ import java.util.UUID;
 public class User {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -35,7 +35,7 @@ public class User {
     protected User() {}
 
     public User(String email, String passwordHash, String name) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.email = email;
         this.passwordHash = passwordHash;
         this.name = name;
@@ -44,7 +44,7 @@ public class User {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }

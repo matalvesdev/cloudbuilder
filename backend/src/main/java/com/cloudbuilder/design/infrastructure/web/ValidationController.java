@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/v1/canvases/{canvasId}/validate")
 public class ValidationController {
@@ -23,7 +21,7 @@ public class ValidationController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ValidationReport> validateCanvas(@PathVariable UUID canvasId) {
+    public ResponseEntity<ValidationReport> validateCanvas(@PathVariable String canvasId) {
         ValidationReport report = validationService.validateCanvas(canvasId);
         return ResponseEntity.ok(report);
     }

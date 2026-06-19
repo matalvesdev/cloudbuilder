@@ -32,7 +32,7 @@ public class DriftDetectionService {
         this.objectMapper = objectMapper;
     }
 
-    public DriftReport detectDrift(UUID environmentId, String currentStateJson) {
+    public DriftReport detectDrift(String environmentId, String currentStateJson) {
         List<ManagedResource> managedResources = managedResourceRepository.findByEnvironmentId(environmentId);
         Map<String, ManagedResource> dbResourceMap = new HashMap<>();
         for (ManagedResource mr : managedResources) {
@@ -136,11 +136,11 @@ public class DriftDetectionService {
     }
 
     @Transactional(readOnly = true)
-    public List<DriftReport> getDriftHistory(UUID environmentId) {
+    public List<DriftReport> getDriftHistory(String environmentId) {
         return driftReportRepository.findByEnvironmentIdOrderByDetectedAtDesc(environmentId);
     }
 
-    public DriftReport resolveDrift(UUID reportId, String resolvedBy) {
+    public DriftReport resolveDrift(String reportId, String resolvedBy) {
         DriftReport report = driftReportRepository.findById(reportId)
             .orElseThrow(() -> new IllegalArgumentException("Drift report not found: " + reportId));
         report.setStatus(DriftReport.STATUS_RESOLVED);
@@ -150,7 +150,7 @@ public class DriftDetectionService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<DriftReport> getLatestDrift(UUID environmentId) {
+    public Optional<DriftReport> getLatestDrift(String environmentId) {
         return driftReportRepository.findTopByEnvironmentIdOrderByDetectedAtDesc(environmentId);
     }
 }

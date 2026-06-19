@@ -17,8 +17,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/v1/canvases")
 @Validated
@@ -52,13 +50,13 @@ public class CanvasController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Canvas> getCanvas(@PathVariable UUID id) {
+    public ResponseEntity<Canvas> getCanvas(@PathVariable String id) {
         return ResponseEntity.ok(canvasService.getCanvas(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<Canvas> updateCanvas(@PathVariable UUID id, @Valid @RequestBody UpdateCanvasRequest request) {
+    public ResponseEntity<Canvas> updateCanvas(@PathVariable String id, @Valid @RequestBody UpdateCanvasRequest request) {
         Canvas canvas = canvasService.getCanvas(id);
         canvas.setName(request.name());
         canvas.setDescription(request.description());
@@ -69,7 +67,7 @@ public class CanvasController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteCanvas(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteCanvas(@PathVariable String id) {
         canvasService.deleteCanvas(id);
         customMetrics.recordCanvasDeleted();
         return ResponseEntity.noContent().build();
@@ -77,7 +75,7 @@ public class CanvasController {
 
     @PostMapping("/{id}/nodes")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<CanvasNode> addNode(@PathVariable UUID id, @Valid @RequestBody AddNodeRequest request) {
+    public ResponseEntity<CanvasNode> addNode(@PathVariable String id, @Valid @RequestBody AddNodeRequest request) {
         CanvasNode node = canvasService.addNode(
                 id, request.componentDefinitionId(), request.positionX(), request.positionY(), request.properties());
         customMetrics.recordNodeAdded();
@@ -86,7 +84,7 @@ public class CanvasController {
 
     @PutMapping("/{id}/nodes/{nodeId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<CanvasNode> updateNode(@PathVariable UUID id, @PathVariable UUID nodeId,
+    public ResponseEntity<CanvasNode> updateNode(@PathVariable String id, @PathVariable String nodeId,
                                                   @Valid @RequestBody UpdateNodeRequest request) {
         CanvasNode node = canvasService.updateNode(id, nodeId, request.properties());
         return ResponseEntity.ok(node);
@@ -94,14 +92,14 @@ public class CanvasController {
 
     @DeleteMapping("/{id}/nodes/{nodeId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<Void> removeNode(@PathVariable UUID id, @PathVariable UUID nodeId) {
+    public ResponseEntity<Void> removeNode(@PathVariable String id, @PathVariable String nodeId) {
         canvasService.removeNode(id, nodeId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/edges")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<CanvasEdge> addEdge(@PathVariable UUID id, @Valid @RequestBody AddEdgeRequest request) {
+    public ResponseEntity<CanvasEdge> addEdge(@PathVariable String id, @Valid @RequestBody AddEdgeRequest request) {
         CanvasEdge edge = canvasService.addEdge(
                 id, request.sourceNodeId(), request.targetNodeId(), request.edgeType(), request.properties());
         customMetrics.recordEdgeAdded();
@@ -110,7 +108,7 @@ public class CanvasController {
 
     @DeleteMapping("/{id}/edges/{edgeId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<Void> removeEdge(@PathVariable UUID id, @PathVariable UUID edgeId) {
+    public ResponseEntity<Void> removeEdge(@PathVariable String id, @PathVariable String edgeId) {
         Canvas canvas = canvasService.getCanvas(id);
         CanvasEdge edge = canvas.getCanvasEdges().stream()
                 .filter(e -> e.getId().equals(edgeId))
@@ -142,8 +140,8 @@ public class CanvasController {
             String properties) {}
 
     public record AddEdgeRequest(
-            @NotNull UUID sourceNodeId,
-            @NotNull UUID targetNodeId,
+            @NotNull String sourceNodeId,
+            @NotNull String targetNodeId,
             @NotBlank String edgeType,
             String properties) {}
 }

@@ -18,7 +18,7 @@ public class ConnectedRepository {
         DISCONNECTED
     }
 
-    private UUID id;
+    private String id;
     private Provider provider;
     private String repoUrl;
     private String repoName;
@@ -36,7 +36,7 @@ public class ConnectedRepository {
     public ConnectedRepository(Provider provider, String repoUrl, String repoName,
                                 String fullName, String owner, String defaultBranch,
                                 String accessToken) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.provider = provider;
         this.repoUrl = repoUrl;
         this.repoName = repoName;
@@ -48,11 +48,11 @@ public class ConnectedRepository {
         this.status = Status.CONNECTED;
     }
 
-    public UUID getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(String id) {
         this.id = id;
     }
 

@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/environments/{environmentId}")
@@ -29,36 +28,36 @@ public class StateController {
     }
 
     @GetMapping("/resources")
-    public ResponseEntity<List<ManagedResource>> listResources(@PathVariable UUID environmentId) {
+    public ResponseEntity<List<ManagedResource>> listResources(@PathVariable String environmentId) {
         List<ManagedResource> resources = stateService.getResourcesByEnvironment(environmentId);
         return ResponseEntity.ok(resources);
     }
 
     @PostMapping("/sync")
     public ResponseEntity<List<ManagedResource>> syncResources(
-            @PathVariable UUID environmentId,
+            @PathVariable String environmentId,
             @RequestBody StateSyncRequest request) {
         List<ManagedResource> resources = stateService.syncResourcesFromState(environmentId, request.stateJson());
         return ResponseEntity.ok(resources);
     }
 
     @GetMapping("/drift")
-    public ResponseEntity<DriftReport> getLatestDrift(@PathVariable UUID environmentId) {
+    public ResponseEntity<DriftReport> getLatestDrift(@PathVariable String environmentId) {
         Optional<DriftReport> latest = driftDetectionService.getLatestDrift(environmentId);
         return latest.map(ResponseEntity::ok)
             .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @GetMapping("/drift/history")
-    public ResponseEntity<List<DriftReport>> getDriftHistory(@PathVariable UUID environmentId) {
+    public ResponseEntity<List<DriftReport>> getDriftHistory(@PathVariable String environmentId) {
         List<DriftReport> history = driftDetectionService.getDriftHistory(environmentId);
         return ResponseEntity.ok(history);
     }
 
     @PostMapping("/drift/resolve/{reportId}")
     public ResponseEntity<DriftReport> resolveDrift(
-            @PathVariable UUID environmentId,
-            @PathVariable UUID reportId,
+            @PathVariable String environmentId,
+            @PathVariable String reportId,
             @RequestBody ResolveDriftRequest request) {
         DriftReport report = driftDetectionService.resolveDrift(reportId, request.resolvedBy());
         return ResponseEntity.ok(report);
@@ -66,7 +65,7 @@ public class StateController {
 
     @PostMapping("/detect-drift")
     public ResponseEntity<DriftReport> detectDrift(
-            @PathVariable UUID environmentId,
+            @PathVariable String environmentId,
             @RequestBody StateSyncRequest request) {
         DriftReport report = driftDetectionService.detectDrift(environmentId, request.stateJson());
         return ResponseEntity.ok(report);

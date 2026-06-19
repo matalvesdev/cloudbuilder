@@ -2,10 +2,8 @@ package com.cloudbuilder.provision.application.dto;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-
 public record CanvasDesign(
-    UUID id,
+    String id,
     String name,
     List<DesignNode> nodes,
     List<DesignEdge> edges

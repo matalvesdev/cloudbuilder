@@ -10,7 +10,7 @@ import java.util.UUID;
 public class CostRecord {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String environmentId;
@@ -42,7 +42,7 @@ public class CostRecord {
 
     public CostRecord(String environmentId, String provider, String serviceName,
                       double amount, String currency, LocalDate date) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.environmentId = environmentId;
         this.provider = provider;
         this.serviceName = serviceName;
@@ -52,7 +52,7 @@ public class CostRecord {
         this.importedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getEnvironmentId() { return environmentId; }
     public String getProvider() { return provider; }
     public String getServiceName() { return serviceName; }

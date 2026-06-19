@@ -36,7 +36,7 @@ public class GitHubOAuthService {
     public String buildAuthorizationUrl(String state) {
         if (clientId.isBlank()) {
             // Dev mode: return a fake URL for testing without real GitHub OAuth
-            return "/api/v1/github/callback?code=dev-mode-" + UUID.randomUUID() + "&state=" + state;
+            return "/api/v1/github/callback?code=dev-mode-" + UUID.randomUUID().toString() + "&state=" + state;
         }
 
         return "https://github.com/login/oauth/authorize"
@@ -53,7 +53,7 @@ public class GitHubOAuthService {
     public String exchangeCode(String code) {
         if (code != null && code.startsWith("dev-mode-")) {
             // Dev mode: return mock token
-            return "gho_dev_" + UUID.randomUUID().toString().replace("-", "");
+            return "gho_dev_" + UUID.randomUUID().toString().toString().replace("-", "");
         }
         // In production, this would call GitHub's POST https://github.com/login/oauth/access_token
         throw new UnsupportedOperationException(

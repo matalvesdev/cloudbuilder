@@ -50,7 +50,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
-                auth.requestMatchers("/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**").permitAll();
+                // Swagger removido — implementação nativa, sem springdoc
                 auth.requestMatchers("/api/v1/auth/**", "/api/auth/**").permitAll();
                 auth.requestMatchers("/error").permitAll();
                 // H2 console only when explicitly enabled (dev profile)
@@ -62,9 +62,9 @@ public class SecurityConfig {
             .headers(headers -> headers.frameOptions(frame -> {
                 if (h2ConsoleEnabled) frame.sameOrigin(); else frame.deny();
             }))
-            .addFilterBefore(rateLimitingFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(tenantFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(tenantFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

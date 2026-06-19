@@ -5,13 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+public interface CanvasVersionRepository extends JpaRepository<CanvasVersion, String> {
 
-public interface CanvasVersionRepository extends JpaRepository<CanvasVersion, UUID> {
+    List<CanvasVersion> findByCanvasIdOrderByVersionDesc(String canvasId);
 
-    List<CanvasVersion> findByCanvasIdOrderByVersionDesc(UUID canvasId);
+    Optional<CanvasVersion> findByCanvasIdAndVersion(String canvasId, int version);
 
-    Optional<CanvasVersion> findByCanvasIdAndVersion(UUID canvasId, int version);
-
-    Optional<CanvasVersion> findTopByCanvasIdOrderByVersionDesc(UUID canvasId);
+    Optional<CanvasVersion> findTopByCanvasIdOrderByVersionDesc(String canvasId);
 }

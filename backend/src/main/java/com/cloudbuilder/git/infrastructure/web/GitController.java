@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/git")
@@ -74,7 +73,7 @@ public class GitController {
     }
 
     @DeleteMapping("/repositories/{id}")
-    public ResponseEntity<Void> disconnectRepository(@PathVariable UUID id) {
+    public ResponseEntity<Void> disconnectRepository(@PathVariable String id) {
         ConnectedRepository repo = repositoryPort.findById(id)
                 .orElse(null);
         if (repo == null) {
@@ -86,7 +85,7 @@ public class GitController {
     }
 
     @PostMapping("/repositories/{id}/scan")
-    public ResponseEntity<RepoScanResponse> scanRepository(@PathVariable UUID id) {
+    public ResponseEntity<RepoScanResponse> scanRepository(@PathVariable String id) {
         try {
             RepositoryScan scan = scannerService.scanRepository(id);
             List<String> files = scannerService.getDetectedFiles(id);
@@ -103,7 +102,7 @@ public class GitController {
     }
 
     @GetMapping("/repositories/{id}/files")
-    public ResponseEntity<List<String>> getDetectedFiles(@PathVariable UUID id) {
+    public ResponseEntity<List<String>> getDetectedFiles(@PathVariable String id) {
         try {
             List<String> files = scannerService.getDetectedFiles(id);
             return ResponseEntity.ok(files);
@@ -114,7 +113,7 @@ public class GitController {
 
     @PostMapping("/repositories/{id}/pipeline")
     public ResponseEntity<PipelineResponse> generatePipeline(
-            @PathVariable UUID id,
+            @PathVariable String id,
             @RequestParam(name = "engine", defaultValue = "github-actions") String engine) {
 
         RepositoryScan scan = scanPort.findByRepositoryId(id).stream()

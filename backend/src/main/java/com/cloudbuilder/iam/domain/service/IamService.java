@@ -7,8 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class IamService {
@@ -39,19 +37,19 @@ public class IamService {
     }
 
     @Transactional(readOnly = true)
-    public User getUser(UUID id) {
+    public User getUser(String id) {
         return userRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + id));
     }
 
-    public User enableUser(UUID id) {
+    public User enableUser(String id) {
         var user = getUser(id);
         user.setEnabled(true);
         user.setUpdatedAt(Instant.now());
         return userRepository.save(user);
     }
 
-    public User disableUser(UUID id) {
+    public User disableUser(String id) {
         var user = getUser(id);
         user.setEnabled(false);
         user.setUpdatedAt(Instant.now());
@@ -61,16 +59,16 @@ public class IamService {
     // --- Tenant Users ---
 
     @Transactional(readOnly = true)
-    public List<TenantUser> listUsersByTenant(UUID tenantId) {
+    public List<TenantUser> listUsersByTenant(String tenantId) {
         return tenantUserRepository.findByTenantId(tenantId);
     }
 
     @Transactional(readOnly = true)
-    public List<TenantUser> listTenantsByUser(UUID userId) {
+    public List<TenantUser> listTenantsByUser(String userId) {
         return tenantUserRepository.findByUserId(userId);
     }
 
-    public void assignRole(UUID tenantId, UUID userId, UUID roleId) {
+    public void assignRole(String tenantId, String userId, String roleId) {
         var tu = tenantUserRepository.findByTenantIdAndUserId(tenantId, userId)
             .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado no tenant"));
         tu.setRoleId(roleId);
@@ -79,7 +77,7 @@ public class IamService {
 
     // --- Roles ---
 
-    public Role createRole(UUID tenantId, String name, String description) {
+    public Role createRole(String tenantId, String name, String description) {
         var existing = roleRepository.findByTenantIdAndName(tenantId, name);
         if (existing.isPresent()) {
             throw new IllegalArgumentException("Role já existe neste tenant: " + name);
@@ -89,17 +87,17 @@ public class IamService {
     }
 
     @Transactional(readOnly = true)
-    public List<Role> listRolesByTenant(UUID tenantId) {
+    public List<Role> listRolesByTenant(String tenantId) {
         return roleRepository.findByTenantId(tenantId);
     }
 
     @Transactional(readOnly = true)
-    public Role getRole(UUID id) {
+    public Role getRole(String id) {
         return roleRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Role não encontrada: " + id));
     }
 
-    public void deleteRole(UUID id) {
+    public void deleteRole(String id) {
         var role = getRole(id);
         if (role.isSystemRole()) {
             throw new IllegalArgumentException("Roles de sistema não podem ser removidas.");
@@ -108,15 +106,35 @@ public class IamService {
         roleRepository.delete(role);
     }
 
+    public Role updateRole(String id, String name, String description) {
+        var role = getRole(id);
+        if (role.isSystemRole()) {
+            throw new IllegalArgumentException("Roles de sistema não podem ser alteradas.");
+        }
+        role.setName(name);
+        role.setDescription(description);
+        return roleRepository.save(role);
+    }
+
     // --- Permissions ---
 
     @Transactional(readOnly = true)
-    public List<Permission> listPermissionsByRole(UUID roleId) {
+    public List<Permission> listPermissionsByRole(String roleId) {
         return permissionRepository.findByRoleId(roleId);
     }
 
+    public Permission createPermission(String roleId, String action, String resource) {
+        getRole(roleId);
+        var permission = new Permission(roleId, action, resource);
+        return permissionRepository.save(permission);
+    }
+
+    public void deletePermission(String id) {
+        permissionRepository.deleteById(id);
+    }
+
     @Transactional(readOnly = true)
-    public boolean hasPermission(UUID tenantId, UUID userId, String action, String resource) {
+    public boolean hasPermission(String tenantId, String userId, String action, String resource) {
         var tu = tenantUserRepository.findByTenantIdAndUserId(tenantId, userId)
             .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado no tenant"));
         var permissions = permissionRepository.findByRoleId(tu.getRoleId());
@@ -124,10 +142,35 @@ public class IamService {
             .anyMatch(p -> p.matches(action, resource));
     }
 
+    // --- Tenant Management ---
+
+    @Transactional(readOnly = true)
+    public Tenant getTenant(String id) {
+        return tenantRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Tenant não encontrado: " + id));
+    }
+
+    public Tenant activateTenant(String id) {
+        var tenant = getTenant(id);
+        tenant.setActive(true);
+        return tenantRepository.save(tenant);
+    }
+
+    public Tenant deactivateTenant(String id) {
+        var tenant = getTenant(id);
+        tenant.setActive(false);
+        return tenantRepository.save(tenant);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Tenant> listTenants() {
+        return tenantRepository.findAll();
+    }
+
     // --- Validation ---
 
     @Transactional(readOnly = true)
-    public boolean validateTenantAccess(UUID tenantId, UUID userId) {
+    public boolean validateTenantAccess(String tenantId, String userId) {
         return tenantUserRepository.findByTenantIdAndUserId(tenantId, userId).isPresent();
     }
 }

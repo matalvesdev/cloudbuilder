@@ -10,8 +10,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @Transactional
 public class CanvasService {
@@ -32,12 +30,12 @@ public class CanvasService {
     }
 
     @Transactional(readOnly = true)
-    public Canvas getCanvas(UUID id) {
+    public Canvas getCanvas(String id) {
         return canvasRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Canvas not found: " + id));
     }
 
-    public CanvasNode addNode(UUID canvasId, String componentDefinitionId, double positionX, double positionY, String properties) {
+    public CanvasNode addNode(String canvasId, String componentDefinitionId, double positionX, double positionY, String properties) {
         Canvas canvas = getCanvas(canvasId);
         CanvasNode node = new CanvasNode(canvas, componentDefinitionId, positionX, positionY, properties);
         canvas.addNode(node);
@@ -47,7 +45,7 @@ public class CanvasService {
         return node;
     }
 
-    public CanvasNode updateNode(UUID canvasId, UUID nodeId, String properties) {
+    public CanvasNode updateNode(String canvasId, String nodeId, String properties) {
         Canvas canvas = getCanvas(canvasId);
         CanvasNode node = canvas.getCanvasNodes().stream()
                 .filter(n -> n.getId().equals(nodeId))
@@ -59,7 +57,7 @@ public class CanvasService {
         return node;
     }
 
-    public void removeNode(UUID canvasId, UUID nodeId) {
+    public void removeNode(String canvasId, String nodeId) {
         Canvas canvas = getCanvas(canvasId);
         CanvasNode node = canvas.getCanvasNodes().stream()
                 .filter(n -> n.getId().equals(nodeId))
@@ -70,7 +68,7 @@ public class CanvasService {
         canvasRepository.save(canvas);
     }
 
-    public CanvasEdge addEdge(UUID canvasId, UUID sourceNodeId, UUID targetNodeId, String type, String properties) {
+    public CanvasEdge addEdge(String canvasId, String sourceNodeId, String targetNodeId, String type, String properties) {
         Canvas canvas = getCanvas(canvasId);
         CanvasEdge edge = new CanvasEdge(canvas, sourceNodeId, targetNodeId, type, properties);
         canvas.addEdge(edge);
@@ -79,7 +77,7 @@ public class CanvasService {
         return edge;
     }
 
-    public void deleteCanvas(UUID id) {
+    public void deleteCanvas(String id) {
         Canvas canvas = getCanvas(id);
         canvasRepository.delete(canvas);
     }

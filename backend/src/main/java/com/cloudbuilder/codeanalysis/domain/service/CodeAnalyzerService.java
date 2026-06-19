@@ -62,12 +62,16 @@ public class CodeAnalyzerService {
         new Detector("composer.json", "Laravel", "PHP web framework",
             Set.of("laravel/framework"), "backend"),
 
+        // ── Container / Infra ──
+        new Detector("Dockerfile", "Dockerfile", "Containerization",
+            Set.of("FROM"), "infrastructure"),
+
         // ── Databases (from dependency files) ──
         new DbDetector("package.json", "PostgreSQL", Set.of("pg", "pg-native", "sequelize", "prisma", "typeorm")),
         new DbDetector("requirements.txt", "PostgreSQL", Set.of("psycopg2", "psycopg2-binary", "asyncpg", "sqlalchemy")),
         new DbDetector("package.json", "MySQL", Set.of("mysql", "mysql2")),
         new DbDetector("requirements.txt", "MySQL", Set.of("mysql-connector-python", "pymysql")),
-        new DbDetector("package.json", "MongoDB", Set.of("mongodb", "mongoose", "mongoose")),
+        new DbDetector("package.json", "MongoDB", Set.of("mongodb", "mongoose")),
         new DbDetector("package.json", "Redis", Set.of("redis", "ioredis", "redis-client")),
         new DbDetector("requirements.txt", "Redis", Set.of("redis", "django-redis", "redis-py")),
         new DbDetector("package.json", "Elasticsearch", Set.of("elasticsearch", "@elastic/elasticsearch")),

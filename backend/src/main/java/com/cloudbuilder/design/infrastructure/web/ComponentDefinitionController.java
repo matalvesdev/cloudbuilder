@@ -11,7 +11,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/component-definitions")
@@ -34,7 +33,7 @@ public class ComponentDefinitionController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ComponentDefinition> getById(@PathVariable UUID id) {
+    public ResponseEntity<ComponentDefinition> getById(@PathVariable String id) {
         return ResponseEntity.ok(service.getDefinition(id));
     }
 
@@ -66,7 +65,7 @@ public class ComponentDefinitionController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable String id) {
         service.deleteDefinition(id);
         return ResponseEntity.noContent().build();
     }

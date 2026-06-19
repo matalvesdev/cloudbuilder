@@ -4,9 +4,7 @@ import com.cloudbuilder.git.infrastructure.GitScanResultEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
-import java.util.UUID;
+public interface JpaGitScanResult extends JpaRepository<GitScanResultEntity, String> {
 
-public interface JpaGitScanResult extends JpaRepository<GitScanResultEntity, UUID> {
-
-    List<GitScanResultEntity> findByRepositoryId(UUID repositoryId);
+    List<GitScanResultEntity> findByRepositoryId(String repositoryId);
 }

@@ -4,13 +4,11 @@ import com.cloudbuilder.git.domain.model.RepositoryScan;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 public interface RepositoryScanPort {
 
     RepositoryScan save(RepositoryScan scan);
 
-    Optional<RepositoryScan> findById(UUID id);
+    Optional<RepositoryScan> findById(String id);
 
-    List<RepositoryScan> findByRepositoryId(UUID repositoryId);
+    List<RepositoryScan> findByRepositoryId(String repositoryId);
 }

@@ -30,7 +30,7 @@ public class GitHubController {
      */
     @GetMapping("/auth")
     public ResponseEntity<GitHubAuthResponse> getAuthUrl(HttpSession session) {
-        String state = UUID.randomUUID().toString();
+        String state = UUID.randomUUID().toString().toString();
         session.setAttribute("github_oauth_state", state);
         String authorizeUrl = oauthService.buildAuthorizationUrl(state);
         return ResponseEntity.ok(new GitHubAuthResponse(authorizeUrl, oauthService.isConfigured()));

@@ -2,17 +2,15 @@ package com.cloudbuilder.git.infrastructure;
 
 import jakarta.persistence.*;
 import java.time.Instant;
-import java.util.UUID;
-
 @Entity
 @Table(name = "git_scan_results")
 public class GitScanResultEntity {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "repository_id", nullable = false)
-    private UUID repositoryId;
+    private String repositoryId;
 
     @Column(name = "scanned_at")
     private Instant scannedAt;
@@ -53,7 +51,7 @@ public class GitScanResultEntity {
     protected GitScanResultEntity() {
     }
 
-    public GitScanResultEntity(UUID id, UUID repositoryId, String status) {
+    public GitScanResultEntity(String id, String repositoryId, String status) {
         this.id = id;
         this.repositoryId = repositoryId;
         this.status = status;
@@ -66,19 +64,19 @@ public class GitScanResultEntity {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public UUID getRepositoryId() {
+    public String getRepositoryId() {
         return repositoryId;
     }
 
-    public void setRepositoryId(UUID repositoryId) {
+    public void setRepositoryId(String repositoryId) {
         this.repositoryId = repositoryId;
     }
 

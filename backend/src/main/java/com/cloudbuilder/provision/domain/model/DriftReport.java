@@ -13,10 +13,10 @@ public class DriftReport {
     public static final String STATUS_IGNORED = "IGNORED";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "environment_id", nullable = false)
-    private UUID environmentId;
+    private String environmentId;
 
     @Column(name = "detected_at", nullable = false)
     private Instant detectedAt;
@@ -35,18 +35,18 @@ public class DriftReport {
 
     protected DriftReport() {}
 
-    public DriftReport(UUID environmentId, String driftDetails) {
-        this.id = UUID.randomUUID();
+    public DriftReport(String environmentId, String driftDetails) {
+        this.id = UUID.randomUUID().toString();
         this.environmentId = environmentId;
         this.detectedAt = Instant.now();
         this.driftDetails = driftDetails;
         this.status = STATUS_OPEN;
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public UUID getEnvironmentId() { return environmentId; }
-    public void setEnvironmentId(UUID environmentId) { this.environmentId = environmentId; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getEnvironmentId() { return environmentId; }
+    public void setEnvironmentId(String environmentId) { this.environmentId = environmentId; }
     public Instant getDetectedAt() { return detectedAt; }
     public void setDetectedAt(Instant detectedAt) { this.detectedAt = detectedAt; }
     public String getDriftDetails() { return driftDetails; }

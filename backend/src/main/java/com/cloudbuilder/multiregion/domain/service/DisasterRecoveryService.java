@@ -10,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Service("multiRegionDisasterRecoveryService")
 @Transactional
 public class DisasterRecoveryService {
@@ -26,7 +24,7 @@ public class DisasterRecoveryService {
     }
 
     public DisasterRecoveryPlan createPlan(String tenantId, String name, String description,
-                                            UUID primaryRegionId, UUID drRegionId,
+                                            String primaryRegionId, String drRegionId,
                                             String replicationStrategy, int rpoMinutes, int rtoMinutes) {
         Region primaryRegion = regionRepository.findById(primaryRegionId)
                 .orElseThrow(() -> new IllegalArgumentException("Primary region not found: " + primaryRegionId));
@@ -49,7 +47,7 @@ public class DisasterRecoveryService {
         return drPlanRepository.save(plan);
     }
 
-    public Optional<DisasterRecoveryPlan> getPlan(UUID id) {
+    public Optional<DisasterRecoveryPlan> getPlan(String id) {
         return drPlanRepository.findById(id);
     }
 
@@ -61,7 +59,7 @@ public class DisasterRecoveryService {
         return drPlanRepository.findByTenantIdAndStatus(tenantId, "ACTIVE");
     }
 
-    public DisasterRecoveryPlan updatePlan(UUID id, String name, String description,
+    public DisasterRecoveryPlan updatePlan(String id, String name, String description,
                                             String replicationStrategy, Integer rpoMinutes,
                                             Integer rtoMinutes, String failoverProcedure,
                                             String fallbackProcedure) {
@@ -84,7 +82,7 @@ public class DisasterRecoveryService {
         return drPlanRepository.save(plan);
     }
 
-    public DisasterRecoveryPlan triggerFailover(UUID planId, String initiatedBy) {
+    public DisasterRecoveryPlan triggerFailover(String planId, String initiatedBy) {
         DisasterRecoveryPlan plan = drPlanRepository.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("DR plan not found: " + planId));
 
@@ -99,7 +97,7 @@ public class DisasterRecoveryService {
         return drPlanRepository.save(plan);
     }
 
-    public DisasterRecoveryPlan triggerFallback(UUID planId) {
+    public DisasterRecoveryPlan triggerFallback(String planId) {
         DisasterRecoveryPlan plan = drPlanRepository.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("DR plan not found: " + planId));
 
@@ -112,7 +110,7 @@ public class DisasterRecoveryService {
         return drPlanRepository.save(plan);
     }
 
-    public DisasterRecoveryPlan testPlan(UUID planId) {
+    public DisasterRecoveryPlan testPlan(String planId) {
         DisasterRecoveryPlan plan = drPlanRepository.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("DR plan not found: " + planId));
 
@@ -122,14 +120,14 @@ public class DisasterRecoveryService {
         return drPlanRepository.save(plan);
     }
 
-    public void deletePlan(UUID id) {
+    public void deletePlan(String id) {
         if (!drPlanRepository.existsById(id)) {
             throw new IllegalArgumentException("DR plan not found: " + id);
         }
         drPlanRepository.deleteById(id);
     }
 
-    public List<DisasterRecoveryPlan> getPlansByRegion(UUID regionId) {
+    public List<DisasterRecoveryPlan> getPlansByRegion(String regionId) {
         return drPlanRepository.findByRegionId(regionId);
     }
 

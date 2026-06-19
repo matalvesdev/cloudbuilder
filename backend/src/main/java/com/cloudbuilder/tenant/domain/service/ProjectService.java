@@ -9,8 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class ProjectService {
@@ -40,11 +38,11 @@ public class ProjectService {
         return projectRepository.findByTenantIdAndIsActiveTrue(tenantId);
     }
 
-    public Optional<Project> getById(UUID id) {
+    public Optional<Project> getById(String id) {
         return projectRepository.findById(id);
     }
 
-    public Project updateProject(UUID id, String name, String description) {
+    public Project updateProject(String id, String name, String description) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
         if (name != null) project.setName(name);
@@ -52,14 +50,14 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    public void deleteProject(UUID id) {
+    public void deleteProject(String id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + id));
         project.deactivate();
         projectRepository.save(project);
     }
 
-    public ProjectMember inviteMember(UUID projectId, String userId, String userName,
+    public ProjectMember inviteMember(String projectId, String userId, String userName,
                                        String userEmail, String role) {
         if (!List.of(ProjectMember.ROLE_ADMIN, ProjectMember.ROLE_MEMBER, ProjectMember.ROLE_VIEWER)
                 .contains(role)) {
@@ -83,7 +81,7 @@ public class ProjectService {
         return member;
     }
 
-    public void removeMember(UUID projectId, String userId) {
+    public void removeMember(String projectId, String userId) {
         ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found"));
 
@@ -99,7 +97,7 @@ public class ProjectService {
         projectRepository.save(project);
     }
 
-    public ProjectMember updateMemberRole(UUID projectId, String userId, String newRole) {
+    public ProjectMember updateMemberRole(String projectId, String userId, String newRole) {
         if (!List.of(ProjectMember.ROLE_ADMIN, ProjectMember.ROLE_MEMBER, ProjectMember.ROLE_VIEWER)
                 .contains(newRole)) {
             throw new IllegalArgumentException("Invalid role: " + newRole);
@@ -116,7 +114,7 @@ public class ProjectService {
         return memberRepository.save(member);
     }
 
-    public List<ProjectMember> getMembers(UUID projectId) {
+    public List<ProjectMember> getMembers(String projectId) {
         return memberRepository.findByProjectId(projectId);
     }
 

@@ -8,10 +8,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Repository
-public interface DisasterRecoveryPlanRepository extends JpaRepository<DisasterRecoveryPlan, UUID> {
+public interface DisasterRecoveryPlanRepository extends JpaRepository<DisasterRecoveryPlan, String> {
 
     List<DisasterRecoveryPlan> findByTenantId(String tenantId);
 
@@ -21,7 +19,7 @@ public interface DisasterRecoveryPlanRepository extends JpaRepository<DisasterRe
             String tenantId, String primaryRegionCode, String drRegionCode);
 
     @Query("SELECT d FROM DisasterRecoveryPlan d WHERE d.primaryRegion.id = :regionId OR d.drRegion.id = :regionId")
-    List<DisasterRecoveryPlan> findByRegionId(@Param("regionId") UUID regionId);
+    List<DisasterRecoveryPlan> findByRegionId(@Param("regionId") String regionId);
 
     List<DisasterRecoveryPlan> findByStatus(String status);
 }

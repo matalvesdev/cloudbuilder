@@ -8,7 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/multiregion/regions")
@@ -55,7 +54,7 @@ public class RegionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RegionDto> getRegion(@PathVariable UUID id) {
+    public ResponseEntity<RegionDto> getRegion(@PathVariable String id) {
         return regionService.getRegion(id)
             .map(RegionDto::from)
             .map(ResponseEntity::ok)
@@ -72,7 +71,7 @@ public class RegionController {
 
     @PutMapping("/{id}")
     public ResponseEntity<RegionDto> updateRegion(
-            @PathVariable UUID id,
+            @PathVariable String id,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) Boolean isActive,
@@ -82,13 +81,13 @@ public class RegionController {
     }
 
     @PutMapping("/{id}/primary")
-    public ResponseEntity<RegionDto> setPrimaryRegion(@PathVariable UUID id) {
+    public ResponseEntity<RegionDto> setPrimaryRegion(@PathVariable String id) {
         var region = regionService.setPrimaryRegion(id);
         return ResponseEntity.ok(RegionDto.from(region));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRegion(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteRegion(@PathVariable String id) {
         regionService.deleteRegion(id);
         return ResponseEntity.noContent().build();
     }

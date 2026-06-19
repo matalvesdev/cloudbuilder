@@ -10,8 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class DRTestService {
@@ -25,7 +23,7 @@ public class DRTestService {
         this.drPlanRepository = drPlanRepository;
     }
 
-    public DRTestResult runTest(UUID planId, String initiatedBy) {
+    public DRTestResult runTest(String planId, String initiatedBy) {
         DisasterRecoveryPlan plan = drPlanRepository.findById(planId)
                 .orElseThrow(() -> new IllegalArgumentException("DR plan not found: " + planId));
 
@@ -55,7 +53,7 @@ public class DRTestService {
         return testResultRepository.save(result);
     }
 
-    public List<DRTestResult> getTestResults(UUID planId) {
+    public List<DRTestResult> getTestResults(String planId) {
         return testResultRepository.findByDrPlanIdOrderByTestedAtDesc(planId);
     }
 
@@ -63,15 +61,15 @@ public class DRTestService {
         return testResultRepository.findByTenantIdOrderByTestedAtDesc(tenantId);
     }
 
-    public Optional<DRTestResult> getById(UUID id) {
+    public Optional<DRTestResult> getById(String id) {
         return testResultRepository.findById(id);
     }
 
-    public long getTestCount(UUID planId) {
+    public long getTestCount(String planId) {
         return testResultRepository.countByDrPlanId(planId);
     }
 
-    public long getSuccessCount(UUID planId) {
+    public long getSuccessCount(String planId) {
         return testResultRepository.countByDrPlanIdAndStatus(planId, "SUCCESS");
     }
 

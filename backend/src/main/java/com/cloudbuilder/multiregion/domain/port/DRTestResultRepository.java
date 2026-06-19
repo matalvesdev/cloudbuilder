@@ -5,16 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
-
 @Repository
-public interface DRTestResultRepository extends JpaRepository<DRTestResult, UUID> {
+public interface DRTestResultRepository extends JpaRepository<DRTestResult, String> {
 
-    List<DRTestResult> findByDrPlanIdOrderByTestedAtDesc(UUID drPlanId);
+    List<DRTestResult> findByDrPlanIdOrderByTestedAtDesc(String drPlanId);
 
     List<DRTestResult> findByTenantIdOrderByTestedAtDesc(String tenantId);
 
-    long countByDrPlanIdAndStatus(UUID drPlanId, String status);
+    long countByDrPlanIdAndStatus(String drPlanId, String status);
 
-    long countByDrPlanId(UUID drPlanId);
+    long countByDrPlanId(String drPlanId);
 }

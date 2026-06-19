@@ -16,10 +16,10 @@ public class ProjectMember {
     public static final String ROLE_VIEWER = "viewer";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "project_id", nullable = false)
-    private UUID projectId;
+    private String projectId;
 
     @Column(name = "user_id", nullable = false)
     private String userId;
@@ -38,9 +38,9 @@ public class ProjectMember {
 
     protected ProjectMember() {}
 
-    public ProjectMember(UUID projectId, String userId, String userName,
+    public ProjectMember(String projectId, String userId, String userName,
                           String userEmail, String role) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.projectId = projectId;
         this.userId = userId;
         this.userName = userName;
@@ -49,8 +49,8 @@ public class ProjectMember {
         this.joinedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public UUID getProjectId() { return projectId; }
+    public String getId() { return id; }
+    public String getProjectId() { return projectId; }
     public String getUserId() { return userId; }
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }

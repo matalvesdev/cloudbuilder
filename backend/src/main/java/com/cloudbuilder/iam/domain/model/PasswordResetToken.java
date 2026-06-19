@@ -9,10 +9,10 @@ import java.util.UUID;
 public class PasswordResetToken {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
-    private UUID userId;
+    private String userId;
 
     @Column(nullable = false, unique = true)
     private String token;
@@ -28,8 +28,8 @@ public class PasswordResetToken {
 
     protected PasswordResetToken() {}
 
-    public PasswordResetToken(UUID userId, String token, Instant expiresAt) {
-        this.id = UUID.randomUUID();
+    public PasswordResetToken(String userId, String token, Instant expiresAt) {
+        this.id = UUID.randomUUID().toString();
         this.userId = userId;
         this.token = token;
         this.expiresAt = expiresAt;
@@ -37,8 +37,8 @@ public class PasswordResetToken {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public UUID getUserId() { return userId; }
+    public String getId() { return id; }
+    public String getUserId() { return userId; }
     public String getToken() { return token; }
     public Instant getExpiresAt() { return expiresAt; }
     public boolean isUsed() { return used; }

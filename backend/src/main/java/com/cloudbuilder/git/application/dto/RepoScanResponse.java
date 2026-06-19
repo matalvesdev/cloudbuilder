@@ -3,11 +3,9 @@ package com.cloudbuilder.git.application.dto;
 import com.cloudbuilder.git.domain.model.AppDetection;
 
 import java.util.List;
-import java.util.UUID;
-
 public class RepoScanResponse {
 
-    private UUID repoId;
+    private String repoId;
     private List<String> files;
     private int resourceCount;
     private AppDetection appDetection;
@@ -15,18 +13,18 @@ public class RepoScanResponse {
     public RepoScanResponse() {
     }
 
-    public RepoScanResponse(UUID repoId, List<String> files, int resourceCount, AppDetection appDetection) {
+    public RepoScanResponse(String repoId, List<String> files, int resourceCount, AppDetection appDetection) {
         this.repoId = repoId;
         this.files = files;
         this.resourceCount = resourceCount;
         this.appDetection = appDetection;
     }
 
-    public UUID getRepoId() {
+    public String getRepoId() {
         return repoId;
     }
 
-    public void setRepoId(UUID repoId) {
+    public void setRepoId(String repoId) {
         this.repoId = repoId;
     }
 

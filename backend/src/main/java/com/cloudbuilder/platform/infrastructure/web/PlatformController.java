@@ -11,7 +11,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/platform")
@@ -33,7 +32,7 @@ public class PlatformController {
     }
 
     @GetMapping("/catalog/{id}")
-    public ResponseEntity<CatalogItem> getCatalogItem(@PathVariable UUID id) {
+    public ResponseEntity<CatalogItem> getCatalogItem(@PathVariable String id) {
         return ResponseEntity.ok(catalogService.getItem(id));
     }
 
@@ -46,7 +45,7 @@ public class PlatformController {
     @PutMapping("/catalog/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CatalogItem> updateItem(
-            @PathVariable UUID id,
+            @PathVariable String id,
             @RequestParam(required = false) String version,
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(catalogService.updateItem(id, version, status));
@@ -54,7 +53,7 @@ public class PlatformController {
 
     @DeleteMapping("/catalog/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteItem(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteItem(@PathVariable String id) {
         catalogService.deleteItem(id);
         return ResponseEntity.noContent().build();
     }
@@ -81,13 +80,13 @@ public class PlatformController {
 
     @PostMapping("/marketplace/{id}/publish")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MarketplaceListing> publishListing(@PathVariable UUID id) {
+    public ResponseEntity<MarketplaceListing> publishListing(@PathVariable String id) {
         return ResponseEntity.ok(marketplaceService.publishListing(id));
     }
 
     @PostMapping("/marketplace/{id}/unpublish")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<MarketplaceListing> unpublishListing(@PathVariable UUID id) {
+    public ResponseEntity<MarketplaceListing> unpublishListing(@PathVariable String id) {
         return ResponseEntity.ok(marketplaceService.unpublishListing(id));
     }
 
@@ -108,14 +107,14 @@ public class PlatformController {
 
     @PostMapping("/partners/{id}/activate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<PartnerIntegration> activatePartner(@PathVariable UUID id) {
+    public ResponseEntity<PartnerIntegration> activatePartner(@PathVariable String id) {
         return ResponseEntity.ok(marketplaceService.activatePartner(id));
     }
 
     @PutMapping("/partners/{id}/config")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<PartnerIntegration> updatePartnerConfig(
-            @PathVariable UUID id, @RequestBody UpdatePartnerConfigRequest req) {
+            @PathVariable String id, @RequestBody UpdatePartnerConfigRequest req) {
         return ResponseEntity.ok(marketplaceService.updatePartnerConfig(
             id, req.apiEndpoint(), req.configuration()));
     }

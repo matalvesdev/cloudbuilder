@@ -9,10 +9,10 @@ import java.util.UUID;
 public class CanvasVersion {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "canvas_id", nullable = false)
-    private UUID canvasId;
+    private String canvasId;
 
     @Column(nullable = false)
     private int version;
@@ -33,7 +33,7 @@ public class CanvasVersion {
 
     protected CanvasVersion() {}
 
-    public CanvasVersion(UUID id, UUID canvasId, int version, String snapshot, String changeDescription, String createdBy, Instant createdAt) {
+    public CanvasVersion(String id, String canvasId, int version, String snapshot, String changeDescription, String createdBy, Instant createdAt) {
         this.id = id;
         this.canvasId = canvasId;
         this.version = version;
@@ -43,8 +43,8 @@ public class CanvasVersion {
         this.createdAt = createdAt;
     }
 
-    public CanvasVersion(UUID canvasId, int version, String snapshot, String changeDescription, String createdBy) {
-        this.id = UUID.randomUUID();
+    public CanvasVersion(String canvasId, int version, String snapshot, String changeDescription, String createdBy) {
+        this.id = UUID.randomUUID().toString();
         this.canvasId = canvasId;
         this.version = version;
         this.snapshot = snapshot;
@@ -53,8 +53,8 @@ public class CanvasVersion {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public UUID getCanvasId() { return canvasId; }
+    public String getId() { return id; }
+    public String getCanvasId() { return canvasId; }
     public int getVersion() { return version; }
     public String getSnapshot() { return snapshot; }
     public String getChangeDescription() { return changeDescription; }
@@ -62,8 +62,8 @@ public class CanvasVersion {
     public Instant getCreatedAt() { return createdAt; }
     public Canvas getCanvas() { return canvas; }
 
-    public void setId(UUID id) { this.id = id; }
-    public void setCanvasId(UUID canvasId) { this.canvasId = canvasId; }
+    public void setId(String id) { this.id = id; }
+    public void setCanvasId(String canvasId) { this.canvasId = canvasId; }
     public void setVersion(int version) { this.version = version; }
     public void setSnapshot(String snapshot) { this.snapshot = snapshot; }
     public void setChangeDescription(String changeDescription) { this.changeDescription = changeDescription; }

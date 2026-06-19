@@ -15,7 +15,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -30,9 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // "/api/v1/import/**",  // Removido: import requer autenticação via @PreAuthorize
             "/actuator/health",
             "/actuator/info",
-            "/swagger-ui/**",
-            "/api-docs/**",
-            "/v3/api-docs/**",
+            // Swagger removido — implementação nativa, sem springdoc
             "/h2-console/**",
             "/error"
     );
@@ -57,7 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
 
             if (jwtTokenProvider.validateToken(token)) {
-                UUID userId = jwtTokenProvider.getUserId(token);
+                String userId = jwtTokenProvider.getUserId(token);
                 Set<String> roles = jwtTokenProvider.getRoles(token);
                 String tenantId = jwtTokenProvider.getTenantId(token);
 

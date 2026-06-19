@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,7 +38,7 @@ public class VersionService {
         this.objectMapper = objectMapper;
     }
 
-    public CanvasVersion createVersion(UUID canvasId, String changeDescription, String userId) {
+    public CanvasVersion createVersion(String canvasId, String changeDescription, String userId) {
         Canvas canvas = canvasRepository.findById(canvasId)
                 .orElseThrow(() -> new RuntimeException("Canvas not found: " + canvasId));
 
@@ -53,17 +52,17 @@ public class VersionService {
     }
 
     @Transactional(readOnly = true)
-    public List<CanvasVersion> getVersions(UUID canvasId) {
+    public List<CanvasVersion> getVersions(String canvasId) {
         return versionRepository.findByCanvasIdOrderByVersionDesc(canvasId);
     }
 
     @Transactional(readOnly = true)
-    public CanvasVersion getVersion(UUID canvasId, int version) {
+    public CanvasVersion getVersion(String canvasId, int version) {
         return versionRepository.findByCanvasIdAndVersion(canvasId, version)
                 .orElseThrow(() -> new RuntimeException("Version not found: " + version + " for canvas: " + canvasId));
     }
 
-    public Canvas rollbackToVersion(UUID canvasId, int version) {
+    public Canvas rollbackToVersion(String canvasId, int version) {
         CanvasVersion targetVersion = getVersion(canvasId, version);
         Canvas canvas = canvasRepository.findById(canvasId)
                 .orElseThrow(() -> new RuntimeException("Canvas not found: " + canvasId));
@@ -77,12 +76,12 @@ public class VersionService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<CanvasVersion> getLatestVersion(UUID canvasId) {
+    public Optional<CanvasVersion> getLatestVersion(String canvasId) {
         return versionRepository.findTopByCanvasIdOrderByVersionDesc(canvasId);
     }
 
     @Transactional(readOnly = true)
-    public VersionDiff diffVersions(UUID canvasId, int versionA, int versionB) {
+    public VersionDiff diffVersions(String canvasId, int versionA, int versionB) {
         CanvasVersion vA = getVersion(canvasId, versionA);
         CanvasVersion vB = getVersion(canvasId, versionB);
 
@@ -208,8 +207,8 @@ public class VersionService {
                 for (JsonNode edgeNode : edgesArray) {
                     CanvasEdge edge = new CanvasEdge(
                             canvas,
-                            UUID.fromString(edgeNode.get("sourceNodeId").asText()),
-                            UUID.fromString(edgeNode.get("targetNodeId").asText()),
+                            edgeNode.get("sourceNodeId").asText(),
+                            edgeNode.get("targetNodeId").asText(),
                             edgeNode.get("edgeType").asText(),
                             edgeNode.has("properties") ? edgeNode.get("properties").asText() : null
                     );

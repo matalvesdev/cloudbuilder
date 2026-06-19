@@ -59,7 +59,7 @@ public class HealthCheckService {
         return alertRepository.findByStatus("OPEN");
     }
 
-    public Alert resolveAlert(java.util.UUID alertId) {
+    public Alert resolveAlert(String alertId) {
         var alert = alertRepository.findById(alertId)
                 .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + alertId));
         alert.setStatus("RESOLVED");

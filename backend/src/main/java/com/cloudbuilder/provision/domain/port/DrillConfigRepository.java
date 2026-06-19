@@ -4,9 +4,7 @@ import com.cloudbuilder.provision.domain.model.DrillConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
-import java.util.UUID;
-
-public interface DrillConfigRepository extends JpaRepository<DrillConfig, UUID> {
-    List<DrillConfig> findByFailoverGroupId(UUID failoverGroupId);
+public interface DrillConfigRepository extends JpaRepository<DrillConfig, String> {
+    List<DrillConfig> findByFailoverGroupId(String failoverGroupId);
     List<DrillConfig> findByStatus(String status);
 }

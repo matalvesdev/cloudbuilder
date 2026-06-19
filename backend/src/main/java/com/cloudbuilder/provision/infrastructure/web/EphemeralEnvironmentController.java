@@ -13,7 +13,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/ephemeral")
@@ -43,7 +42,7 @@ public class EphemeralEnvironmentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EphemeralEnvironment> get(@PathVariable UUID id) {
+    public ResponseEntity<EphemeralEnvironment> get(@PathVariable String id) {
         return service.getById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -51,14 +50,14 @@ public class EphemeralEnvironmentController {
 
     @PostMapping("/{id}/destroy")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<EphemeralEnvironment> destroy(@PathVariable UUID id) {
+    public ResponseEntity<EphemeralEnvironment> destroy(@PathVariable String id) {
         return ResponseEntity.ok(service.destroy(id));
     }
 
     @PostMapping("/{id}/extend")
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     public ResponseEntity<EphemeralEnvironment> extendTtl(
-            @PathVariable UUID id, @Valid @RequestBody ExtendTtlRequest req) {
+            @PathVariable String id, @Valid @RequestBody ExtendTtlRequest req) {
         return ResponseEntity.ok(service.extendTtl(id, req.extraHours()));
     }
 
@@ -69,7 +68,7 @@ public class EphemeralEnvironmentController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable String id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }

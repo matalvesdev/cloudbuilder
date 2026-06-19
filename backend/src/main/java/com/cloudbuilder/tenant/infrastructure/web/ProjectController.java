@@ -15,7 +15,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -46,7 +45,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Project> getProject(@PathVariable UUID id) {
+    public ResponseEntity<Project> getProject(@PathVariable String id) {
         return projectService.getById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -55,27 +54,27 @@ public class ProjectController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Project> updateProject(
-            @PathVariable UUID id,
+            @PathVariable String id,
             @Valid @RequestBody CreateProjectRequest req) {
         return ResponseEntity.ok(projectService.updateProject(id, req.name(), req.description()));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteProject(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteProject(@PathVariable String id) {
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{projectId}/members")
-    public ResponseEntity<List<ProjectMember>> getMembers(@PathVariable UUID projectId) {
+    public ResponseEntity<List<ProjectMember>> getMembers(@PathVariable String projectId) {
         return ResponseEntity.ok(projectService.getMembers(projectId));
     }
 
     @PostMapping("/{projectId}/members")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectMember> inviteMember(
-            @PathVariable UUID projectId,
+            @PathVariable String projectId,
             @Valid @RequestBody InviteMemberRequest req) {
         ProjectMember member = projectService.inviteMember(
                 projectId, req.email(), req.email().split("@")[0],
@@ -86,7 +85,7 @@ public class ProjectController {
     @DeleteMapping("/{projectId}/members/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> removeMember(
-            @PathVariable UUID projectId, @PathVariable String userId) {
+            @PathVariable String projectId, @PathVariable String userId) {
         projectService.removeMember(projectId, userId);
         return ResponseEntity.noContent().build();
     }
@@ -94,7 +93,7 @@ public class ProjectController {
     @PutMapping("/{projectId}/members/{userId}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectMember> updateMemberRole(
-            @PathVariable UUID projectId,
+            @PathVariable String projectId,
             @PathVariable String userId,
             @Valid @RequestBody UpdateMemberRoleRequest req) {
         return ResponseEntity.ok(

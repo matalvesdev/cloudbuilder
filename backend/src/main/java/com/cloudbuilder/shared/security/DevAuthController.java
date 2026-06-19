@@ -20,7 +20,7 @@ public class DevAuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        var userId = UUID.randomUUID();
+        var userId = UUID.randomUUID().toString();
         var email = request.email();
         var roles = Set.of("ADMIN", "USER");
 

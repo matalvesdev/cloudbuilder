@@ -8,8 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class EphemeralEnvironmentService {
@@ -21,7 +19,7 @@ public class EphemeralEnvironmentService {
     }
 
     public EphemeralEnvironment create(String tenantId, String projectId, String name,
-                                        String repoId, String branchName, UUID sourceEnvironmentId,
+                                        String repoId, String branchName, String sourceEnvironmentId,
                                         int ttlHours, String resourceSize) {
         EphemeralEnvironment env = new EphemeralEnvironment(
                 tenantId, projectId, name, repoId, branchName,
@@ -37,11 +35,11 @@ public class EphemeralEnvironmentService {
         return repository.findByProjectId(projectId);
     }
 
-    public Optional<EphemeralEnvironment> getById(UUID id) {
+    public Optional<EphemeralEnvironment> getById(String id) {
         return repository.findById(id);
     }
 
-    public EphemeralEnvironment destroy(UUID id) {
+    public EphemeralEnvironment destroy(String id) {
         EphemeralEnvironment env = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ephemeral environment not found: " + id));
         env.markDestroying();
@@ -49,14 +47,14 @@ public class EphemeralEnvironmentService {
         return env;
     }
 
-    public EphemeralEnvironment completeDestroy(UUID id) {
+    public EphemeralEnvironment completeDestroy(String id) {
         EphemeralEnvironment env = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ephemeral environment not found: " + id));
         env.markDestroyed();
         return repository.save(env);
     }
 
-    public EphemeralEnvironment extendTtl(UUID id, int extraHours) {
+    public EphemeralEnvironment extendTtl(String id, int extraHours) {
         EphemeralEnvironment env = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ephemeral environment not found: " + id));
         if (!"ACTIVE".equals(env.getStatus())) {
@@ -66,7 +64,7 @@ public class EphemeralEnvironmentService {
         return repository.save(env);
     }
 
-    public EphemeralEnvironment activate(UUID id, String baseUrl) {
+    public EphemeralEnvironment activate(String id, String baseUrl) {
         EphemeralEnvironment env = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ephemeral environment not found: " + id));
         env.markActive(baseUrl);
@@ -81,7 +79,7 @@ public class EphemeralEnvironmentService {
         return repository.countByTenantIdAndStatusIn(tenantId, List.of("CREATING", "ACTIVE"));
     }
 
-    public void delete(UUID id) {
+    public void delete(String id) {
         repository.deleteById(id);
     }
 }

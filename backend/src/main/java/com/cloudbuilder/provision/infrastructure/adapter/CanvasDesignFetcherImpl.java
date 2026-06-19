@@ -17,8 +17,6 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-
 @Component
 public class CanvasDesignFetcherImpl implements CanvasDesignFetcher {
 
@@ -35,7 +33,7 @@ public class CanvasDesignFetcherImpl implements CanvasDesignFetcher {
     }
 
     @Override
-    public CanvasDesign fetchCanvasDesign(UUID canvasId) {
+    public CanvasDesign fetchCanvasDesign(String canvasId) {
         Canvas canvas = canvasRepository.findById(canvasId)
             .orElseThrow(() -> new IllegalArgumentException("Canvas not found: " + canvasId));
 
@@ -51,7 +49,7 @@ public class CanvasDesignFetcherImpl implements CanvasDesignFetcher {
     }
 
     private DesignNode toDesignNode(CanvasNode canvasNode) {
-        UUID defId = parseUuid(canvasNode.getComponentDefinitionId());
+        String defId = parseUuid(canvasNode.getComponentDefinitionId());
         ComponentDefinition definition = defId != null
             ? componentDefinitionRepository.findById(defId).orElse(null)
             : null;
@@ -79,13 +77,9 @@ public class CanvasDesignFetcherImpl implements CanvasDesignFetcher {
         );
     }
 
-    private static UUID parseUuid(String value) {
+    private static String parseUuid(String value) {
         if (value == null || value.isBlank()) return null;
-        try {
-            return UUID.fromString(value);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        return value;
     }
 
     private Map<String, String> parseProperties(String propertiesJson) {

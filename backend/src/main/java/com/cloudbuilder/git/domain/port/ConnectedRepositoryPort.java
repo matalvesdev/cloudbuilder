@@ -4,15 +4,13 @@ import com.cloudbuilder.git.domain.model.ConnectedRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 public interface ConnectedRepositoryPort {
 
     ConnectedRepository save(ConnectedRepository repository);
 
-    Optional<ConnectedRepository> findById(UUID id);
+    Optional<ConnectedRepository> findById(String id);
 
     List<ConnectedRepository> findAll();
 
-    void deleteById(UUID id);
+    void deleteById(String id);
 }

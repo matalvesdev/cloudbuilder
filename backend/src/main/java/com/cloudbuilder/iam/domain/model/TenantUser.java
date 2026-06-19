@@ -15,16 +15,16 @@ public class TenantUser {
     }
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "tenant_id", nullable = false)
-    private UUID tenantId;
+    private String tenantId;
 
     @Column(name = "user_id", nullable = false)
-    private UUID userId;
+    private String userId;
 
     @Column(name = "role_id", nullable = false)
-    private UUID roleId;
+    private String roleId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -37,8 +37,8 @@ public class TenantUser {
 
     public TenantUser() {}
 
-    public TenantUser(UUID tenantId, UUID userId, UUID roleId) {
-        this.id = UUID.randomUUID();
+    public TenantUser(String tenantId, String userId, String roleId) {
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.userId = userId;
         this.roleId = roleId;
@@ -47,17 +47,17 @@ public class TenantUser {
         this.joinedAt = LocalDateTime.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public UUID getTenantId() { return tenantId; }
-    public void setTenantId(UUID tenantId) { this.tenantId = tenantId; }
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
-    public UUID getRoleId() { return roleId; }
-    public void setRoleId(UUID roleId) { this.roleId = roleId; }
+    public String getRoleId() { return roleId; }
+    public void setRoleId(String roleId) { this.roleId = roleId; }
 
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }

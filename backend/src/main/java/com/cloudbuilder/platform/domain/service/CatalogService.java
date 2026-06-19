@@ -6,8 +6,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class CatalogService {
@@ -31,19 +29,19 @@ public class CatalogService {
     }
 
     @Transactional(readOnly = true)
-    public CatalogItem getItem(UUID id) {
+    public CatalogItem getItem(String id) {
         return repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Catalog item not found: " + id));
     }
 
-    public CatalogItem updateItem(UUID id, String version, String status) {
+    public CatalogItem updateItem(String id, String version, String status) {
         var item = getItem(id);
         if (version != null) item.setVersion(version);
         if (status != null) item.setStatus(status);
         return repository.save(item);
     }
 
-    public void deleteItem(UUID id) {
+    public void deleteItem(String id) {
         repository.deleteById(id);
     }
 }

@@ -9,7 +9,7 @@ import java.util.UUID;
 public class Project {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String tenantId;
@@ -38,7 +38,7 @@ public class Project {
     protected Project() {}
 
     public Project(String tenantId, String name, String description) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.name = name;
         this.description = description;
@@ -69,7 +69,7 @@ public class Project {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getTenantId() { return tenantId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; this.updatedAt = Instant.now(); }

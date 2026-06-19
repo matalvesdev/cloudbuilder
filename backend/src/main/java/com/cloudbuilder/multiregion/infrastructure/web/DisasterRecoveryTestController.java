@@ -7,7 +7,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/multiregion/dr-tests")
@@ -22,24 +21,24 @@ public class DisasterRecoveryTestController {
 
     @PostMapping("/plans/{planId}/run")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<DRTestResult> runTest(@PathVariable UUID planId) {
+    public ResponseEntity<DRTestResult> runTest(@PathVariable String planId) {
         return ResponseEntity.ok(drTestService.runTest(planId, "current-user"));
     }
 
     @GetMapping("/plans/{planId}")
-    public ResponseEntity<List<DRTestResult>> getTestResults(@PathVariable UUID planId) {
+    public ResponseEntity<List<DRTestResult>> getTestResults(@PathVariable String planId) {
         return ResponseEntity.ok(drTestService.getTestResults(planId));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DRTestResult> getTestResult(@PathVariable UUID id) {
+    public ResponseEntity<DRTestResult> getTestResult(@PathVariable String id) {
         return drTestService.getById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/plans/{planId}/stats")
-    public ResponseEntity<TestStatsDto> getStats(@PathVariable UUID planId) {
+    public ResponseEntity<TestStatsDto> getStats(@PathVariable String planId) {
         long total = drTestService.getTestCount(planId);
         long success = drTestService.getSuccessCount(planId);
         return ResponseEntity.ok(new TestStatsDto(total, success, total > 0 ? (success * 100 / total) : 0));

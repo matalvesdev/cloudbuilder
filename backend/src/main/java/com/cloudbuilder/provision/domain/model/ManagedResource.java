@@ -1,8 +1,6 @@
 package com.cloudbuilder.provision.domain.model;
 
 import jakarta.persistence.*;
-import java.util.UUID;
-
 @Entity
 @Table(name = "managed_resources")
 public class ManagedResource extends BaseEntity {
@@ -15,10 +13,10 @@ public class ManagedResource extends BaseEntity {
     public static final String STATUS_ERROR = "ERROR";
 
     @Column(name = "environment_id", nullable = false)
-    private UUID environmentId;
+    private String environmentId;
 
     @Column(name = "node_id")
-    private UUID nodeId;
+    private String nodeId;
 
     @Column(name = "terraform_address", nullable = false)
     private String terraformAddress;
@@ -46,7 +44,7 @@ public class ManagedResource extends BaseEntity {
 
     protected ManagedResource() {}
 
-    public ManagedResource(UUID environmentId, String terraformAddress, String resourceType,
+    public ManagedResource(String environmentId, String terraformAddress, String resourceType,
                            String provider, String region, String properties) {
         this.environmentId = environmentId;
         this.terraformAddress = terraformAddress;
@@ -57,10 +55,10 @@ public class ManagedResource extends BaseEntity {
         this.status = STATUS_CREATING;
     }
 
-    public UUID getEnvironmentId() { return environmentId; }
-    public void setEnvironmentId(UUID environmentId) { this.environmentId = environmentId; }
-    public UUID getNodeId() { return nodeId; }
-    public void setNodeId(UUID nodeId) { this.nodeId = nodeId; }
+    public String getEnvironmentId() { return environmentId; }
+    public void setEnvironmentId(String environmentId) { this.environmentId = environmentId; }
+    public String getNodeId() { return nodeId; }
+    public void setNodeId(String nodeId) { this.nodeId = nodeId; }
     public String getTerraformAddress() { return terraformAddress; }
     public void setTerraformAddress(String terraformAddress) { this.terraformAddress = terraformAddress; }
     public String getResourceType() { return resourceType; }

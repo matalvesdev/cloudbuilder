@@ -2,10 +2,8 @@ package com.cloudbuilder.multiregion.application.dto;
 
 import com.cloudbuilder.multiregion.domain.model.RegionHealth;
 import java.time.Instant;
-import java.util.UUID;
-
 public record RegionHealthDto(
-    UUID id,
+    String id,
     String regionCode,
     String status,
     double latencyMs,

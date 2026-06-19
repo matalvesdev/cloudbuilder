@@ -9,10 +9,10 @@ import java.util.UUID;
 public class DRTestResult {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
-    private UUID drPlanId;
+    private String drPlanId;
 
     @Column(nullable = false)
     private String tenantId;
@@ -40,10 +40,10 @@ public class DRTestResult {
 
     protected DRTestResult() {}
 
-    public DRTestResult(UUID drPlanId, String tenantId, int rtoActualSeconds,
+    public DRTestResult(String drPlanId, String tenantId, int rtoActualSeconds,
                          int rpoActualSeconds, String status, String details,
                          int durationSeconds, String initiatedBy) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.drPlanId = drPlanId;
         this.tenantId = tenantId;
         this.testedAt = Instant.now();
@@ -55,8 +55,8 @@ public class DRTestResult {
         this.initiatedBy = initiatedBy;
     }
 
-    public UUID getId() { return id; }
-    public UUID getDrPlanId() { return drPlanId; }
+    public String getId() { return id; }
+    public String getDrPlanId() { return drPlanId; }
     public String getTenantId() { return tenantId; }
     public Instant getTestedAt() { return testedAt; }
     public int getRtoActualSeconds() { return rtoActualSeconds; }

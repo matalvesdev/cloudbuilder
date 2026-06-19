@@ -13,7 +13,7 @@ public class MarketplaceListing {
     public static final String STATUS_UNPUBLISHED = "UNPUBLISHED";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String name;
@@ -55,7 +55,7 @@ public class MarketplaceListing {
 
     public MarketplaceListing(String name, String description, String cloudProvider,
                               String listingType, String version, String publisherName) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.name = name;
         this.description = description;
         this.cloudProvider = cloudProvider;
@@ -72,7 +72,7 @@ public class MarketplaceListing {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }

@@ -13,7 +13,7 @@ public class PartnerIntegration {
     public static final String STATUS_PENDING = "PENDING";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "partner_name", nullable = false)
     private String partnerName;
@@ -45,7 +45,7 @@ public class PartnerIntegration {
     protected PartnerIntegration() {}
 
     public PartnerIntegration(String partnerName, String description, String integrationType) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.partnerName = partnerName;
         this.description = description;
         this.integrationType = integrationType;
@@ -59,7 +59,7 @@ public class PartnerIntegration {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getPartnerName() { return partnerName; }
     public void setPartnerName(String partnerName) { this.partnerName = partnerName; }
     public String getDescription() { return description; }

@@ -2,10 +2,8 @@ package com.cloudbuilder.multiregion.application.dto;
 
 import com.cloudbuilder.multiregion.domain.model.Region;
 import java.time.Instant;
-import java.util.UUID;
-
 public record RegionDto(
-    UUID id,
+    String id,
     String code,
     String name,
     String provider,

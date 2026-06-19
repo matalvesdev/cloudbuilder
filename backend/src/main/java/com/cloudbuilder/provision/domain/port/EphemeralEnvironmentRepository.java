@@ -6,10 +6,8 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
-
 @Repository
-public interface EphemeralEnvironmentRepository extends JpaRepository<EphemeralEnvironment, UUID> {
+public interface EphemeralEnvironmentRepository extends JpaRepository<EphemeralEnvironment, String> {
 
     List<EphemeralEnvironment> findByTenantId(String tenantId);
 
@@ -19,7 +17,7 @@ public interface EphemeralEnvironmentRepository extends JpaRepository<EphemeralE
 
     List<EphemeralEnvironment> findByStatusAndExpiresAtBefore(String status, Instant now);
 
-    List<EphemeralEnvironment> findBySourceEnvironmentId(UUID sourceEnvironmentId);
+    List<EphemeralEnvironment> findBySourceEnvironmentId(String sourceEnvironmentId);
 
     long countByTenantIdAndStatusIn(String tenantId, List<String> statuses);
 }

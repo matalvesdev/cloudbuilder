@@ -9,7 +9,7 @@ import java.util.UUID;
 public class Incident {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String environmentId;
@@ -40,7 +40,7 @@ public class Incident {
     protected Incident() {}
 
     public Incident(String environmentId, String title, String description, String severity) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.environmentId = environmentId;
         this.title = title;
         this.description = description;
@@ -49,7 +49,7 @@ public class Incident {
         this.detectedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getEnvironmentId() { return environmentId; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }

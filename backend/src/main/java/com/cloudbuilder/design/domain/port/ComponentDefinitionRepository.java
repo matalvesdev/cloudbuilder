@@ -5,9 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
-public interface ComponentDefinitionRepository extends JpaRepository<ComponentDefinition, UUID> {
+public interface ComponentDefinitionRepository extends JpaRepository<ComponentDefinition, String> {
 
     List<ComponentDefinition> findByProvider(String provider);
 

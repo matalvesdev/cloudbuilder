@@ -130,7 +130,7 @@ public class AuthService {
         return buildAuthResponse(user, tenant, role);
     }
 
-    public MeResponse getMe(UUID userId) {
+    public MeResponse getMe(String userId) {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
 
@@ -149,6 +149,15 @@ public class AuthService {
 
         return new MeResponse(user.getId().toString(), user.getName(), user.getEmail(), roles,
                 tu.getTenantId().toString(), tenantName, tenantSlug);
+    }
+
+    @Transactional
+    public User updateProfile(String userId, String name) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado."));
+        user.setName(name);
+        user.setUpdatedAt(Instant.now());
+        return userRepository.save(user);
     }
 
     @Transactional
@@ -217,14 +226,14 @@ public class AuthService {
         );
     }
 
-    private Role createSystemRole(UUID tenantId, String name, String description) {
+    private Role createSystemRole(String tenantId, String name, String description) {
         var role = new Role(tenantId, name, description, true);
         role = roleRepository.save(role);
         createPermissionsForRole(role.getId(), name);
         return role;
     }
 
-    private void createPermissionsForRole(UUID roleId, String roleName) {
+    private void createPermissionsForRole(String roleId, String roleName) {
         for (String resource : SYSTEM_RESOURCES) {
             switch (roleName) {
                 case "admin" -> {
@@ -249,7 +258,7 @@ public class AuthService {
         }
     }
 
-    private void savePermission(UUID roleId, String action, String resource) {
+    private void savePermission(String roleId, String action, String resource) {
         permissionRepository.save(new Permission(roleId, action, resource));
     }
 }

@@ -14,7 +14,7 @@ public class EphemeralEnvironment {
     public static final String STATUS_DESTROYED = "DESTROYED";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String tenantId;
@@ -37,7 +37,7 @@ public class EphemeralEnvironment {
     private String prUrl;
 
     @Column(nullable = false)
-    private UUID sourceEnvironmentId;
+    private String sourceEnvironmentId;
 
     private String baseUrl;
 
@@ -67,9 +67,9 @@ public class EphemeralEnvironment {
     protected EphemeralEnvironment() {}
 
     public EphemeralEnvironment(String tenantId, String projectId, String name,
-                                 String repoId, String branchName, UUID sourceEnvironmentId,
+                                 String repoId, String branchName, String sourceEnvironmentId,
                                  int ttlHours, String resourceSize) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.projectId = projectId;
         this.name = name;
@@ -118,7 +118,7 @@ public class EphemeralEnvironment {
         this.cost += calculateCost(extraHours, this.resourceSize);
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getTenantId() { return tenantId; }
     public String getProjectId() { return projectId; }
     public String getName() { return name; }
@@ -129,7 +129,7 @@ public class EphemeralEnvironment {
     public void setPrNumber(Integer prNumber) { this.prNumber = prNumber; }
     public String getPrUrl() { return prUrl; }
     public void setPrUrl(String prUrl) { this.prUrl = prUrl; }
-    public UUID getSourceEnvironmentId() { return sourceEnvironmentId; }
+    public String getSourceEnvironmentId() { return sourceEnvironmentId; }
     public String getBaseUrl() { return baseUrl; }
     public String getStatus() { return status; }
     public int getTtlHours() { return ttlHours; }

@@ -14,10 +14,10 @@ public class FailoverGroup {
     public static final String STATUS_FAILOVER_IN_PROGRESS = "FAILOVER_IN_PROGRESS";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "environment_id", nullable = false)
-    private UUID environmentId;
+    private String environmentId;
 
     @Column(nullable = false)
     private String name;
@@ -54,10 +54,10 @@ public class FailoverGroup {
 
     protected FailoverGroup() {}
 
-    public FailoverGroup(UUID environmentId, String name, String primaryRegion,
+    public FailoverGroup(String environmentId, String name, String primaryRegion,
                          String secondaryRegions, int failoverThresholdMinutes,
                          boolean autoFailover) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.environmentId = environmentId;
         this.name = name;
         this.primaryRegion = primaryRegion;
@@ -74,8 +74,8 @@ public class FailoverGroup {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public UUID getEnvironmentId() { return environmentId; }
+    public String getId() { return id; }
+    public String getEnvironmentId() { return environmentId; }
     public String getName() { return name; }
     public String getPrimaryRegion() { return primaryRegion; }
     public void setPrimaryRegion(String primaryRegion) { this.primaryRegion = primaryRegion; }

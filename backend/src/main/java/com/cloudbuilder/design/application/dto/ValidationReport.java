@@ -2,10 +2,8 @@ package com.cloudbuilder.design.application.dto;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
-
 public record ValidationReport(
-        UUID canvasId,
+        String canvasId,
         CanvasValidationStatus status,
         List<ValidationIssue> issues,
         Instant validatedAt

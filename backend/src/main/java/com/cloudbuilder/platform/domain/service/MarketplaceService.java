@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class MarketplaceService {
@@ -47,14 +45,14 @@ public class MarketplaceService {
         return listingRepository.findAll();
     }
 
-    public MarketplaceListing publishListing(UUID id) {
+    public MarketplaceListing publishListing(String id) {
         var listing = listingRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Listing not found: " + id));
         listing.setStatus(MarketplaceListing.STATUS_PUBLISHED);
         return listingRepository.save(listing);
     }
 
-    public MarketplaceListing unpublishListing(UUID id) {
+    public MarketplaceListing unpublishListing(String id) {
         var listing = listingRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Listing not found: " + id));
         listing.setStatus(MarketplaceListing.STATUS_UNPUBLISHED);
@@ -78,14 +76,14 @@ public class MarketplaceService {
         return partnerRepository.findAll();
     }
 
-    public PartnerIntegration activatePartner(UUID id) {
+    public PartnerIntegration activatePartner(String id) {
         var partner = partnerRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Partner not found: " + id));
         partner.setStatus(PartnerIntegration.STATUS_ACTIVE);
         return partnerRepository.save(partner);
     }
 
-    public PartnerIntegration updatePartnerConfig(UUID id, String apiEndpoint, String configuration) {
+    public PartnerIntegration updatePartnerConfig(String id, String apiEndpoint, String configuration) {
         var partner = partnerRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Partner not found: " + id));
         if (apiEndpoint != null) partner.setApiEndpoint(apiEndpoint);

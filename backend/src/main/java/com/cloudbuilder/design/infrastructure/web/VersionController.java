@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/canvases/{canvasId}/versions")
@@ -27,20 +26,20 @@ public class VersionController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<CanvasVersion>> listVersions(@PathVariable UUID canvasId) {
+    public ResponseEntity<List<CanvasVersion>> listVersions(@PathVariable String canvasId) {
         return ResponseEntity.ok(versionService.getVersions(canvasId));
     }
 
     @GetMapping("/{version}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<CanvasVersion> getVersion(@PathVariable UUID canvasId, @PathVariable int version) {
+    public ResponseEntity<CanvasVersion> getVersion(@PathVariable String canvasId, @PathVariable int version) {
         return ResponseEntity.ok(versionService.getVersion(canvasId, version));
     }
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CanvasVersion> createVersion(
-            @PathVariable UUID canvasId,
+            @PathVariable String canvasId,
             @Validated @RequestBody CreateVersionRequest request) {
         CanvasVersion version = versionService.createVersion(canvasId, request.changeDescription(), request.createdBy());
         return ResponseEntity.status(HttpStatus.CREATED).body(version);
@@ -48,7 +47,7 @@ public class VersionController {
 
     @PostMapping("/rollback/{version}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> rollbackToVersion(@PathVariable UUID canvasId, @PathVariable int version) {
+    public ResponseEntity<Void> rollbackToVersion(@PathVariable String canvasId, @PathVariable int version) {
         versionService.rollbackToVersion(canvasId, version);
         return ResponseEntity.ok().build();
     }
@@ -56,7 +55,7 @@ public class VersionController {
     @GetMapping("/diff")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<VersionDiff> diffVersions(
-            @PathVariable UUID canvasId,
+            @PathVariable String canvasId,
             @RequestParam("from") int from,
             @RequestParam("to") int to) {
         return ResponseEntity.ok(versionService.diffVersions(canvasId, from, to));

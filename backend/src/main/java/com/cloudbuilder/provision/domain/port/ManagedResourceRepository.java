@@ -5,13 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+public interface ManagedResourceRepository extends JpaRepository<ManagedResource, String> {
 
-public interface ManagedResourceRepository extends JpaRepository<ManagedResource, UUID> {
+    List<ManagedResource> findByEnvironmentId(String environmentId);
 
-    List<ManagedResource> findByEnvironmentId(UUID environmentId);
-
-    List<ManagedResource> findByEnvironmentIdAndStatus(UUID environmentId, String status);
+    List<ManagedResource> findByEnvironmentIdAndStatus(String environmentId, String status);
 
     Optional<ManagedResource> findByTerraformAddress(String address);
 }

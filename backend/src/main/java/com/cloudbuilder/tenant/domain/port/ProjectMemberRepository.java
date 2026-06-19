@@ -6,18 +6,16 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Repository
-public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UUID> {
+public interface ProjectMemberRepository extends JpaRepository<ProjectMember, String> {
 
-    List<ProjectMember> findByProjectId(UUID projectId);
+    List<ProjectMember> findByProjectId(String projectId);
 
-    Optional<ProjectMember> findByProjectIdAndUserId(UUID projectId, String userId);
+    Optional<ProjectMember> findByProjectIdAndUserId(String projectId, String userId);
 
     List<ProjectMember> findByUserId(String userId);
 
-    long countByProjectId(UUID projectId);
+    long countByProjectId(String projectId);
 
-    void deleteByProjectIdAndUserId(UUID projectId, String userId);
+    void deleteByProjectIdAndUserId(String projectId, String userId);
 }

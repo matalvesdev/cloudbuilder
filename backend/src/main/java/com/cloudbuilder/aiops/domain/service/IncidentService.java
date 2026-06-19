@@ -7,8 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class IncidentService {
@@ -27,7 +25,7 @@ public class IncidentService {
     }
 
     @Transactional(readOnly = true)
-    public Incident getIncident(UUID id) {
+    public Incident getIncident(String id) {
         return incidentRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Incidente não encontrado: " + id));
     }
@@ -42,14 +40,14 @@ public class IncidentService {
         return incidentRepository.findByStatus(status);
     }
 
-    public Incident resolveIncident(UUID id) {
+    public Incident resolveIncident(String id) {
         var incident = getIncident(id);
         incident.setStatus("RESOLVED");
         incident.setResolvedAt(Instant.now());
         return incidentRepository.save(incident);
     }
 
-    public Incident analyzeIncident(UUID id) {
+    public Incident analyzeIncident(String id) {
         var incident = getIncident(id);
         var classification = aiService.classifyIncident(incident.getDescription());
         var rca = aiService.analyzeIncident(incident);

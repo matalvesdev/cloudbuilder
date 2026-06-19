@@ -14,10 +14,10 @@ public class DrillConfig {
     public static final String STATUS_FAILED = "FAILED";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "failover_group_id", nullable = false)
-    private UUID failoverGroupId;
+    private String failoverGroupId;
 
     @Column(nullable = false)
     private String name;
@@ -42,8 +42,8 @@ public class DrillConfig {
 
     protected DrillConfig() {}
 
-    public DrillConfig(UUID failoverGroupId, String name, String description, Instant scheduledAt) {
-        this.id = UUID.randomUUID();
+    public DrillConfig(String failoverGroupId, String name, String description, Instant scheduledAt) {
+        this.id = UUID.randomUUID().toString();
         this.failoverGroupId = failoverGroupId;
         this.name = name;
         this.description = description;
@@ -52,8 +52,8 @@ public class DrillConfig {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public UUID getFailoverGroupId() { return failoverGroupId; }
+    public String getId() { return id; }
+    public String getFailoverGroupId() { return failoverGroupId; }
     public String getName() { return name; }
     public String getDescription() { return description; }
     public Instant getScheduledAt() { return scheduledAt; }

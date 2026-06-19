@@ -8,7 +8,7 @@ import com.cloudbuilder.observe.domain.service.HealthCheckService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
+import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/v1/observe")
@@ -53,7 +53,7 @@ public class ObserveController {
     }
 
     @PostMapping("/alerts/{alertId}/resolve")
-    public ResponseEntity<AlertDTO> resolveAlert(@PathVariable UUID alertId) {
+    public ResponseEntity<AlertDTO> resolveAlert(@PathVariable String alertId) {
         var alert = healthCheckService.resolveAlert(alertId);
         return ResponseEntity.ok(AlertDTO.from(alert));
     }

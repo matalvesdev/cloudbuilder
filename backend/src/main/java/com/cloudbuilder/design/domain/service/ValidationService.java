@@ -13,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional(readOnly = true)
 public class ValidationService {
@@ -27,7 +25,7 @@ public class ValidationService {
         this.validationRules = validationRules;
     }
 
-    public ValidationReport validateCanvas(UUID canvasId) {
+    public ValidationReport validateCanvas(String canvasId) {
         Canvas canvas = canvasRepository.findById(canvasId)
                 .orElseThrow(() -> new RuntimeException("Canvas not found: " + canvasId));
 

@@ -6,8 +6,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class ComponentDefinitionService {
@@ -23,7 +21,7 @@ public class ComponentDefinitionService {
     }
 
     @Transactional(readOnly = true)
-    public ComponentDefinition getDefinition(UUID id) {
+    public ComponentDefinition getDefinition(String id) {
         return repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("ComponentDefinition not found: " + id));
     }
@@ -55,7 +53,7 @@ public class ComponentDefinitionService {
         return repository.findByIsActiveTrue();
     }
 
-    public void deleteDefinition(UUID id) {
+    public void deleteDefinition(String id) {
         ComponentDefinition definition = getDefinition(id);
         repository.delete(definition);
     }

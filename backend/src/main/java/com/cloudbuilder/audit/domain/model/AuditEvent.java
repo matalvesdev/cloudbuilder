@@ -9,7 +9,7 @@ import java.util.UUID;
 public class AuditEvent {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String tenantId;
@@ -39,7 +39,7 @@ public class AuditEvent {
 
     public AuditEvent(String tenantId, String userId, String action,
                       String resourceType, String resourceId, String details, String ipAddress) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.userId = userId;
         this.action = action;
@@ -50,7 +50,7 @@ public class AuditEvent {
         this.timestamp = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getTenantId() { return tenantId; }
     public String getUserId() { return userId; }
     public String getAction() { return action; }

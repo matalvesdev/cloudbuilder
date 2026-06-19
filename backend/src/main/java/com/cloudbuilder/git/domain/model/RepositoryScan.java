@@ -12,8 +12,8 @@ public class RepositoryScan {
         FAILED
     }
 
-    private UUID id;
-    private UUID repositoryId;
+    private String id;
+    private String repositoryId;
     private Instant scannedAt;
     private String iacFiles;
     private AppDetection appDetection;
@@ -23,25 +23,25 @@ public class RepositoryScan {
     public RepositoryScan() {
     }
 
-    public RepositoryScan(UUID repositoryId) {
-        this.id = UUID.randomUUID();
+    public RepositoryScan(String repositoryId) {
+        this.id = UUID.randomUUID().toString();
         this.repositoryId = repositoryId;
         this.status = Status.PENDING;
     }
 
-    public UUID getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public UUID getRepositoryId() {
+    public String getRepositoryId() {
         return repositoryId;
     }
 
-    public void setRepositoryId(UUID repositoryId) {
+    public void setRepositoryId(String repositoryId) {
         this.repositoryId = repositoryId;
     }
 

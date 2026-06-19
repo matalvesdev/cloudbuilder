@@ -8,8 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class AIOpsService {
@@ -32,25 +30,25 @@ public class AIOpsService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<Incident> getIncident(UUID id) {
+    public Optional<Incident> getIncident(String id) {
         return incidentRepository.findById(id);
     }
 
-    public Incident classifyIncident(UUID id, String classification) {
+    public Incident classifyIncident(String id, String classification) {
         var incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Incident not found: " + id));
         incident.setClassification(classification);
         return incidentRepository.save(incident);
     }
 
-    public Incident suggestRca(UUID id, String suggestedRca) {
+    public Incident suggestRca(String id, String suggestedRca) {
         var incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Incident not found: " + id));
         incident.setSuggestedRca(suggestedRca);
         return incidentRepository.save(incident);
     }
 
-    public Incident resolveIncident(UUID id) {
+    public Incident resolveIncident(String id) {
         var incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Incident not found: " + id));
         incident.setStatus("RESOLVED");
@@ -58,7 +56,7 @@ public class AIOpsService {
         return incidentRepository.save(incident);
     }
 
-    public Incident analyzeIncident(UUID id) {
+    public Incident analyzeIncident(String id) {
         var incident = incidentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Incident not found: " + id));
         var classification = aiService.classifyIncident(incident.getDescription());

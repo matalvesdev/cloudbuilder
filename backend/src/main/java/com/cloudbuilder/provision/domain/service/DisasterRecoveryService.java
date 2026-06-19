@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class DisasterRecoveryService {
@@ -31,17 +29,17 @@ public class DisasterRecoveryService {
 
     // --- Region Deployments ---
 
-    public RegionDeployment addRegionDeployment(UUID environmentId, String region, boolean primary, int priority) {
+    public RegionDeployment addRegionDeployment(String environmentId, String region, boolean primary, int priority) {
         var deployment = new RegionDeployment(environmentId, region, primary, priority);
         return regionDeploymentRepository.save(deployment);
     }
 
     @Transactional(readOnly = true)
-    public List<RegionDeployment> getRegionDeployments(UUID environmentId) {
+    public List<RegionDeployment> getRegionDeployments(String environmentId) {
         return regionDeploymentRepository.findByEnvironmentId(environmentId);
     }
 
-    public RegionDeployment updateRegionStatus(UUID deploymentId, String status) {
+    public RegionDeployment updateRegionStatus(String deploymentId, String status) {
         var deployment = regionDeploymentRepository.findById(deploymentId)
             .orElseThrow(() -> new IllegalArgumentException("Deployment not found: " + deploymentId));
         deployment.setStatus(status);
@@ -51,7 +49,7 @@ public class DisasterRecoveryService {
 
     // --- Failover Groups ---
 
-    public FailoverGroup createFailoverGroup(UUID environmentId, String name, String primaryRegion,
+    public FailoverGroup createFailoverGroup(String environmentId, String name, String primaryRegion,
                                               String secondaryRegions, int threshold, boolean autoFailover) {
         var group = new FailoverGroup(environmentId, name, primaryRegion,
             secondaryRegions, threshold, autoFailover);
@@ -59,17 +57,17 @@ public class DisasterRecoveryService {
     }
 
     @Transactional(readOnly = true)
-    public List<FailoverGroup> getFailoverGroups(UUID environmentId) {
+    public List<FailoverGroup> getFailoverGroups(String environmentId) {
         return failoverGroupRepository.findByEnvironmentId(environmentId);
     }
 
     @Transactional(readOnly = true)
-    public FailoverGroup getFailoverGroup(UUID id) {
+    public FailoverGroup getFailoverGroup(String id) {
         return failoverGroupRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Failover group not found: " + id));
     }
 
-    public FailoverGroup initiateFailover(UUID groupId) {
+    public FailoverGroup initiateFailover(String groupId) {
         var group = getFailoverGroup(groupId);
         group.setStatus(FailoverGroup.STATUS_FAILOVER_IN_PROGRESS);
         group.setLastFailoverAt(Instant.now());
@@ -85,7 +83,7 @@ public class DisasterRecoveryService {
         return failoverGroupRepository.save(group);
     }
 
-    public FailoverGroup completeFailover(UUID groupId, String newPrimaryRegion) {
+    public FailoverGroup completeFailover(String groupId, String newPrimaryRegion) {
         var group = getFailoverGroup(groupId);
         group.setPrimaryRegion(newPrimaryRegion);
         group.setStatus(FailoverGroup.STATUS_HEALTHY);
@@ -107,17 +105,17 @@ public class DisasterRecoveryService {
 
     // --- Drills ---
 
-    public DrillConfig scheduleDrill(UUID failoverGroupId, String name, String description, Instant scheduledAt) {
+    public DrillConfig scheduleDrill(String failoverGroupId, String name, String description, Instant scheduledAt) {
         var drill = new DrillConfig(failoverGroupId, name, description, scheduledAt);
         return drillConfigRepository.save(drill);
     }
 
     @Transactional(readOnly = true)
-    public List<DrillConfig> getDrills(UUID failoverGroupId) {
+    public List<DrillConfig> getDrills(String failoverGroupId) {
         return drillConfigRepository.findByFailoverGroupId(failoverGroupId);
     }
 
-    public DrillConfig completeDrill(UUID drillId, boolean passed, String result) {
+    public DrillConfig completeDrill(String drillId, boolean passed, String result) {
         var drill = drillConfigRepository.findById(drillId)
             .orElseThrow(() -> new IllegalArgumentException("Drill not found: " + drillId));
         drill.setStatus(passed ? DrillConfig.STATUS_PASSED : DrillConfig.STATUS_FAILED);

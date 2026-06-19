@@ -7,8 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Component
 public class ConnectedRepositoryJpaAdapter implements ConnectedRepositoryPort {
 
@@ -26,7 +24,7 @@ public class ConnectedRepositoryJpaAdapter implements ConnectedRepositoryPort {
     }
 
     @Override
-    public Optional<ConnectedRepository> findById(UUID id) {
+    public Optional<ConnectedRepository> findById(String id) {
         return springRepo.findById(id).map(this::toDomain);
     }
 
@@ -36,7 +34,7 @@ public class ConnectedRepositoryJpaAdapter implements ConnectedRepositoryPort {
     }
 
     @Override
-    public void deleteById(UUID id) {
+    public void deleteById(String id) {
         springRepo.deleteById(id);
     }
 

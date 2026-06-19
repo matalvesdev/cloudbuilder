@@ -8,8 +8,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Component
 public class RepositoryScanJpaAdapter implements RepositoryScanPort {
 
@@ -27,12 +25,12 @@ public class RepositoryScanJpaAdapter implements RepositoryScanPort {
     }
 
     @Override
-    public Optional<RepositoryScan> findById(UUID id) {
+    public Optional<RepositoryScan> findById(String id) {
         return springRepo.findById(id).map(this::toDomain);
     }
 
     @Override
-    public List<RepositoryScan> findByRepositoryId(UUID repositoryId) {
+    public List<RepositoryScan> findByRepositoryId(String repositoryId) {
         return springRepo.findByRepositoryId(repositoryId).stream()
                 .map(this::toDomain).toList();
     }

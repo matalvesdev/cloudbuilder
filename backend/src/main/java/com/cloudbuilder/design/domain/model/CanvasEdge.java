@@ -9,17 +9,17 @@ import java.util.UUID;
 public class CanvasEdge {
 
     @Id
-    private UUID id;
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "canvas_id", nullable = false)
     private Canvas canvas;
 
     @Column(nullable = false)
-    private UUID sourceNodeId;
+    private String sourceNodeId;
 
     @Column(nullable = false)
-    private UUID targetNodeId;
+    private String targetNodeId;
 
     @Column(nullable = false)
     private String edgeType;
@@ -32,8 +32,8 @@ public class CanvasEdge {
 
     protected CanvasEdge() {}
 
-    public CanvasEdge(Canvas canvas, UUID sourceNodeId, UUID targetNodeId, String edgeType, String properties) {
-        this.id = UUID.randomUUID();
+    public CanvasEdge(Canvas canvas, String sourceNodeId, String targetNodeId, String edgeType, String properties) {
+        this.id = UUID.randomUUID().toString();
         this.canvas = canvas;
         this.sourceNodeId = sourceNodeId;
         this.targetNodeId = targetNodeId;
@@ -42,13 +42,13 @@ public class CanvasEdge {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public Canvas getCanvas() { return canvas; }
     public void setCanvas(Canvas canvas) { this.canvas = canvas; }
-    public UUID getSourceNodeId() { return sourceNodeId; }
-    public void setSourceNodeId(UUID sourceNodeId) { this.sourceNodeId = sourceNodeId; }
-    public UUID getTargetNodeId() { return targetNodeId; }
-    public void setTargetNodeId(UUID targetNodeId) { this.targetNodeId = targetNodeId; }
+    public String getSourceNodeId() { return sourceNodeId; }
+    public void setSourceNodeId(String sourceNodeId) { this.sourceNodeId = sourceNodeId; }
+    public String getTargetNodeId() { return targetNodeId; }
+    public void setTargetNodeId(String targetNodeId) { this.targetNodeId = targetNodeId; }
     public String getEdgeType() { return edgeType; }
     public void setEdgeType(String edgeType) { this.edgeType = edgeType; }
     public String getProperties() { return properties; }

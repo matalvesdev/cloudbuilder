@@ -5,13 +5,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
+public interface DriftReportRepository extends JpaRepository<DriftReport, String> {
 
-public interface DriftReportRepository extends JpaRepository<DriftReport, UUID> {
+    List<DriftReport> findByEnvironmentIdOrderByDetectedAtDesc(String environmentId);
 
-    List<DriftReport> findByEnvironmentIdOrderByDetectedAtDesc(UUID environmentId);
+    List<DriftReport> findByEnvironmentIdAndStatus(String environmentId, String status);
 
-    List<DriftReport> findByEnvironmentIdAndStatus(UUID environmentId, String status);
-
-    Optional<DriftReport> findTopByEnvironmentIdOrderByDetectedAtDesc(UUID environmentId);
+    Optional<DriftReport> findTopByEnvironmentIdOrderByDetectedAtDesc(String environmentId);
 }

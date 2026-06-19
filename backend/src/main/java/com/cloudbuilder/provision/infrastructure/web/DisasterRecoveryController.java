@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/dr")
@@ -27,14 +26,14 @@ public class DisasterRecoveryController {
     // --- Region Deployments ---
 
     @GetMapping("/environments/{environmentId}/regions")
-    public ResponseEntity<List<RegionDeployment>> getRegions(@PathVariable UUID environmentId) {
+    public ResponseEntity<List<RegionDeployment>> getRegions(@PathVariable String environmentId) {
         return ResponseEntity.ok(drService.getRegionDeployments(environmentId));
     }
 
     @PostMapping("/environments/{environmentId}/regions")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RegionDeployment> addRegion(
-            @PathVariable UUID environmentId, @RequestBody AddRegionRequest req) {
+            @PathVariable String environmentId, @RequestBody AddRegionRequest req) {
         var deployment = drService.addRegionDeployment(
             environmentId, req.region(), req.primary(), req.priority());
         return ResponseEntity.status(HttpStatus.CREATED).body(deployment);
@@ -43,21 +42,21 @@ public class DisasterRecoveryController {
     @PutMapping("/regions/{deploymentId}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RegionDeployment> updateRegionStatus(
-            @PathVariable UUID deploymentId, @RequestBody StatusRequest req) {
+            @PathVariable String deploymentId, @RequestBody StatusRequest req) {
         return ResponseEntity.ok(drService.updateRegionStatus(deploymentId, req.status()));
     }
 
     // --- Failover Groups ---
 
     @GetMapping("/environments/{environmentId}/groups")
-    public ResponseEntity<List<FailoverGroup>> getFailoverGroups(@PathVariable UUID environmentId) {
+    public ResponseEntity<List<FailoverGroup>> getFailoverGroups(@PathVariable String environmentId) {
         return ResponseEntity.ok(drService.getFailoverGroups(environmentId));
     }
 
     @PostMapping("/environments/{environmentId}/groups")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FailoverGroup> createFailoverGroup(
-            @PathVariable UUID environmentId, @RequestBody CreateGroupRequest req) {
+            @PathVariable String environmentId, @RequestBody CreateGroupRequest req) {
         var group = drService.createFailoverGroup(
             environmentId, req.name(), req.primaryRegion(),
             req.secondaryRegions(), req.failoverThresholdMinutes(), req.autoFailover());
@@ -66,28 +65,28 @@ public class DisasterRecoveryController {
 
     @PostMapping("/groups/{groupId}/failover")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<FailoverGroup> initiateFailover(@PathVariable UUID groupId) {
+    public ResponseEntity<FailoverGroup> initiateFailover(@PathVariable String groupId) {
         return ResponseEntity.ok(drService.initiateFailover(groupId));
     }
 
     @PostMapping("/groups/{groupId}/complete-failover")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FailoverGroup> completeFailover(
-            @PathVariable UUID groupId, @RequestBody CompleteFailoverRequest req) {
+            @PathVariable String groupId, @RequestBody CompleteFailoverRequest req) {
         return ResponseEntity.ok(drService.completeFailover(groupId, req.newPrimaryRegion()));
     }
 
     // --- Drills ---
 
     @GetMapping("/groups/{groupId}/drills")
-    public ResponseEntity<List<DrillConfig>> getDrills(@PathVariable UUID groupId) {
+    public ResponseEntity<List<DrillConfig>> getDrills(@PathVariable String groupId) {
         return ResponseEntity.ok(drService.getDrills(groupId));
     }
 
     @PostMapping("/groups/{groupId}/drills")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DrillConfig> scheduleDrill(
-            @PathVariable UUID groupId, @RequestBody ScheduleDrillRequest req) {
+            @PathVariable String groupId, @RequestBody ScheduleDrillRequest req) {
         var drill = drService.scheduleDrill(
             groupId, req.name(), req.description(),
             req.scheduledAt() != null ? Instant.parse(req.scheduledAt()) : null);
@@ -97,7 +96,7 @@ public class DisasterRecoveryController {
     @PostMapping("/drills/{drillId}/complete")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DrillConfig> completeDrill(
-            @PathVariable UUID drillId, @RequestBody CompleteDrillRequest req) {
+            @PathVariable String drillId, @RequestBody CompleteDrillRequest req) {
         return ResponseEntity.ok(drService.completeDrill(drillId, req.passed(), req.result()));
     }
 

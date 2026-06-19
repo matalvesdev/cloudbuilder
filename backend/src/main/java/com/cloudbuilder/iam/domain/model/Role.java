@@ -10,10 +10,10 @@ import java.util.UUID;
 public class Role {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "tenant_id")
-    private UUID tenantId;
+    private String tenantId;
 
     @Column(nullable = false)
     private String name;
@@ -29,8 +29,8 @@ public class Role {
 
     public Role() {}
 
-    public Role(UUID tenantId, String name, String description, boolean systemRole) {
-        this.id = UUID.randomUUID();
+    public Role(String tenantId, String name, String description, boolean systemRole) {
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.name = name;
         this.description = description;
@@ -38,11 +38,11 @@ public class Role {
         this.createdAt = LocalDateTime.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public UUID getTenantId() { return tenantId; }
-    public void setTenantId(UUID tenantId) { this.tenantId = tenantId; }
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

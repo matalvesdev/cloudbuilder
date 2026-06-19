@@ -7,8 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
-
 @Service
 @Transactional
 public class RegionService {
@@ -35,7 +33,7 @@ public class RegionService {
         return regionRepository.save(region);
     }
 
-    public Optional<Region> getRegion(UUID id) {
+    public Optional<Region> getRegion(String id) {
         return regionRepository.findById(id);
     }
 
@@ -55,7 +53,7 @@ public class RegionService {
         return regionRepository.findByProviderAndIsActiveTrue(provider);
     }
 
-    public Region updateRegion(UUID id, String name, String country, Boolean isActive, Boolean isPrimary) {
+    public Region updateRegion(String id, String name, String country, Boolean isActive, Boolean isPrimary) {
         Region region = regionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Region not found: " + id));
 
@@ -74,14 +72,14 @@ public class RegionService {
         return regionRepository.save(region);
     }
 
-    public void deleteRegion(UUID id) {
+    public void deleteRegion(String id) {
         if (!regionRepository.existsById(id)) {
             throw new IllegalArgumentException("Region not found: " + id);
         }
         regionRepository.deleteById(id);
     }
 
-    public Region setPrimaryRegion(UUID id) {
+    public Region setPrimaryRegion(String id) {
         Region region = regionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Region not found: " + id));
 

@@ -8,7 +8,7 @@ import java.util.UUID;
 public abstract class BaseEntity {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -20,13 +20,13 @@ public abstract class BaseEntity {
     private Long version;
 
     protected BaseEntity() {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString().toString();
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

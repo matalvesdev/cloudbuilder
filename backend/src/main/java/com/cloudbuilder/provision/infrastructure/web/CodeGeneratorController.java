@@ -10,8 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/v1/canvases/{canvasId}/generate")
 @PreAuthorize("isAuthenticated()")
@@ -31,7 +29,7 @@ public class CodeGeneratorController {
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GeneratedCode> generateCode(
-            @PathVariable UUID canvasId,
+            @PathVariable String canvasId,
             @RequestParam(name = "engine", defaultValue = "terraform") String engine) {
 
         if (!"terraform".equals(engine) && !"opentofu".equals(engine)) {

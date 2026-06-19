@@ -9,7 +9,7 @@ import java.util.UUID;
 public class ServiceHealth {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String serviceName;
@@ -34,7 +34,7 @@ public class ServiceHealth {
 
     public ServiceHealth(String serviceName, String environmentId, String status,
                          double latencyMs, double uptimePercent) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.serviceName = serviceName;
         this.environmentId = environmentId;
         this.status = status;
@@ -43,7 +43,7 @@ public class ServiceHealth {
         this.checkedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getServiceName() { return serviceName; }
     public String getEnvironmentId() { return environmentId; }
     public String getStatus() { return status; }

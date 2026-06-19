@@ -2,14 +2,12 @@ package com.cloudbuilder.git.infrastructure;
 
 import jakarta.persistence.*;
 import java.time.Instant;
-import java.util.UUID;
-
 @Entity
 @Table(name = "git_repositories")
 public class GitRepositoryEntity {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String provider;
@@ -53,7 +51,7 @@ public class GitRepositoryEntity {
     protected GitRepositoryEntity() {
     }
 
-    public GitRepositoryEntity(UUID id, String provider, String repoUrl, String repoName,
+    public GitRepositoryEntity(String id, String provider, String repoUrl, String repoName,
                                 String fullName, String owner, String defaultBranch,
                                 String accessToken, String status) {
         this.id = id;
@@ -75,11 +73,11 @@ public class GitRepositoryEntity {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(String id) {
         this.id = id;
     }
 

@@ -10,7 +10,7 @@ import java.util.UUID;
 public class Budget {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String environmentId;
@@ -42,7 +42,7 @@ public class Budget {
 
     public Budget(String environmentId, String name, double limitAmount,
                   String currency, LocalDate startDate, LocalDate endDate) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.environmentId = environmentId;
         this.name = name;
         this.limitAmount = limitAmount;
@@ -54,7 +54,7 @@ public class Budget {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getEnvironmentId() { return environmentId; }
     public String getName() { return name; }
     public double getLimitAmount() { return limitAmount; }

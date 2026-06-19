@@ -9,7 +9,7 @@ import java.util.UUID;
 public class RegionHealth {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String regionCode;
@@ -30,7 +30,7 @@ public class RegionHealth {
     protected RegionHealth() {}
 
     public RegionHealth(String regionCode, String status, double latencyMs, double availabilityPercent) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.regionCode = regionCode;
         this.status = status;
         this.latencyMs = latencyMs;
@@ -38,7 +38,7 @@ public class RegionHealth {
         this.checkedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getRegionCode() { return regionCode; }
     public void setRegionCode(String regionCode) { this.regionCode = regionCode; }
     public String getStatus() { return status; }

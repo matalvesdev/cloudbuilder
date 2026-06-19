@@ -14,10 +14,10 @@ public class RegionDeployment {
     public static final String STATUS_FAILING_OVER = "FAILING_OVER";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "environment_id", nullable = false)
-    private UUID environmentId;
+    private String environmentId;
 
     @Column(nullable = false)
     private String region;
@@ -45,8 +45,8 @@ public class RegionDeployment {
 
     protected RegionDeployment() {}
 
-    public RegionDeployment(UUID environmentId, String region, boolean primary, int priority) {
-        this.id = UUID.randomUUID();
+    public RegionDeployment(String environmentId, String region, boolean primary, int priority) {
+        this.id = UUID.randomUUID().toString();
         this.environmentId = environmentId;
         this.region = region;
         this.primary = primary;
@@ -61,8 +61,8 @@ public class RegionDeployment {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public UUID getEnvironmentId() { return environmentId; }
+    public String getId() { return id; }
+    public String getEnvironmentId() { return environmentId; }
     public String getRegion() { return region; }
     public boolean isPrimary() { return primary; }
     public void setPrimary(boolean primary) { this.primary = primary; }

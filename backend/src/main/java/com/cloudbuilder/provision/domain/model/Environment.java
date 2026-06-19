@@ -20,7 +20,7 @@ public class Environment {
     public static final String BACKEND_REMOTE = "remote";
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
@@ -29,7 +29,7 @@ public class Environment {
     private String name;
 
     @Column(name = "canvas_id", nullable = false)
-    private UUID canvasId;
+    private String canvasId;
 
     @Column(name = "canvas_version", nullable = false)
     private int canvasVersion;
@@ -60,10 +60,10 @@ public class Environment {
 
     protected Environment() {}
 
-    public Environment(String tenantId, String name, UUID canvasId, int canvasVersion,
+    public Environment(String tenantId, String name, String canvasId, int canvasVersion,
                        String provider, String region, String stateBackendType,
                        String createdBy) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.name = name;
         this.canvasId = canvasId;
@@ -82,14 +82,14 @@ public class Environment {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public UUID getCanvasId() { return canvasId; }
-    public void setCanvasId(UUID canvasId) { this.canvasId = canvasId; }
+    public String getCanvasId() { return canvasId; }
+    public void setCanvasId(String canvasId) { this.canvasId = canvasId; }
     public int getCanvasVersion() { return canvasVersion; }
     public void setCanvasVersion(int canvasVersion) { this.canvasVersion = canvasVersion; }
     public String getProvider() { return provider; }

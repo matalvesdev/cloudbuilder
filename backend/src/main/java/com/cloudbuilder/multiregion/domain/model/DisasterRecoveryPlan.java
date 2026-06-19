@@ -9,7 +9,7 @@ import java.util.UUID;
 public class DisasterRecoveryPlan {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String tenantId;
@@ -60,7 +60,7 @@ public class DisasterRecoveryPlan {
     public DisasterRecoveryPlan(String tenantId, String name, String description,
                                  Region primaryRegion, Region drRegion,
                                  String replicationStrategy, int rpoMinutes, int rtoMinutes) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.name = name;
         this.description = description;
@@ -75,7 +75,7 @@ public class DisasterRecoveryPlan {
     }
 
     // Getters and setters
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; this.updatedAt = Instant.now(); }
     public String getName() { return name; }

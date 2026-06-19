@@ -6,9 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
-
-public interface CostRecordRepository extends JpaRepository<CostRecord, UUID> {
+public interface CostRecordRepository extends JpaRepository<CostRecord, String> {
     List<CostRecord> findByEnvironmentId(String environmentId);
     List<CostRecord> findByEnvironmentIdAndDateBetween(String environmentId, LocalDate start, LocalDate end);
     List<CostRecord> findByEnvironmentIdAndProvider(String environmentId, String provider);

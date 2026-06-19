@@ -76,7 +76,7 @@ public class CidrOverlapRule implements ValidationRule {
         return val.isEmpty() ? null : val;
     }
 
-    private Optional<CanvasNode> findNode(Canvas canvas, java.util.UUID nodeId) {
+    private Optional<CanvasNode> findNode(Canvas canvas, String nodeId) {
         return canvas.getCanvasNodes().stream()
                 .filter(n -> n.getId().equals(nodeId))
                 .findFirst();

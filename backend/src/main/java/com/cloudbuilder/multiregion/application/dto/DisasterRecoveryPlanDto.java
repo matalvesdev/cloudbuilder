@@ -3,10 +3,8 @@ package com.cloudbuilder.multiregion.application.dto;
 import com.cloudbuilder.multiregion.domain.model.DisasterRecoveryPlan;
 import com.cloudbuilder.multiregion.domain.model.Region;
 import java.time.Instant;
-import java.util.UUID;
-
 public record DisasterRecoveryPlanDto(
-    UUID id,
+    String id,
     String tenantId,
     String name,
     String description,

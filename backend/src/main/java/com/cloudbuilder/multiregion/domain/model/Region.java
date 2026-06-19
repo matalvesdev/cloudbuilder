@@ -9,7 +9,7 @@ import java.util.UUID;
 public class Region {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false, unique = true)
     private String code;
@@ -41,7 +41,7 @@ public class Region {
     protected Region() {}
 
     public Region(String code, String name, String provider, String country, boolean isPrimary) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.code = code;
         this.name = name;
         this.provider = provider;
@@ -52,7 +52,7 @@ public class Region {
         this.updatedAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; this.updatedAt = Instant.now(); }
     public String getName() { return name; }

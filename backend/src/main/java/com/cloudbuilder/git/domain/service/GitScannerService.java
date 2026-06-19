@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
-
 @Service
 public class GitScannerService {
 
@@ -26,7 +24,7 @@ public class GitScannerService {
         this.iacDetector = iacDetector;
     }
 
-    public RepositoryScan scanRepository(UUID repositoryId) {
+    public RepositoryScan scanRepository(String repositoryId) {
         ConnectedRepository repo = repositoryPort.findById(repositoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Repositório não encontrado: " + repositoryId));
 
@@ -69,7 +67,7 @@ public class GitScannerService {
         return scan;
     }
 
-    public List<String> getDetectedFiles(UUID repositoryId) {
+    public List<String> getDetectedFiles(String repositoryId) {
         RepositoryScan scan = scanPort.findByRepositoryId(repositoryId).stream()
                 .filter(s -> s.getStatus() == RepositoryScan.Status.COMPLETED)
                 .findFirst()

@@ -9,7 +9,7 @@ import java.util.UUID;
 public class CatalogItem {
 
     @Id
-    private UUID id;
+    private String id;
 
     @Column(nullable = false)
     private String name;
@@ -35,7 +35,7 @@ public class CatalogItem {
     protected CatalogItem() {}
 
     public CatalogItem(String name, String type, String description, String schema, String version) {
-        this.id = UUID.randomUUID();
+        this.id = UUID.randomUUID().toString();
         this.name = name;
         this.type = type;
         this.description = description;
@@ -45,7 +45,7 @@ public class CatalogItem {
         this.createdAt = Instant.now();
     }
 
-    public UUID getId() { return id; }
+    public String getId() { return id; }
     public String getName() { return name; }
     public String getType() { return type; }
     public String getDescription() { return description; }

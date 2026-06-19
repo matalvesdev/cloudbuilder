@@ -8,7 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/aiops")
@@ -27,7 +26,7 @@ public class AIOpsController {
     }
 
     @GetMapping("/incidents/detail/{id}")
-    public ResponseEntity<Incident> getIncident(@PathVariable UUID id) {
+    public ResponseEntity<Incident> getIncident(@PathVariable String id) {
         return aiOpsService.getIncident(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -40,23 +39,23 @@ public class AIOpsController {
 
     @PostMapping("/incidents/{id}/classify")
     public ResponseEntity<Incident> classifyIncident(
-            @PathVariable UUID id, @RequestBody ClassifyRequest req) {
+            @PathVariable String id, @RequestBody ClassifyRequest req) {
         return ResponseEntity.ok(aiOpsService.classifyIncident(id, req.classification()));
     }
 
     @PostMapping("/incidents/{id}/rca")
     public ResponseEntity<Incident> suggestRca(
-            @PathVariable UUID id, @RequestBody RcaRequest req) {
+            @PathVariable String id, @RequestBody RcaRequest req) {
         return ResponseEntity.ok(aiOpsService.suggestRca(id, req.suggestedRca()));
     }
 
     @PostMapping("/incidents/{id}/resolve")
-    public ResponseEntity<Incident> resolveIncident(@PathVariable UUID id) {
+    public ResponseEntity<Incident> resolveIncident(@PathVariable String id) {
         return ResponseEntity.ok(aiOpsService.resolveIncident(id));
     }
 
     @PostMapping("/incidents/{id}/analyze")
-    public ResponseEntity<Incident> analyzeIncident(@PathVariable UUID id) {
+    public ResponseEntity<Incident> analyzeIncident(@PathVariable String id) {
         return ResponseEntity.ok(aiOpsService.analyzeIncident(id));
     }
 
