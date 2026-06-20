@@ -18,19 +18,21 @@ public class PropertyMappingService {
 
     public Map<String, String> mapProperties(String resourceType, Map<String, String> rawProperties) {
         Map<String, String> result = new LinkedHashMap<>();
-        Map<String, String> schema = PROPERTY_SCHEMAS.getOrDefault(resourceType, PROPERTY_SCHEMAS.get("default"));
+        Map<String, String> schema = PROPERTY_SCHEMAS.get(resourceType);
 
-        // Extract only the properties defined in the schema, in schema order
-        for (var schemaEntry : schema.entrySet()) {
-            String rawKey = schemaEntry.getKey();
-            String displayLabel = schemaEntry.getValue();
-            String value = rawProperties.get(rawKey);
-            if (value != null && !value.isBlank()) {
-                result.put(displayLabel, value);
+        if (schema != null) {
+            // Extract only the properties defined in the schema, in schema order
+            for (var schemaEntry : schema.entrySet()) {
+                String rawKey = schemaEntry.getKey();
+                String displayLabel = schemaEntry.getValue();
+                String value = rawProperties.get(rawKey);
+                if (value != null && !value.isBlank()) {
+                    result.put(displayLabel, value);
+                }
             }
         }
 
-        // If no schema match, include first 5 raw properties
+        // If no schema match (unknown type), include first 5 raw properties
         if (result.isEmpty()) {
             int count = 0;
             for (var entry : rawProperties.entrySet()) {

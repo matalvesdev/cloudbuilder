@@ -40,7 +40,7 @@ public class IaCDetector {
 
     public List<String> detectDockerFiles(List<String> files) {
         return files.stream()
-                .filter(f -> DOCKER_FILES.contains(f) || f.endsWith(".dockerfile"))
+                .filter(f -> DOCKER_FILES.contains(f) || f.toLowerCase().endsWith(".dockerfile"))
                 .toList();
     }
 

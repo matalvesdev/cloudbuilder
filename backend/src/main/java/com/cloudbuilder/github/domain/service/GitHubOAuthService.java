@@ -22,10 +22,10 @@ import java.util.UUID;
 public class GitHubOAuthService {
 
     @Value("${github.client.id:}")
-    private String clientId;
+    private String clientId = "";
 
     @Value("${github.client.secret:}")
-    private String clientSecret;
+    private String clientSecret = "";
 
     @Value("${github.redirect.uri:http://localhost:8080/api/v1/github/callback}")
     private String redirectUri;
@@ -53,7 +53,7 @@ public class GitHubOAuthService {
     public String exchangeCode(String code) {
         if (code != null && code.startsWith("dev-mode-")) {
             // Dev mode: return mock token
-            return "gho_dev_" + UUID.randomUUID().toString().toString().replace("-", "");
+            return "gho_dev_" + UUID.randomUUID().toString().replace("-", "");
         }
         // In production, this would call GitHub's POST https://github.com/login/oauth/access_token
         throw new UnsupportedOperationException(

@@ -127,7 +127,7 @@ class TerraformImportServiceTest {
                 }
                 """;
         var result = importService.parse(hcl);
-        assertFalse(result.warnings().stream().anyMatch(w -> w.contains("módulo") || w.contains("modulo") || w.contains("module")) || !result.warnings().isEmpty());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("módulos") || w.contains("modulos")));
     }
 
     @Test
