@@ -1,6 +1,15 @@
 import { create } from 'zustand'
-import type { CostSummary, OptimizationSuggestion, CostHistory, ProviderType } from '@/types/cost.types'
+import type {
+  CostSummary,
+  OptimizationSuggestion,
+  CostHistory,
+  ProviderType,
+  BudgetAlert,
+  CostAnomaly,
+  CostProjectionPoint,
+} from '@/types/cost.types'
 import { dashboardApi } from '@/api/dashboardApi'
+import { costApi } from '@/api/cost'
 
 const mockHistory: CostHistory[] = [
   { month: 'Jan', total: 11200, breakdown: { aws: 5600, azure: 3360, gcp: 2240 } },
@@ -98,10 +107,22 @@ interface CostState {
   optimizations: OptimizationSuggestion[]
   selectedMonth: string
   loading: boolean
+  budgetAlerts: BudgetAlert[]
+  anomalies: CostAnomaly[]
+  projection: CostProjectionPoint[]
+  budgetAlertsLoading: boolean
+  anomaliesLoading: boolean
+  projectionLoading: boolean
+  budgetAlertsError: string | null
+  anomaliesError: string | null
+  projectionError: string | null
   setSelectedMonth: (month: string) => void
   applyOptimization: (id: string) => void
   totalSavings: () => number
   fetchCostData: () => Promise<void>
+  fetchBudgetAlerts: (environmentId: string) => Promise<void>
+  fetchAnomalies: (environmentId: string, lookbackDays?: number) => Promise<void>
+  fetchProjection: (environmentId: string, projectionDays?: number) => Promise<void>
 }
 
 export const useCostStore = create<CostState>((set, get) => ({
@@ -110,6 +131,15 @@ export const useCostStore = create<CostState>((set, get) => ({
   optimizations: mockOptimizations,
   selectedMonth: mockHistory[mockHistory.length - 1].month,
   loading: false,
+  budgetAlerts: [],
+  anomalies: [],
+  projection: [],
+  budgetAlertsLoading: false,
+  anomaliesLoading: false,
+  projectionLoading: false,
+  budgetAlertsError: null,
+  anomaliesError: null,
+  projectionError: null,
 
   setSelectedMonth: (month) => set({ selectedMonth: month }),
 
@@ -149,6 +179,51 @@ export const useCostStore = create<CostState>((set, get) => ({
       // fallback silencioso — mock data continua sendo exibido
     } finally {
       set({ loading: false })
+    }
+  },
+
+  fetchBudgetAlerts: async (environmentId: string) => {
+    set({ budgetAlertsLoading: true, budgetAlertsError: null })
+    try {
+      const data = await costApi.getBudgetAlerts(environmentId)
+      set({ budgetAlerts: data ?? [] })
+    } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? (err as { message: string }).message
+        : 'Erro ao carregar alertas de orçamento'
+      set({ budgetAlertsError: msg, budgetAlerts: [] })
+    } finally {
+      set({ budgetAlertsLoading: false })
+    }
+  },
+
+  fetchAnomalies: async (environmentId: string, lookbackDays = 30) => {
+    set({ anomaliesLoading: true, anomaliesError: null })
+    try {
+      const data = await costApi.getAnomalies(environmentId, lookbackDays)
+      set({ anomalies: data ?? [] })
+    } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? (err as { message: string }).message
+        : 'Erro ao carregar anomalias de custo'
+      set({ anomaliesError: msg, anomalies: [] })
+    } finally {
+      set({ anomaliesLoading: false })
+    }
+  },
+
+  fetchProjection: async (environmentId: string, projectionDays = 30) => {
+    set({ projectionLoading: true, projectionError: null })
+    try {
+      const data = await costApi.getProjection(environmentId, projectionDays)
+      set({ projection: data ?? [] })
+    } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? (err as { message: string }).message
+        : 'Erro ao carregar projeção de custos'
+      set({ projectionError: msg, projection: [] })
+    } finally {
+      set({ projectionLoading: false })
     }
   },
 }))

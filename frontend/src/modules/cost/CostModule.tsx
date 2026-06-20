@@ -16,6 +16,9 @@ import {
   Database,
   Network,
   Package,
+  PieChart,
+  Activity,
+  BarChart3,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,9 +26,13 @@ import { useCostStore } from '@/store/costStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { useUiStore } from '@/store/uiStore'
 import { WhatIfCost } from './WhatIfCost'
+import { BudgetComparisonView } from './BudgetComparisonView'
+import { CostAnomaliesView } from './CostAnomaliesView'
+import { CostProjectionChart } from './CostProjectionChart'
 import { cn } from '@/lib/utils'
 import { ProtectedAction } from '@/components/ProtectedContent'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { OptimizationSuggestion, ProviderType } from '@/types/cost.types'
 
 const providerConfig: Record<ProviderType, { label: string; barColor: string; badge: string }> = {
@@ -245,15 +252,9 @@ function OptimizationCard({
   )
 }
 
-export function CostModule() {
-  const { costHistory, costSummary, optimizations, applyOptimization, fetchCostData, loading } = useCostStore()
+function OverviewContent() {
+  const { costHistory, costSummary, optimizations, applyOptimization, loading } = useCostStore()
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
-  const [initialLoad, setInitialLoad] = useState(true)
-  const [showWhatIf, setShowWhatIf] = useState(false)
-
-  useEffect(() => {
-    fetchCostData().finally(() => setInitialLoad(false))
-  }, [fetchCostData])
 
   const confirmingOpt = confirmingId
     ? optimizations.find((o) => o.id === confirmingId) ?? null
@@ -280,98 +281,8 @@ export function CostModule() {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-navy font-display">Custos e Otimizações</h1>
-            <p className="text-sm text-slate-400">Monitore gastos e aplique otimizações nos recursos</p>
-          </div>
-          <button
-            onClick={() => setShowWhatIf(!showWhatIf)}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all',
-              showWhatIf ? 'bg-brand-navy text-brand-lime' : 'bg-slate-100 text-slate-500 hover:text-brand-navy'
-            )}
-          >
-            <Calculator className="w-3.5 h-3.5" />
-            What-if
-          </button>
-        </div>
-        {!showWhatIf && <div className={cn(
-          "flex items-center gap-2 text-xs rounded-xl px-4 py-2 border transition-colors",
-          loading ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-slate-50 text-slate-400 border-slate-100"
-        )}>
-          <div className={cn("w-2 h-2 rounded-full", loading ? "bg-amber-500 animate-pulse" : "bg-green-500")} />
-          {loading ? 'Atualizando dados...' : 'Dados conectados à API'}
-        </div>}
-      </div>
-
-      {showWhatIf ? (
-        <WhatIfCost />
-      ) : loading && initialLoad ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-4">
-            {[1,2,3,4].map((i) => (
-              <div key={i} className="rounded-3xl bg-white border border-slate-100 card-shadow p-5 space-y-3">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-32" />
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-2 rounded-3xl bg-white border border-slate-100 card-shadow p-6">
-              <Skeleton className="h-4 w-32 mb-6" />
-              <div className="flex items-end gap-3 h-44">
-                {[1,2,3,4,5,6].map((i) => (
-                  <Skeleton key={i} className="flex-1 h-24 rounded-t-lg" />
-                ))}
-              </div>
-            </div>
-            <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
-              <Skeleton className="h-4 w-24 mb-6" />
-              <Skeleton className="h-3 w-full mb-4" />
-              {[1,2,3].map((i) => (
-                <div key={i} className="flex items-center gap-3 mb-3">
-                  <Skeleton className="h-5 w-12 rounded-full" />
-                  <Skeleton className="flex-1 h-2" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
-            <Skeleton className="h-4 w-32 mb-6" />
-            <div className="grid grid-cols-5 gap-4">
-              {[1,2,3,4,5].map((i) => (
-                <div key={i} className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center space-y-2">
-                  <Skeleton className="h-10 w-10 rounded-xl mx-auto" />
-                  <Skeleton className="h-3 w-16 mx-auto" />
-                  <Skeleton className="h-6 w-20 mx-auto" />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
-            <Skeleton className="h-4 w-40 mb-6" />
-            <div className="space-y-3">
-              {[1,2,3].map((i) => (
-                <div key={i} className="rounded-2xl border border-slate-100 p-4">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-xl" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-64" />
-                    </div>
-                    <Skeleton className="h-8 w-20 rounded-xl" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
+    <>
+      {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         <Card title="Custo Mensal" value={formatCurrency(costSummary.totalMonthly)} icon={DollarSign} />
         <Card title="Economia Potencial" value={formatSavings(totalSavings)} icon={Wallet} />
@@ -387,6 +298,7 @@ export function CostModule() {
         />
       </div>
 
+      {/* Trend Chart + Provider Breakdown */}
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
           <div className="flex items-center gap-2">
@@ -462,6 +374,7 @@ export function CostModule() {
         </div>
       </div>
 
+      {/* Cost by Service */}
       <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-brand-lime" />
@@ -486,6 +399,7 @@ export function CostModule() {
         </div>
       </div>
 
+      {/* Optimizations */}
       <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -516,8 +430,6 @@ export function CostModule() {
           </div>
         )}
       </div>
-        </>
-      )}
 
       {confirmingOpt && (
         <ConfirmationModal
@@ -526,6 +438,145 @@ export function CostModule() {
           onClose={() => setConfirmingId(null)}
         />
       )}
+    </>
+  )
+}
+
+export function CostModule() {
+  const { loading } = useCostStore()
+  const [activeTab, setActiveTab] = useState('overview')
+  const [initialLoad, setInitialLoad] = useState(true)
+  const { fetchCostData } = useCostStore()
+
+  useEffect(() => {
+    fetchCostData().finally(() => setInitialLoad(false))
+  }, [fetchCostData])
+
+  return (
+    <div className="p-6 space-y-6 overflow-y-auto">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-brand-navy font-display">Custos e Otimizações</h1>
+            <p className="text-sm text-slate-400">Monitore gastos e aplique otimizações nos recursos</p>
+          </div>
+        </div>
+        <div className={cn(
+          "flex items-center gap-2 text-xs rounded-xl px-4 py-2 border transition-colors",
+          loading ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-slate-50 text-slate-400 border-slate-100"
+        )}>
+          <div className={cn("w-2 h-2 rounded-full", loading ? "bg-amber-500 animate-pulse" : "bg-green-500")} />
+          {loading ? 'Atualizando dados...' : 'Dados conectados à API'}
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-slate-100">
+          <TabsTrigger value="overview" className="gap-2">
+            <PieChart className="h-4 w-4" />
+            Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="whatif" className="gap-2">
+            <Calculator className="h-4 w-4" />
+            What-if
+          </TabsTrigger>
+          <TabsTrigger value="budgets" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Orçamentos
+          </TabsTrigger>
+          <TabsTrigger value="anomalies" className="gap-2">
+            <Activity className="h-4 w-4" />
+            Anomalias
+          </TabsTrigger>
+          <TabsTrigger value="projection" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Projeção
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          {loading && initialLoad ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-4 gap-4">
+                {[1,2,3,4].map((i) => (
+                  <div key={i} className="rounded-3xl bg-white border border-slate-100 card-shadow p-5 space-y-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-32" />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="col-span-2 rounded-3xl bg-white border border-slate-100 card-shadow p-6">
+                  <Skeleton className="h-4 w-32 mb-6" />
+                  <div className="flex items-end gap-3 h-44">
+                    {[1,2,3,4,5,6].map((i) => (
+                      <Skeleton key={i} className="flex-1 h-24 rounded-t-lg" />
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
+                  <Skeleton className="h-4 w-24 mb-6" />
+                  <Skeleton className="h-3 w-full mb-4" />
+                  {[1,2,3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 mb-3">
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className="flex-1 h-2" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
+                <Skeleton className="h-4 w-32 mb-6" />
+                <div className="grid grid-cols-5 gap-4">
+                  {[1,2,3,4,5].map((i) => (
+                    <div key={i} className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center space-y-2">
+                      <Skeleton className="h-10 w-10 rounded-xl mx-auto" />
+                      <Skeleton className="h-3 w-16 mx-auto" />
+                      <Skeleton className="h-6 w-20 mx-auto" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
+                <Skeleton className="h-4 w-40 mb-6" />
+                <div className="space-y-3">
+                  {[1,2,3].map((i) => (
+                    <div key={i} className="rounded-2xl border border-slate-100 p-4">
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-10 w-10 rounded-xl" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-64" />
+                        </div>
+                        <Skeleton className="h-8 w-20 rounded-xl" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <OverviewContent />
+          )}
+        </TabsContent>
+
+        <TabsContent value="whatif">
+          <WhatIfCost />
+        </TabsContent>
+
+        <TabsContent value="budgets">
+          <BudgetComparisonView />
+        </TabsContent>
+
+        <TabsContent value="anomalies">
+          <CostAnomaliesView />
+        </TabsContent>
+
+        <TabsContent value="projection">
+          <CostProjectionChart />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
