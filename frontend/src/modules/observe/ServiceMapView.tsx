@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { api } from '@/api/client'
-import { Loader2, AlertTriangle, Server, Activity, Clock, Zap, Hash, AlertCircle, RefreshCw } from 'lucide-react'
+import { Loader2, AlertTriangle, Server, Activity, Clock, Zap, Hash, AlertCircle, RefreshCw, X, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
@@ -50,6 +50,20 @@ interface ServiceMapResponse {
   edges: ServiceMapEdgeDTO[]
 }
 
+interface NodeDetailResponse {
+  nodeId: string
+  componentDefinitionId: string
+  positionX: number
+  positionY: number
+  status: string
+  latencyMs: number
+  uptimePercent: number
+  alertCount: number
+  hasCriticalAlert: boolean
+  alerts: { id: string; severity: string; message: string; createdAt: string }[]
+  healthHistory: { timestamp: string; status: string; latencyMs: number; uptimePercent: number }[]
+}
+
 /* ─── Custom Node ──────────────────────────────────────────────────── */
 
 interface ServiceMapNodeData {
@@ -59,6 +73,7 @@ interface ServiceMapNodeData {
   uptimePercent: number
   alertCount: number
   hasCriticalAlert: boolean
+  nodeId: string
 }
 
 function ServiceMapNode({ data }: NodeProps) {
@@ -81,7 +96,7 @@ function ServiceMapNode({ data }: NodeProps) {
 
   return (
     <div className={cn(
-      'px-4 py-3 rounded-2xl border-2 shadow-lg bg-white min-w-[180px] transition-all hover:shadow-xl',
+      'px-4 py-3 rounded-2xl border-2 shadow-lg bg-white min-w-[180px] transition-all hover:shadow-xl cursor-pointer',
       d.status === 'healthy' && 'border-green-300',
       d.status === 'degraded' && 'border-yellow-300',
       d.status === 'down' && 'border-red-300',
@@ -133,6 +148,105 @@ function edgeStyle(status: string) {
   return { stroke: '#94a3b8', strokeWidth: 1.5 }
 }
 
+/* ─── Node Detail Panel ─────────────────────────────────────────────── */
+
+function NodeDetailPanel({ detail, onClose }: { detail: NodeDetailResponse; onClose: () => void }) {
+  const severityColor = (s: string) =>
+    s === 'critical' ? 'text-red-600 bg-red-50' :
+    s === 'warning' ? 'text-yellow-600 bg-yellow-50' :
+    'text-slate-500 bg-slate-50'
+
+  return (
+    <div className="absolute right-4 top-4 bottom-4 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-brand-navy">{detail.componentDefinitionId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Detalhes do componente</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+          <X className="w-4 h-4 text-slate-400" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Status */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Status</p>
+            <span className={cn(
+              'text-sm font-bold',
+              detail.status === 'healthy' ? 'text-green-600' :
+              detail.status === 'degraded' ? 'text-yellow-600' :
+              detail.status === 'down' ? 'text-red-600' : 'text-slate-500'
+            )}>{detail.status}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Latência</p>
+            <p className="text-sm font-bold text-brand-navy">{detail.latencyMs.toFixed(0)}ms</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Uptime</p>
+            <p className="text-sm font-bold text-green-600">{detail.uptimePercent.toFixed(1)}%</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Alertas</p>
+            <p className={cn('text-sm font-bold', detail.alertCount > 0 ? 'text-red-600' : 'text-green-600')}>{detail.alertCount}</p>
+          </div>
+        </div>
+
+        {/* Health History */}
+        {detail.healthHistory.length > 1 && (
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Histórico de Saúde</p>
+            <div className="space-y-1">
+              {detail.healthHistory.slice(-6).map((h, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={cn(
+                    'w-2 h-2 rounded-full shrink-0',
+                    h.status === 'healthy' ? 'bg-green-500' :
+                    h.status === 'degraded' ? 'bg-yellow-500' :
+                    h.status === 'down' ? 'bg-red-500' : 'bg-slate-300'
+                  )} />
+                  <span className="text-slate-500">{new Date(h.timestamp).toLocaleString('pt-BR')}</span>
+                  <span className="text-slate-400 ml-auto">{h.latencyMs.toFixed(0)}ms</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Active Alerts */}
+        {detail.alerts.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+              Alertas Ativos ({detail.alerts.length})
+            </p>
+            <div className="space-y-2">
+              {detail.alerts.map((a) => (
+                <div key={a.id} className={cn('p-2.5 rounded-xl text-xs', severityColor(a.severity))}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <AlertCircle className="w-3 h-3" />
+                    <span className="font-bold uppercase">{a.severity}</span>
+                  </div>
+                  <p className="text-slate-600">{a.message}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{new Date(a.createdAt).toLocaleString('pt-BR')}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {detail.alerts.length === 0 && (
+          <div className="p-4 rounded-xl bg-green-50 text-center">
+            <p className="text-xs font-medium text-green-600">Nenhum alerta ativo</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Main Component ───────────────────────────────────────────────── */
 
 export function ServiceMapView() {
@@ -140,8 +254,10 @@ export function ServiceMapView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [canvasId, setCanvasId] = useState<string>('')
-  const [canvasList, setCanvasList] = useState<{ id: string; name: string }[]>([])
+  const [canvasList, setCanvasList] = useState<{ id: string; name: string; status?: string; serviceCount?: number; activeAlerts?: number }[]>([])
   const [showCanvasPicker, setShowCanvasPicker] = useState(false)
+  const [selectedNode, setSelectedNode] = useState<NodeDetailResponse | null>(null)
+  const [loadingNode, setLoadingNode] = useState(false)
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -149,6 +265,7 @@ export function ServiceMapView() {
   const fetchServiceMap = useCallback(async (id: string) => {
     setLoading(true)
     setError(null)
+    setSelectedNode(null)
     try {
       const res = await api.get<ServiceMapResponse>(`/service-map/${id}`)
       setData(res)
@@ -164,6 +281,7 @@ export function ServiceMapView() {
           uptimePercent: n.uptimePercent,
           alertCount: n.alertCount,
           hasCriticalAlert: n.hasCriticalAlert,
+          nodeId: n.nodeId,
         },
       }))
 
@@ -186,10 +304,23 @@ export function ServiceMapView() {
     }
   }, [setNodes, setEdges])
 
+  const handleNodeClick = useCallback(async (nodeId: string) => {
+    if (!canvasId) return
+    setLoadingNode(true)
+    try {
+      const detail = await api.get<NodeDetailResponse>(`/service-map/${canvasId}/nodes/${nodeId}`)
+      setSelectedNode(detail)
+    } catch {
+      setSelectedNode(null)
+    } finally {
+      setLoadingNode(false)
+    }
+  }, [canvasId])
+
   // Fetch canvas list for picker
   useEffect(() => {
-    api.get<{ id: string; name: string }[]>('/service-map')
-      .then((list) => setCanvasList(list))
+    api.get<any[]>('/service-map')
+      .then((list) => setCanvasList(list || []))
       .catch(() => {})
   }, [])
 
@@ -234,7 +365,7 @@ export function ServiceMapView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="relative space-y-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative">
@@ -258,7 +389,18 @@ export function ServiceMapView() {
                       c.id === canvasId ? 'bg-brand-navy/5 text-brand-navy font-bold' : 'text-slate-600 hover:bg-slate-50'
                     )}
                   >
-                    {c.name}
+                    <div className="flex items-center gap-2 flex-1">
+                      <span>{c.name}</span>
+                      {c.status && (
+                        <span className={cn(
+                          'w-1.5 h-1.5 rounded-full',
+                          c.status === 'healthy' ? 'bg-green-500' : c.status === 'critical' ? 'bg-red-500' : 'bg-slate-300'
+                        )} />
+                      )}
+                    </div>
+                    {c.activeAlerts !== undefined && c.activeAlerts > 0 && (
+                      <span className="text-[10px] text-red-500 font-bold">{c.activeAlerts}</span>
+                    )}
                   </button>
                 ))}
                 {canvasList.length === 0 && (
@@ -287,7 +429,7 @@ export function ServiceMapView() {
 
       {/* Canvas */}
       {data && nodes.length > 0 ? (
-        <div className="bg-white rounded-3xl card-shadow border border-slate-100 overflow-hidden" style={{ height: 520 }}>
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 overflow-hidden relative" style={{ height: 520 }}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -298,6 +440,7 @@ export function ServiceMapView() {
             attributionPosition="bottom-left"
             minZoom={0.3}
             maxZoom={2}
+            onNodeClick={(_event, node) => handleNodeClick(node.id)}
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
             <Controls showInteractive={false} className="!rounded-xl !border !border-slate-200 !shadow-sm" />
@@ -313,6 +456,16 @@ export function ServiceMapView() {
               className="!rounded-xl !border !border-slate-200 !shadow-sm"
             />
           </ReactFlow>
+
+          {/* Node Detail Panel */}
+          {loadingNode && (
+            <div className="absolute right-4 top-4 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-8 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-brand-navy" />
+            </div>
+          )}
+          {selectedNode && !loadingNode && (
+            <NodeDetailPanel detail={selectedNode} onClose={() => setSelectedNode(null)} />
+          )}
         </div>
       ) : data && nodes.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-[300px] bg-white rounded-3xl card-shadow border border-slate-100">

@@ -59,4 +59,38 @@ public class DeployPlanService {
     public void delete(String id) {
         repository.deleteById(id);
     }
+
+    /**
+     * Computes a diff between two deploy plans.
+     */
+    public PlanDiff diff(String planIdA, String planIdB) {
+        var planA = repository.findById(planIdA).orElse(null);
+        var planB = repository.findById(planIdB).orElse(null);
+        if (planA == null || planB == null) return null;
+
+        int addedResources = planB.getAddCount() - planA.getAddCount();
+        int changedResources = planB.getChangeCount() - planA.getChangeCount();
+        int destroyedResources = planB.getDestroyCount() - planA.getDestroyCount();
+
+        return new PlanDiff(
+                planIdA, planIdB,
+                addedResources, changedResources, destroyedResources,
+                planA.getCreatedAt().toString(), planB.getCreatedAt().toString()
+        );
+    }
+
+    public record PlanDiff(
+            String planIdA, String planIdB,
+            int addedResources, int changedResources, int destroyedResources,
+            String timestampA, String timestampB
+    ) {}
+
+    /**
+     * Returns deployment timeline (plans with applied status in chronological order).
+     */
+    public List<DeployPlan> getTimeline(String environmentId) {
+        return repository.findByEnvironmentIdOrderByCreatedAtDesc(environmentId).stream()
+                .filter(p -> "applied".equals(p.getStatus()) || "failed".equals(p.getStatus()))
+                .toList();
+    }
 }

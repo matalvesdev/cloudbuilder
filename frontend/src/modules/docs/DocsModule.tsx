@@ -1,12 +1,13 @@
-import { useEffect, useState, useMemo, useCallback, type ReactNode } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import {
   FileText, Folder, FolderOpen, Search,
   Upload, Sparkles, Loader2, ChevronRight,
-  BookOpen, Hash, CheckCircle2, AlertTriangle,
-  ExternalLink,
+  BookOpen, Hash, AlertTriangle,
+  ExternalLink, Save, Edit3, X,
+  Link2, RefreshCw,
 } from 'lucide-react'
-import { useDocsStore, type DocTreeItem } from './docsStore'
-import { fetchDocTree, fetchDocContent, searchDocs, fetchStaleDocs } from '@/api/docs'
+import { useDocsStore, type DocTreeItem, type DocLink } from './docsStore'
+import { fetchDocTree, fetchDocContent, searchDocs, fetchStaleDocs, fetchDocLinks, saveDocContent } from '@/api/docs'
 import type { StaleDoc } from './docsStore'
 import { cn } from '@/lib/utils'
 import { showSuccess, showError } from '@/lib/toast'
@@ -169,6 +170,34 @@ function StaleBanner({ staleDocs, onNavigate }: { staleDocs: StaleDoc[]; onNavig
   )
 }
 
+/* ──────────────── Links Panel ──────────────── */
+
+function DocLinksPanel({ links }: { links: DocLink[] }) {
+  if (links.length === 0) return null
+
+  return (
+    <div className="mt-6 p-4 bg-ice-blue/20 rounded-xl border border-ice-blue/40">
+      <div className="flex items-center gap-2 mb-3">
+        <Link2 className="w-3.5 h-3.5 text-brand-navy" />
+        <span className="text-[11px] font-bold text-brand-navy uppercase tracking-wider">
+          Recursos vinculados ({links.length})
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {links.map((link) => (
+          <span
+            key={link.id}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white border border-ice-blue/50 text-brand-navy"
+          >
+            <span className="uppercase text-[9px] opacity-60">{link.entityType}</span>
+            <span>{link.entityId}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ──────────────── Tree Node ──────────────── */
 
 function TreeNode({
@@ -235,12 +264,15 @@ function TreeNode({
 /* ──────────────── Main Module ──────────────── */
 
 export function DocsModule() {
-  const { tree, activeDoc, loading, importing, setActiveDoc } = useDocsStore()
+  const { tree, activeDoc, loading, importing, editing, saving, docLinks } = useDocsStore()
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['docs']))
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<DocTreeItem[]>([])
   const [staleDocs, setStaleDocs] = useState<StaleDoc[]>([])
   const [showImportMenu, setShowImportMenu] = useState(false)
+  const [editContent, setEditContent] = useState('')
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const fetchTree = useCallback(async () => {
     try {
@@ -252,11 +284,12 @@ export function DocsModule() {
   }, [])
 
   const openDoc = useCallback(async (path: string) => {
+    useDocsStore.setState({ editing: false })
     try {
       const doc = await fetchDocContent(path)
-      setActiveDoc(doc)
+      useDocsStore.setState({ activeDoc: doc })
+      setEditContent(doc.content)
     } catch {
-      // Fallback: read from local store
       useDocsStore.getState().fetchDoc(path)
     }
     // Auto-expand parent directories
@@ -265,7 +298,14 @@ export function DocsModule() {
       const parentPath = parts.slice(0, i).join('/')
       setExpandedPaths((prev) => new Set(prev).add(parentPath))
     }
-  }, [setActiveDoc])
+    // Fetch linked resources
+    try {
+      const links = await fetchDocLinks(path)
+      useDocsStore.setState({ docLinks: links })
+    } catch {
+      useDocsStore.setState({ docLinks: [] })
+    }
+  }, [])
 
   const handleSearch = useCallback(async (q: string) => {
     setSearchQuery(q)
@@ -320,10 +360,52 @@ export function DocsModule() {
     }
   }, [fetchTree])
 
+  const handleSave = useCallback(async () => {
+    if (!activeDoc) return
+    setSaveStatus('saving')
+    try {
+      const saved = await saveDocContent(activeDoc.path, editContent)
+      useDocsStore.setState({ activeDoc: saved })
+      setSaveStatus('success')
+      useDocsStore.setState({ editing: false })
+      showSuccess('Documento salvo com sucesso')
+    } catch {
+      setSaveStatus('error')
+      showError('Falha ao salvar documento')
+    }
+  }, [activeDoc, editContent])
+
+  const handleToggleEdit = useCallback(() => {
+    if (editing) {
+      // Cancel editing - revert to original content
+      useDocsStore.setState({ editing: false })
+      if (activeDoc) setEditContent(activeDoc.content)
+    } else {
+      useDocsStore.setState({ editing: true })
+      if (activeDoc) setEditContent(activeDoc.content)
+    }
+  }, [editing, activeDoc])
+
+  const handleRefreshLinks = useCallback(async () => {
+    if (!activeDoc) return
+    try {
+      const links = await fetchDocLinks(activeDoc.path)
+      useDocsStore.setState({ docLinks: links })
+    } catch {
+      useDocsStore.setState({ docLinks: [] })
+    }
+  }, [activeDoc])
+
   useEffect(() => {
     fetchTree()
     fetchStaleDocs().then(setStaleDocs).catch(() => {})
   }, [fetchTree])
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [editing])
 
   // Render doc content with anchors for headings
   const renderedContent = useMemo(() => {
@@ -446,7 +528,7 @@ export function DocsModule() {
             )}
           </div>
 
-          {/* Generate */}
+          {/* Generate ADR */}
           <button
             onClick={() => openDoc('docs/architecture/adr-009-auto-documentation.md')}
             className="w-full flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all shadow-sm"
@@ -457,7 +539,7 @@ export function DocsModule() {
         </div>
       </aside>
 
-      {/* ═══ VIEWER ═══ */}
+      {/* ═══ VIEWER / EDITOR ═══ */}
       <main className="flex-1 overflow-y-auto bg-white">
         {!activeDoc ? (
           <div className="flex items-center justify-center h-full">
@@ -486,44 +568,124 @@ export function DocsModule() {
           </div>
         ) : (
           <div className="max-w-4xl mx-auto px-8 py-8">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-lg font-bold text-brand-navy font-display">
+                  {activeDoc.title}
+                </h1>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {activeDoc.path}
+                  {activeDoc.lastModified && (
+                    <> · Última mod: {new Date(activeDoc.lastModified).toLocaleDateString('pt-BR')}</>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {editing ? (
+                  <>
+                    <button
+                      onClick={handleToggleEdit}
+                      className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all"
+                      disabled={saving}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saveStatus === 'saving'}
+                      className="inline-flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-bold bg-brand-lime text-brand-navy hover:bg-brand-lime/90 transition-all shadow-sm disabled:opacity-50"
+                    >
+                      {saveStatus === 'saving' ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Save className="w-3.5 h-3.5" />
+                      )}
+                      Salvar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleToggleEdit}
+                    className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    Editar
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Stale banner */}
             <StaleBanner staleDocs={staleDocs} onNavigate={openDoc} />
 
             {/* TOC sidebar */}
-            <TocSidebar content={activeDoc.content} />
+            {!editing && <TocSidebar content={activeDoc.content} />}
 
-            {/* Rendered content */}
+            {/* Content area */}
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-brand-navy" />
               </div>
-            ) : (
-              <article
-                className="prose-custom"
-                dangerouslySetInnerHTML={{ __html: renderedContent }}
-              />
-            )}
-
-            {/* Footer */}
-            <div className="mt-12 pt-6 border-t border-slate-200">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <FileText className="w-3 h-3" />
-                  {activeDoc.path}
-                  {activeDoc.lastModified && (
-                    <> · Última modificação: {new Date(activeDoc.lastModified).toLocaleDateString('pt-BR')}</>
-                  )}
-                </span>
-                <a
-                  href={`/api/v1/docs/content?path=${encodeURIComponent(activeDoc.path)}&raw=true`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-brand-navy hover:text-brand-lime transition-colors font-medium"
-                >
-                  <ExternalLink className="w-3 h-3" /> Raw
-                </a>
+            ) : editing ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Editar Markdown</span>
+                  <span className="text-[10px] text-slate-400">
+                    {(editContent.match(/\n/g) || []).length + 1} linhas
+                  </span>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full h-[calc(100vh-280px)] font-mono text-sm p-4 rounded-xl border border-slate-200 bg-slate-50 text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-navy/10 focus:border-brand-navy/30 resize-none transition-all"
+                  spellCheck={false}
+                />
+                <p className="text-[10px] text-slate-400">
+                  Edite o conteúdo em formato Markdown. Use `Ctrl+S` para salvar.
+                </p>
               </div>
-            </div>
+            ) : (
+              <>
+                <article
+                  className="prose-custom"
+                  dangerouslySetInnerHTML={{ __html: renderedContent }}
+                />
+
+                {/* Document links */}
+                <DocLinksPanel links={docLinks} />
+
+                {/* Footer */}
+                <div className="mt-12 pt-6 border-t border-slate-200">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <FileText className="w-3 h-3" />
+                      {activeDoc.path}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleRefreshLinks}
+                        className="inline-flex items-center gap-1 text-slate-400 hover:text-brand-navy transition-colors"
+                        title="Atualizar links"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Links
+                      </button>
+                      <a
+                        href={`/api/v1/docs/content?path=${encodeURIComponent(activeDoc.path)}&raw=true`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-brand-navy hover:text-brand-lime transition-colors font-medium"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Raw
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </main>

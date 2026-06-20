@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/api/client'
-import { Loader2, AlertTriangle, TrendingUp, Shield, DollarSign, Layers, Eye, FileText, Lightbulb, RefreshCw, Award } from 'lucide-react'
+import { Loader2, AlertTriangle, TrendingUp, TrendingDown, Minus, Shield, DollarSign, Layers, Eye, FileText, Gauge, Lightbulb, RefreshCw, Award } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /* ─── Types ────────────────────────────────────────────────────────── */
@@ -20,6 +20,18 @@ interface ScorecardResponse {
   scores: ScoreItem[]
 }
 
+interface HistoryPoint {
+  timestamp: string
+  score: number
+  level: string
+}
+
+interface ScorecardHistoryResponse {
+  canvasId: string
+  trend: string
+  history: HistoryPoint[]
+}
+
 /* ─── Criterion Icons ──────────────────────────────────────────────── */
 
 const criterionIcons: Record<string, typeof TrendingUp> = {
@@ -29,6 +41,7 @@ const criterionIcons: Record<string, typeof TrendingUp> = {
   'Escalabilidade': Layers,
   'Observabilidade': Eye,
   'Documentação': FileText,
+  'Performance': Gauge,
 }
 
 const levelConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -39,10 +52,48 @@ const levelConfig: Record<string, { label: string; color: string; bg: string }> 
   initial: { label: 'Inicial', color: 'text-slate-400', bg: 'bg-gradient-to-r from-slate-300 to-slate-200' },
 }
 
+const trendConfig: Record<string, { icon: typeof TrendingUp; label: string; color: string }> = {
+  improving: { icon: TrendingUp, label: 'Melhorando', color: 'text-green-600' },
+  declining: { icon: TrendingDown, label: 'Declinando', color: 'text-red-600' },
+  stable: { icon: Minus, label: 'Estável', color: 'text-slate-500' },
+}
+
+/* ─── Mini Sparkline Chart ──────────────────────────────────────────── */
+
+function Sparkline({ data, width = 160, height = 40 }: { data: number[]; width?: number; height?: number }) {
+  if (data.length < 2) return null
+
+  const max = Math.max(...data, 1)
+  const min = Math.min(...data, 0)
+  const range = max - min || 1
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width
+    const y = height - ((v - min) / range) * (height - 4) - 2
+    return `${x},${y}`
+  }).join(' ')
+
+  const polyline = points.split(' ').map(p => p.split(',')).map(([x, y]) => `${Number(x).toFixed(1)},${Number(y).toFixed(1)}`).join(' ')
+
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <polyline
+        points={polyline}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-brand-navy/40"
+      />
+    </svg>
+  )
+}
+
 /* ─── Main Component ───────────────────────────────────────────────── */
 
 export function ScorecardView() {
   const [data, setData] = useState<ScorecardResponse | null>(null)
+  const [historyData, setHistoryData] = useState<ScorecardHistoryResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [canvasId, setCanvasId] = useState('')
@@ -53,8 +104,12 @@ export function ScorecardView() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.get<ScorecardResponse>(`/scorecards/${id}`)
+      const [res, hist] = await Promise.all([
+        api.get<ScorecardResponse>(`/scorecards/${id}`),
+        api.get<ScorecardHistoryResponse>(`/scorecards/${id}/history`).catch(() => null),
+      ])
       setData(res)
+      setHistoryData(hist)
     } catch {
       setError('API de scorecards indisponível')
       setData(null)
@@ -84,12 +139,15 @@ export function ScorecardView() {
   }, [canvasId, fetchScorecard])
 
   const levelInfo = data ? levelConfig[data.level] || levelConfig.initial : null
+  const trendInfo = historyData ? trendConfig[historyData.trend] || trendConfig.stable : null
   const scoreColor = data
     ? data.overallScore >= 75 ? 'text-green-600'
       : data.overallScore >= 55 ? 'text-yellow-600'
       : data.overallScore >= 35 ? 'text-orange-600'
       : 'text-slate-500'
     : ''
+
+  const historyScores = historyData?.history.map(h => h.score) || []
 
   if (loading && !data) {
     return (
@@ -142,6 +200,13 @@ export function ScorecardView() {
           </span>
         )}
 
+        {trendInfo && historyScores.length > 1 && (
+          <span className={cn('inline-flex items-center gap-1 text-xs font-medium', trendInfo.color)}>
+            <trendInfo.icon className="w-3.5 h-3.5" />
+            {trendInfo.label}
+          </span>
+        )}
+
         <button
           onClick={() => canvasId && fetchScorecard(canvasId)}
           className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-brand-navy hover:bg-slate-100 transition-all"
@@ -160,13 +225,18 @@ export function ScorecardView() {
 
       {data && (
         <>
-          {/* Overall Score */}
+          {/* Overall Score + Trend */}
           <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-8 text-center">
             <div className="text-6xl font-bold font-display mb-2">
               <span className={scoreColor}>{data.overallScore}</span>
               <span className="text-2xl text-slate-300">/{data.scores.length * 100}</span>
             </div>
             <p className="text-sm text-slate-400">Pontuação Geral de Maturidade</p>
+            {historyScores.length > 1 && (
+              <div className="mt-4 flex justify-center">
+                <Sparkline data={historyScores} width={200} height={48} />
+              </div>
+            )}
           </div>
 
           {/* Criteria Grid */}

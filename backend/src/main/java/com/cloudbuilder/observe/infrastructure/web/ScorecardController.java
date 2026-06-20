@@ -3,24 +3,29 @@ package com.cloudbuilder.observe.infrastructure.web;
 import com.cloudbuilder.design.domain.model.Canvas;
 import com.cloudbuilder.design.domain.model.CanvasNode;
 import com.cloudbuilder.design.domain.port.CanvasRepository;
+import com.cloudbuilder.observe.domain.service.ScorecardHistoryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.*;
 
 /**
  * Scorecards — Avalia a maturidade da arquitetura de um canvas
- * com critérios automáticos (HA, segurança, custo, escalabilidade, observabilidade).
+ * com critérios automáticos (HA, segurança, custo, escalabilidade, observabilidade, documentação, performance).
  */
 @RestController
 @RequestMapping("/api/v1/scorecards")
 public class ScorecardController {
 
     private final CanvasRepository canvasRepository;
+    private final ScorecardHistoryService historyService;
 
-    public ScorecardController(CanvasRepository canvasRepository) {
+    public ScorecardController(CanvasRepository canvasRepository,
+                               ScorecardHistoryService historyService) {
         this.canvasRepository = canvasRepository;
+        this.historyService = historyService;
     }
 
     @GetMapping("/{canvasId}")
@@ -34,8 +39,33 @@ public class ScorecardController {
         var overall = (int) Math.round(scores.stream().mapToInt(ScoreItem::score).average().orElse(0));
         var level = levelFromScore(overall);
 
+        // Record history snapshot
+        var criteriaDetails = scores.stream().map(s -> Map.<String, Object>of(
+                "criterion", s.criterion(),
+                "score", s.score(),
+                "maxScore", s.maxScore()
+        )).toList();
+        historyService.recordSnapshot(canvasId, overall, level, criteriaDetails);
+
         return ResponseEntity.ok(new ScorecardResponse(
                 canvas.getId(), canvas.getName(), overall, level, scores));
+    }
+
+    /**
+     * GET /api/v1/scorecards/{canvasId}/history
+     * Returns score history for trend visualization.
+     */
+    @GetMapping("/{canvasId}/history")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ScorecardHistoryResponse> getScorecardHistory(@PathVariable String canvasId) {
+        var history = historyService.getHistory(canvasId);
+        var trend = historyService.getTrend(canvasId);
+
+        var points = history.stream()
+                .map(s -> new HistoryPoint(s.timestamp().toString(), s.overallScore(), s.level()))
+                .toList();
+
+        return ResponseEntity.ok(new ScorecardHistoryResponse(canvasId, trend, points));
     }
 
     /* ─── Evaluation Criteria ─────────────────────────────────────── */
@@ -47,7 +77,8 @@ public class ScorecardController {
                 evaluateCostOptimization(nodes),
                 evaluateScalability(nodes),
                 evaluateObservability(nodes),
-                evaluateDocumentation(nodes)
+                evaluateDocumentation(nodes),
+                evaluatePerformance(nodes)
         );
     }
 
@@ -177,6 +208,35 @@ public class ScorecardController {
         return new ScoreItem("Documentação", score, 100, suggestions);
     }
 
+    /**
+     * New criterion: Performance — evaluates resource sizing, caching, and CDN usage.
+     */
+    private ScoreItem evaluatePerformance(List<CanvasNode> nodes) {
+        var hasCache = nodes.stream().anyMatch(n -> {
+            var rt = getResourceType(n);
+            return rt != null && (rt.contains("cache") || rt.contains("redis") || rt.contains("elasticache"));
+        });
+        var hasCdn = nodes.stream().anyMatch(n -> {
+            var rt = getResourceType(n);
+            return rt != null && (rt.contains("cdn") || rt.contains("cloudfront"));
+        });
+        var hasCorrectSizing = nodes.stream().anyMatch(n -> hasProperty(n, "instance_type", "t3")
+                || hasProperty(n, "instance_type", "m5")
+                || hasProperty(n, "instance_type", "c5"));
+
+        var score = 0;
+        if (hasCache) score += 35;
+        if (hasCdn) score += 35;
+        if (hasCorrectSizing) score += 30;
+
+        var suggestions = new ArrayList<String>();
+        if (!hasCache) suggestions.add("Adicione cache (Redis/ElastiCache) para reduzir latência de consultas");
+        if (!hasCdn) suggestions.add("Implemente CDN para distribuir conteúdo estático com baixa latência");
+        if (!hasCorrectSizing) suggestions.add("Revise o dimensionamento das instâncias para o workload real");
+
+        return new ScoreItem("Performance", score, 100, suggestions);
+    }
+
     /* ─── Helpers ──────────────────────────────────────────────────── */
 
     private boolean hasProperty(CanvasNode node, String key, String expectedValue) {
@@ -215,4 +275,10 @@ public class ScorecardController {
 
     public record ScoreItem(
             String criterion, int score, int maxScore, List<String> suggestions) {}
+
+    public record ScorecardHistoryResponse(
+            String canvasId, String trend, List<HistoryPoint> history) {}
+
+    public record HistoryPoint(
+            String timestamp, int score, String level) {}
 }

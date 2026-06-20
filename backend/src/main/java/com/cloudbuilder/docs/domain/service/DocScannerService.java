@@ -117,6 +117,28 @@ public class DocScannerService {
     }
 
     /**
+     * Saves (creates or updates) a markdown file in the docs directory.
+     */
+    public Optional<DocContent> saveFile(String rootPath, String filePath, String content) throws IOException {
+        Path docsDir = Paths.get(rootPath).normalize();
+        Path targetPath = docsDir.resolve(filePath).normalize();
+
+        // Security: prevent path traversal
+        if (!targetPath.startsWith(docsDir)) {
+            return Optional.empty();
+        }
+
+        // Ensure parent directory exists
+        Path parent = targetPath.getParent();
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
+
+        Files.writeString(targetPath, content, StandardCharsets.UTF_8);
+        return readFile(rootPath, filePath);
+    }
+
+    /**
      * Imports a markdown file into the docs directory.
      */
     public Optional<DocContent> importFile(String rootPath, String fileName, byte[] content) throws IOException {

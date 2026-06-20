@@ -93,4 +93,23 @@ public class CodeGeneratorController {
         if (plan == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(plan);
     }
+
+    /* ─── Plan Diff & Timeline ────────────────────────────────────── */
+
+    @GetMapping("/plan/diff")
+    public ResponseEntity<?> diffPlans(
+            @PathVariable String canvasId,
+            @RequestParam String planIdA,
+            @RequestParam String planIdB) {
+        var diff = deployPlanService.diff(planIdA, planIdB);
+        if (diff == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(diff);
+    }
+
+    @GetMapping("/plan/timeline")
+    public ResponseEntity<List<DeployPlan>> getTimeline(
+            @PathVariable String canvasId,
+            @RequestParam String environmentId) {
+        return ResponseEntity.ok(deployPlanService.getTimeline(environmentId));
+    }
 }

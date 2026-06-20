@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Minus, Pencil, Eye, CheckCircle2, XCircle, Loader2, ArrowRight, DiffIcon, AlertTriangle } from 'lucide-react'
+import { Plus, Minus, Pencil, Eye, CheckCircle2, XCircle, Loader2, ArrowRight, DiffIcon, AlertTriangle, Clock, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
@@ -19,6 +19,17 @@ interface PlanResult {
   resources: PlanResource[]
 }
 
+interface Deployment {
+  id: string
+  version: string
+  status: 'success' | 'failed' | 'running'
+  resourceCount: number
+  duration: string
+  startedAt: string
+  completedAt?: string
+  planSummary?: { add: number; change: number; destroy: number }
+}
+
 interface PreviewWorkflowProps {
   planResult: PlanResult | null
   planning: boolean
@@ -27,6 +38,7 @@ interface PreviewWorkflowProps {
   hasCanvas: boolean
   hasEnvironment: boolean
   isDeployed: boolean
+  deployments?: Deployment[]
 }
 
 /* ─── Action Icon ──────────────────────────────────────────────────── */
@@ -37,9 +49,85 @@ const actionConfig = {
   destroy: { icon: Minus, color: 'text-red-600', bg: 'bg-red-50 border-red-200', label: 'Destruir' },
 }
 
+/* ─── Timeline Component ───────────────────────────────────────────── */
+
+function DeploymentTimeline({ deployments }: { deployments: Deployment[] }) {
+  if (deployments.length === 0) return null
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100">
+      <div className="flex items-center gap-2 mb-3">
+        <History className="w-3.5 h-3.5 text-slate-400" />
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          Histórico de Deployments ({deployments.length})
+        </span>
+      </div>
+      <div className="space-y-2">
+        {deployments.slice(0, 10).map((d, idx) => {
+          const isLatest = idx === 0
+          return (
+            <div key={d.id} className="flex items-start gap-3">
+              {/* Timeline node */}
+              <div className="flex flex-col items-center">
+                <div className={cn(
+                  'w-2.5 h-2.5 rounded-full border-2 mt-1.5',
+                  d.status === 'success' ? 'bg-green-500 border-green-300' :
+                  d.status === 'failed' ? 'bg-red-500 border-red-300' :
+                  'bg-slate-300 border-slate-200'
+                )} />
+                {idx < deployments.length - 1 && (
+                  <div className="w-px h-full min-h-[24px] bg-slate-200" />
+                )}
+              </div>
+              {/* Content */}
+              <div className={cn(
+                'flex-1 p-2.5 rounded-xl border text-xs',
+                isLatest ? 'bg-slate-50 border-slate-200' : 'bg-white border-transparent'
+              )}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-brand-navy">{d.version}</span>
+                    <span className={cn(
+                      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold',
+                      d.status === 'success' ? 'bg-green-50 text-green-700' :
+                      d.status === 'failed' ? 'bg-red-50 text-red-700' :
+                      'bg-slate-100 text-slate-500'
+                    )}>
+                      {d.status === 'success' ? 'Sucesso' : d.status === 'failed' ? 'Falha' : 'Em execução'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400">{d.duration}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] text-slate-400">{d.resourceCount} recursos</span>
+                  {d.planSummary && (
+                    <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                      <Plus className="w-2.5 h-2.5 text-green-500" />{d.planSummary.add}
+                      <Pencil className="w-2.5 h-2.5 text-blue-500 ml-1" />{d.planSummary.change}
+                      <Minus className="w-2.5 h-2.5 text-red-500 ml-1" />{d.planSummary.destroy}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {new Date(d.startedAt).toLocaleString('pt-BR')}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+        {deployments.length > 10 && (
+          <p className="text-[10px] text-slate-400 text-center pt-1">
+            + {deployments.length - 10} deployments anteriores
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Main Component ───────────────────────────────────────────────── */
 
-export function PreviewWorkflow({ planResult, planning, onPlan, onApply, hasCanvas, hasEnvironment, isDeployed }: PreviewWorkflowProps) {
+export function PreviewWorkflow({ planResult, planning, onPlan, onApply, hasCanvas, hasEnvironment, isDeployed, deployments = [] }: PreviewWorkflowProps) {
   const [showDetails, setShowDetails] = useState(false)
 
   const totalChanges = (planResult?.add || 0) + (planResult?.change || 0) + (planResult?.destroy || 0)
@@ -191,6 +279,9 @@ export function PreviewWorkflow({ planResult, planning, onPlan, onApply, hasCanv
           </div>
         </div>
       )}
+
+      {/* Deployment Timeline */}
+      <DeploymentTimeline deployments={deployments} />
     </div>
   )
 }

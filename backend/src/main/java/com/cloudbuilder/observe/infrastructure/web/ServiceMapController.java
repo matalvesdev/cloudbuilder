@@ -63,6 +63,55 @@ public class ServiceMapController {
                 canvas.getId(), canvas.getName(), envId, overallStatus, nodes, edges));
     }
 
+    /**
+     * GET /api/v1/service-map/{canvasId}/nodes/{nodeId}
+     * Drill-down detalhado de um nó específico no service map.
+     */
+    @GetMapping("/{canvasId}/nodes/{nodeId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<NodeDetailResponse> getNodeDetail(
+            @PathVariable String canvasId, @PathVariable String nodeId) {
+        var canvas = canvasRepository.findById(canvasId)
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found: " + canvasId));
+
+        var node = canvas.getCanvasNodes().stream()
+                .filter(n -> n.getId().equals(nodeId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Node not found: " + nodeId));
+
+        var envId = extractEnvironmentId(canvas);
+        var healthMap = buildHealthMap(envId);
+        var alertsBySource = buildAlertMap(envId);
+
+        var resourceType = node.getComponentDefinitionId();
+        var health = healthMap.get(resourceType);
+        var nodeAlerts = alertsBySource.getOrDefault(resourceType, List.of());
+
+        // Build health history from service health records
+        var healthHistory = serviceHealthRepository.findByEnvironmentId(envId).stream()
+                .filter(h -> h.getServiceName().equals(resourceType))
+                .map(h -> new HealthHistoryPoint(
+                        h.getCheckedAt().toString(),
+                        h.getStatus(),
+                        h.getLatencyMs(),
+                        h.getUptimePercent()
+                ))
+                .toList();
+
+        var detail = new NodeDetailResponse(
+                node.getId(), resourceType, node.getPositionX(), node.getPositionY(),
+                health != null ? health.getStatus() : "unknown",
+                health != null ? health.getLatencyMs() : 0.0,
+                health != null ? health.getUptimePercent() : 100.0,
+                nodeAlerts.size(),
+                nodeAlerts.stream().anyMatch(a -> "critical".equals(a.getSeverity())),
+                nodeAlerts.stream().map(a -> new AlertDetail(a.getId(), a.getSeverity(), a.getMessage(), a.getTriggeredAt().toString())).toList(),
+                healthHistory
+        );
+
+        return ResponseEntity.ok(detail);
+    }
+
     /** GET /api/v1/service-map — lista todos os canvases como service maps resumidos */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -183,4 +232,19 @@ public class ServiceMapController {
     public record ServiceMapSummary(
             String canvasId, String canvasName, String environmentId,
             String status, int serviceCount, int activeAlerts) {}
+
+    /** Detailed node info for drill-down view */
+    public record NodeDetailResponse(
+            String nodeId, String componentDefinitionId,
+            double positionX, double positionY,
+            String status, double latencyMs, double uptimePercent,
+            int alertCount, boolean hasCriticalAlert,
+            List<AlertDetail> alerts,
+            List<HealthHistoryPoint> healthHistory) {}
+
+    public record AlertDetail(
+            String id, String severity, String message, String createdAt) {}
+
+    public record HealthHistoryPoint(
+            String timestamp, String status, double latencyMs, double uptimePercent) {}
 }

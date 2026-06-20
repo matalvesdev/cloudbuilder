@@ -25,6 +25,16 @@ export interface StaleDoc {
   lastSync: string
 }
 
+export interface DocLink {
+  id: string
+  docPath: string
+  entityType: string
+  entityId: string
+  tenantId: string
+  lastSync: string
+  createdAt: string
+}
+
 interface DocsState {
   tree: DocTreeItem[]
   activeDoc: DocContent | null
@@ -34,14 +44,21 @@ interface DocsState {
   searchResults: DocTreeItem[]
   searchQuery: string
   staleDocs: StaleDoc[]
+  editing: boolean
+  docLinks: DocLink[]
+  saving: boolean
 
   fetchTree: () => Promise<void>
   fetchDoc: (path: string) => Promise<void>
+  saveDoc: (path: string, content: string) => Promise<boolean>
   searchDocs: (query: string) => Promise<void>
   importDoc: (file: File) => Promise<void>
   scanDirectory: () => Promise<void>
-  generateDoc: (canvasId?: string) => Promise<void>
+  generateDoc: (canvasId?: string, canvasName?: string, description?: string) => Promise<void>
   setActiveDoc: (doc: DocContent | null) => void
+  setEditing: (editing: boolean) => void
+  fetchDocLinks: (path: string) => Promise<void>
+  refreshContent: () => Promise<void>
 }
 
 export const useDocsStore = create<DocsState>((set, get) => ({
@@ -53,6 +70,9 @@ export const useDocsStore = create<DocsState>((set, get) => ({
   searchResults: [],
   searchQuery: '',
   staleDocs: [],
+  editing: false,
+  docLinks: [],
+  saving: false,
 
   fetchTree: async () => {
     set({ loading: true })
@@ -88,7 +108,7 @@ export const useDocsStore = create<DocsState>((set, get) => ({
   },
 
   fetchDoc: async (path: string) => {
-    set({ loading: true, activeDoc: null })
+    set({ loading: true, activeDoc: null, editing: false })
     try {
       const doc = await api.get<DocContent>(`/docs/content?path=${encodeURIComponent(path)}`)
       set({ activeDoc: doc, rawContent: doc.content })
@@ -103,6 +123,20 @@ export const useDocsStore = create<DocsState>((set, get) => ({
       })
     } finally {
       set({ loading: false })
+    }
+  },
+
+  saveDoc: async (path: string, content: string) => {
+    set({ saving: true })
+    try {
+      await api.put<DocContent>('/docs/content', { path, content })
+      set({ activeDoc: (await api.get<DocContent>(`/docs/content?path=${encodeURIComponent(path)}`)) })
+      set({ editing: false })
+      return true
+    } catch {
+      return false
+    } finally {
+      set({ saving: false })
     }
   },
 
@@ -163,11 +197,11 @@ export const useDocsStore = create<DocsState>((set, get) => ({
     }
   },
 
-  generateDoc: async (canvasId?: string) => {
+  generateDoc: async (canvasId?: string, canvasName?: string, description?: string) => {
     set({ loading: true })
     try {
       if (canvasId) {
-        const result = await api.post<DocContent>('/docs/generate', { canvasId })
+        const result = await api.post<DocContent>('/docs/generate', { canvasId, canvasName, description })
         set({ activeDoc: result })
         await get().fetchTree()
       }
@@ -178,5 +212,23 @@ export const useDocsStore = create<DocsState>((set, get) => ({
     }
   },
 
-  setActiveDoc: (doc) => set({ activeDoc: doc }),
+  setActiveDoc: (doc) => set({ activeDoc: doc, editing: false }),
+
+  setEditing: (editing) => set({ editing }),
+
+  fetchDocLinks: async (path: string) => {
+    try {
+      const links = await api.get<DocLink[]>(`/docs/links?path=${encodeURIComponent(path)}`)
+      set({ docLinks: links })
+    } catch {
+      set({ docLinks: [] })
+    }
+  },
+
+  refreshContent: async () => {
+    const path = get().activeDoc?.path
+    if (path) {
+      await get().fetchDoc(path)
+    }
+  },
 }))
