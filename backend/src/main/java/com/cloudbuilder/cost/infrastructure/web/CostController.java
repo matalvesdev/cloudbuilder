@@ -1,7 +1,15 @@
 package com.cloudbuilder.cost.infrastructure.web;
 
+import com.cloudbuilder.cost.application.dto.BudgetAlert;
+import com.cloudbuilder.cost.application.dto.CostAnomaly;
+import com.cloudbuilder.cost.application.dto.CostProjectionPoint;
 import com.cloudbuilder.cost.domain.model.Budget;
 import com.cloudbuilder.cost.domain.model.CostRecord;
+import com.cloudbuilder.cost.domain.model.CostScenario;
+import com.cloudbuilder.cost.domain.service.AnomalyDetectionService;
+import com.cloudbuilder.cost.domain.service.BudgetAlertService;
+import com.cloudbuilder.cost.domain.service.CostProjectionService;
+import com.cloudbuilder.cost.domain.service.CostScenarioService;
 import com.cloudbuilder.cost.domain.service.CostService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +25,20 @@ import java.util.Map;
 public class CostController {
 
     private final CostService costService;
+    private final CostScenarioService costScenarioService;
+    private final AnomalyDetectionService anomalyDetectionService;
+    private final CostProjectionService costProjectionService;
+    private final BudgetAlertService budgetAlertService;
 
-    public CostController(CostService costService) {
+    public CostController(CostService costService, CostScenarioService costScenarioService,
+                          AnomalyDetectionService anomalyDetectionService,
+                          CostProjectionService costProjectionService,
+                          BudgetAlertService budgetAlertService) {
         this.costService = costService;
+        this.costScenarioService = costScenarioService;
+        this.anomalyDetectionService = anomalyDetectionService;
+        this.costProjectionService = costProjectionService;
+        this.budgetAlertService = budgetAlertService;
     }
 
     @GetMapping("/overview/{environmentId}")
@@ -68,5 +87,63 @@ public class CostController {
     @GetMapping("/budgets/{environmentId}")
     public ResponseEntity<List<Budget>> getBudgets(@PathVariable String environmentId) {
         return ResponseEntity.ok(costService.getBudgets(environmentId));
+    }
+
+    /* ─── Anomaly Detection ───────────────────────────────────────── */
+
+    @GetMapping("/anomalies/{environmentId}")
+    public ResponseEntity<List<CostAnomaly>> getAnomalies(
+            @PathVariable String environmentId,
+            @RequestParam(defaultValue = "30") int lookbackDays) {
+        var anomalies = anomalyDetectionService.detectAnomalies(environmentId, lookbackDays);
+        return ResponseEntity.ok(anomalies);
+    }
+
+    /* ─── Cost Projection ─────────────────────────────────────────── */
+
+    @GetMapping("/projection/{environmentId}")
+    public ResponseEntity<List<CostProjectionPoint>> getProjection(
+            @PathVariable String environmentId,
+            @RequestParam(defaultValue = "30") int projectionDays) {
+        var projection = costProjectionService.projectCosts(environmentId, projectionDays);
+        return ResponseEntity.ok(projection);
+    }
+
+    /* ─── Budget Alerts ───────────────────────────────────────────── */
+
+    @GetMapping("/budget-alerts/{environmentId}")
+    public ResponseEntity<List<BudgetAlert>> getBudgetAlerts(@PathVariable String environmentId) {
+        var alerts = budgetAlertService.evaluateBudgets(environmentId);
+        return ResponseEntity.ok(alerts);
+    }
+
+    /* ─── What-if Scenarios ───────────────────────────────────────── */
+
+    @PostMapping("/scenarios")
+    public ResponseEntity<CostScenario> createScenario(@RequestBody CostScenario scenario) {
+        return ResponseEntity.ok(costScenarioService.create(scenario));
+    }
+
+    @GetMapping("/scenarios/{id}")
+    public ResponseEntity<CostScenario> getScenario(@PathVariable String id) {
+        var scenario = costScenarioService.findById(id);
+        if (scenario == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(scenario);
+    }
+
+    @GetMapping("/scenarios/environment/{environmentId}")
+    public ResponseEntity<List<CostScenario>> getScenariosByEnvironment(@PathVariable String environmentId) {
+        return ResponseEntity.ok(costScenarioService.findByEnvironment(environmentId));
+    }
+
+    @GetMapping("/scenarios/canvas/{canvasId}")
+    public ResponseEntity<List<CostScenario>> getScenariosByCanvas(@PathVariable String canvasId) {
+        return ResponseEntity.ok(costScenarioService.findByCanvas(canvasId));
+    }
+
+    @DeleteMapping("/scenarios/{id}")
+    public ResponseEntity<Void> deleteScenario(@PathVariable String id) {
+        costScenarioService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
