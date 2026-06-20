@@ -3,6 +3,11 @@
 ## ADRs Registrados
 Ver `docs/architecture/` para decisões arquiteturais completas.
 
+- ADR-008: Native Observability Subsystem (PostgreSQL-native)
+- ADR-009: Auto-Documentation Module
+- ADR-010: Backend Quality Gate (test coverage + UUID→String migration)
+- ADR-011: What-if Cost + Preview Workflow Backend Persistence
+
 ## Stack Decisions
 | Decisão | Escolha | Razão |
 |---------|---------|-------|
@@ -24,10 +29,20 @@ Ver `docs/architecture/` para decisões arquiteturais completas.
 7. **API First**: OpenAPI spec, versionamento /api/v1/
 
 ## Known Gaps
+- ~~nanoid (frontend) vs UUID (backend)~~ ✅ Resolved — both sides use String (crypto.randomUUID()) with Phase 5d migration
+- ~~Grafana/Prometheus — removed ($0 infra)~~ ✅ Replaced by native observability (ADR-008)
+- XYPosition (objeto) vs positionX/positionY (flat doubles) — mismatch de modelo entre frontend e backend
 - card.tsx em provision/ deveria estar em components/ui/
-- nanoid (frontend) vs UUID (backend) — mismatch de tipos de ID
-- XYPosition (objeto) vs positionX/positionY (flat doubles) — mismatch de modelo
-- Grafana/Prometheus sem dashboards pré-configurados
-- Kafka single-node sem TLS
-- Redis sem autenticação
-- Containers sem resource limits
+- What-if Cost + Preview Workflow: sem testes JUnit para novos services (CostScenarioService, DeployPlanService)
+- Observability schema sem migrations Flyway (schema.sql manual)
+- Containers sem resource limits → ✅ Resolvido (configurados no docker-compose.yml)
+
+## Q3 2026 Operations Architecture
+- **ADR-012**: Q3 Operations Architecture — 3 sprints (Observabilidade, Cost Management, Audit & Compliance)
+- **Partitioning**: PostgreSQL native RANGE partitioning (monthly) for time-series tables
+- **Anomaly Detection**: Custom composite (trend-adjusted baseline + Z-score)
+- **Compliance**: Strategy pattern (4 initial strategies, extensible)
+- **Cross-module**: Modulith ApplicationEventPublisher for budget→observe alerts
+- **Projection**: Linear regression on 90-day cost data
+- **Audit Query**: Spring Data JPA Specifications for dynamic filtering
+- **File count**: ~54 new Java files, 4 new frontend components
