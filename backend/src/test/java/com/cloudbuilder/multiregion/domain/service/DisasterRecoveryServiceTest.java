@@ -3,7 +3,9 @@ package com.cloudbuilder.multiregion.domain.service;
 import com.cloudbuilder.multiregion.domain.model.DisasterRecoveryPlan;
 import com.cloudbuilder.multiregion.domain.model.Region;
 import com.cloudbuilder.multiregion.domain.port.DisasterRecoveryPlanRepository;
+import com.cloudbuilder.multiregion.domain.port.RegionHealthRepository;
 import com.cloudbuilder.multiregion.domain.port.RegionRepository;
+import com.cloudbuilder.multiregion.domain.port.ReplicationConfigRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +29,17 @@ class DisasterRecoveryServiceTest {
     @Mock
     private RegionRepository regionRepository;
 
+    @Mock
+    private RegionHealthRepository regionHealthRepository;
+
+    @Mock
+    private ReplicationConfigRepository replicationConfigRepository;
+
     private DisasterRecoveryService drService;
 
     @BeforeEach
     void setUp() {
-        drService = new DisasterRecoveryService(drPlanRepository, regionRepository);
+        drService = new DisasterRecoveryService(drPlanRepository, regionRepository, regionHealthRepository, replicationConfigRepository);
     }
 
     private Region createRegion(String code) {

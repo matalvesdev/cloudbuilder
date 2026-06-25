@@ -1,6 +1,7 @@
 package com.cloudbuilder.platform.infrastructure.web;
 
 import com.cloudbuilder.platform.domain.model.CatalogItem;
+import com.cloudbuilder.platform.domain.model.CatalogItemVersion;
 import com.cloudbuilder.platform.domain.model.MarketplaceListing;
 import com.cloudbuilder.platform.domain.model.PartnerIntegration;
 import com.cloudbuilder.platform.domain.service.CatalogService;
@@ -31,6 +32,17 @@ public class PlatformController {
         return ResponseEntity.ok(catalogService.listItems(type));
     }
 
+    @GetMapping("/catalog/draft")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CatalogItem>> listDraftItems() {
+        return ResponseEntity.ok(catalogService.listItemsByStatus("DRAFT"));
+    }
+
+    @GetMapping("/catalog/published")
+    public ResponseEntity<List<CatalogItem>> listPublishedItems() {
+        return ResponseEntity.ok(catalogService.listItemsByStatus("PUBLISHED"));
+    }
+
     @GetMapping("/catalog/{id}")
     public ResponseEntity<CatalogItem> getCatalogItem(@PathVariable String id) {
         return ResponseEntity.ok(catalogService.getItem(id));
@@ -46,9 +58,26 @@ public class PlatformController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CatalogItem> updateItem(
             @PathVariable String id,
-            @RequestParam(required = false) String version,
-            @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(catalogService.updateItem(id, version, status));
+            @RequestBody UpdateItemRequest req) {
+        return ResponseEntity.ok(catalogService.updateItem(
+            id, req.name(), req.description(), req.schema()));
+    }
+
+    @PostMapping("/catalog/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CatalogItem> publishItem(@PathVariable String id) {
+        return ResponseEntity.ok(catalogService.publishItem(id));
+    }
+
+    @PostMapping("/catalog/{id}/unpublish")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CatalogItem> unpublishItem(@PathVariable String id) {
+        return ResponseEntity.ok(catalogService.unpublishItem(id));
+    }
+
+    @GetMapping("/catalog/{id}/versions")
+    public ResponseEntity<List<CatalogItemVersion>> getVersionHistory(@PathVariable String id) {
+        return ResponseEntity.ok(catalogService.getVersionHistory(id));
     }
 
     @DeleteMapping("/catalog/{id}")
@@ -57,6 +86,8 @@ public class PlatformController {
         catalogService.deleteItem(id);
         return ResponseEntity.noContent().build();
     }
+
+    record UpdateItemRequest(String name, String description, String schema) {}
 
     // --- Marketplace Listings ---
 

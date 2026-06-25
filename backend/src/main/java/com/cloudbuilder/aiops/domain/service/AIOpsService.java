@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 @Service
 @Transactional
@@ -67,7 +69,22 @@ public class AIOpsService {
     }
 
     @Transactional(readOnly = true)
+    public String answerQuery(String question, String context, Map<String, Object> extraContext) {
+        var ctx = new HashMap<String, Object>();
+        ctx.put("incidentCount", context);
+        if (extraContext != null) {
+            ctx.putAll(extraContext);
+        }
+        return aiService.answerQuery(question, ctx);
+    }
+
+    @Transactional(readOnly = true)
     public String answerQuery(String question, String context) {
-        return aiService.answerQuery(question, context);
+        return answerQuery(question, context, Map.of());
+    }
+
+    @Transactional(readOnly = true)
+    public String analyzeMetric(String metricName, List<Double> recentValues, double threshold) {
+        return aiService.analyzeMetric(metricName, recentValues, threshold);
     }
 }

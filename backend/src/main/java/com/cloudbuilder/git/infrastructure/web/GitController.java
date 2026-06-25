@@ -2,15 +2,20 @@ package com.cloudbuilder.git.infrastructure.web;
 
 import com.cloudbuilder.git.application.dto.ConnectRepoRequest;
 import com.cloudbuilder.git.application.dto.PipelineResponse;
+import com.cloudbuilder.git.application.dto.PipelineRunDTO;
 import com.cloudbuilder.git.application.dto.RepoScanResponse;
 import com.cloudbuilder.git.domain.model.AppDetection;
 import com.cloudbuilder.git.domain.model.ConnectedRepository;
+import com.cloudbuilder.git.domain.model.PipelineRun;
 import com.cloudbuilder.git.domain.model.RepositoryScan;
+import com.cloudbuilder.git.domain.model.WebhookEvent;
 import com.cloudbuilder.git.domain.port.ConnectedRepositoryPort;
+import com.cloudbuilder.git.domain.port.PipelineRunPort;
 import com.cloudbuilder.git.domain.port.RepositoryScanPort;
 import com.cloudbuilder.git.domain.service.GitScannerService;
 import com.cloudbuilder.git.domain.service.IaCDetector;
 import com.cloudbuilder.git.domain.service.PipelineGeneratorService;
+import com.cloudbuilder.git.domain.service.WebhookService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,17 +34,23 @@ public class GitController {
     private final GitScannerService scannerService;
     private final IaCDetector iacDetector;
     private final PipelineGeneratorService pipelineGenerator;
+    private final WebhookService webhookService;
+    private final PipelineRunPort pipelineRunPort;
 
     public GitController(ConnectedRepositoryPort repositoryPort,
                          RepositoryScanPort scanPort,
                          GitScannerService scannerService,
                          IaCDetector iacDetector,
-                         PipelineGeneratorService pipelineGenerator) {
+                         PipelineGeneratorService pipelineGenerator,
+                         WebhookService webhookService,
+                         PipelineRunPort pipelineRunPort) {
         this.repositoryPort = repositoryPort;
         this.scanPort = scanPort;
         this.scannerService = scannerService;
         this.iacDetector = iacDetector;
         this.pipelineGenerator = pipelineGenerator;
+        this.webhookService = webhookService;
+        this.pipelineRunPort = pipelineRunPort;
     }
 
     @PostMapping("/connect")
@@ -148,6 +159,107 @@ public class GitController {
 
         PipelineResponse response = new PipelineResponse(yaml, filename, description);
         return ResponseEntity.ok(response);
+    }
+
+    // ── Webhook endpoints ──────────────────────────────────────────────
+
+    @PostMapping("/webhooks")
+    public ResponseEntity<WebhookEvent> receiveWebhook(
+            @RequestHeader("X-GitHub-Event") String eventType,
+            @RequestHeader("X-Hub-Signature-256") String signature,
+            @RequestHeader("X-GitHub-Delivery") String deliveryId,
+            @RequestBody String payload,
+            @RequestParam String repositoryId,
+            @RequestParam(required = false) String secret,
+            @RequestParam(required = false) String branch,
+            @RequestParam(required = false) String commitSha,
+            @RequestParam(required = false) String actor) {
+        var event = webhookService.receiveEvent(
+                eventType, repositoryId, payload, signature,
+                secret, deliveryId, branch, commitSha, actor
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(event);
+    }
+
+    @GetMapping("/webhooks/{id}")
+    public ResponseEntity<WebhookEvent> getWebhookEvent(@PathVariable String id) {
+        return webhookService.getEvent(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/webhooks/repository/{repositoryId}")
+    public ResponseEntity<List<WebhookEvent>> getWebhookEventsByRepository(
+            @PathVariable String repositoryId) {
+        return ResponseEntity.ok(webhookService.getEventsByRepository(repositoryId));
+    }
+
+    @GetMapping("/webhooks/status/{status}")
+    public ResponseEntity<List<WebhookEvent>> getWebhookEventsByStatus(
+            @PathVariable String status) {
+        try {
+            WebhookEvent.Status eventStatus = WebhookEvent.Status.valueOf(status.toUpperCase());
+            return ResponseEntity.ok(webhookService.getEventsByStatus(eventStatus));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/webhooks/repository/{repositoryId}/stats")
+    public ResponseEntity<Map<String, Object>> getWebhookStats(
+            @PathVariable String repositoryId) {
+        List<WebhookEvent> events = webhookService.getEventsByRepository(repositoryId);
+        long total = events.size();
+        long successful = events.stream()
+                .filter(e -> e.getStatus() == WebhookEvent.Status.PROCESSED)
+                .count();
+        long failed = events.stream()
+                .filter(e -> e.getStatus() == WebhookEvent.Status.FAILED
+                        || e.getStatus() == WebhookEvent.Status.VERIFICATION_FAILED)
+                .count();
+        long pending = events.stream()
+                .filter(e -> e.getStatus() == WebhookEvent.Status.RECEIVED
+                        || e.getStatus() == WebhookEvent.Status.VERIFIED)
+                .count();
+
+        return ResponseEntity.ok(Map.of(
+                "repositoryId", repositoryId,
+                "total", total,
+                "successful", successful,
+                "failed", failed,
+                "pending", pending,
+                "successRate", total > 0 ? (double) successful / total * 100 : 0.0
+        ));
+    }
+
+    @PostMapping("/webhooks/{id}/retry")
+    public ResponseEntity<Map<String, Object>> retryWebhook(@PathVariable String id) {
+        try {
+            Map<String, Object> result = webhookService.retryEvent(id);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // ── Pipeline visualization endpoints ──────────────────────────────
+
+    @GetMapping("/pipelines/{repoId}")
+    public ResponseEntity<List<PipelineRunDTO>> getPipelineRuns(@PathVariable String repoId) {
+        var runs = pipelineRunPort.findByRepositoryIdOrderByCreatedAtDesc(repoId).stream()
+                .map(PipelineRunDTO::from)
+                .toList();
+        return ResponseEntity.ok(runs);
+    }
+
+    @PostMapping("/pipelines")
+    public ResponseEntity<PipelineRun> createPipelineRun(@RequestBody PipelineRun run) {
+        // Allow status override for incoming runs
+        if (run.getStatus() == null) {
+            run.setStatus(PipelineRun.Status.PENDING);
+        }
+        PipelineRun saved = pipelineRunPort.save(run);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     private String extractFullName(String repoUrl) {

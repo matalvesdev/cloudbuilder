@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { Send, Sparkles, Plus, CheckCircle, Bolt, Bot, AlertTriangle, BrainCircuit, X, AlertCircle, Activity, Search, LayoutDashboard, ChevronDown, ChevronRight, ExternalLink, Layers, Workflow, Wrench, Rocket, History, ToggleLeft, ToggleRight, FileCheck, Zap, Lightbulb, MessageSquare, BarChart3, Eye } from 'lucide-react'
+import { Send, Sparkles, Plus, CheckCircle, Bolt, Bot, AlertTriangle, BrainCircuit, X, AlertCircle, Activity, Search, LayoutDashboard, ChevronDown, ChevronRight, ExternalLink, Layers, Workflow, Wrench, Rocket, History, ToggleLeft, ToggleRight, FileCheck, Zap, Lightbulb, MessageSquare, BarChart3, Eye, Shield, BookOpen, FileText, GitPullRequest } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useCanvasStore } from '@/store/canvasStore'
 import { useUiStore } from '@/store/uiStore'
 import { useIncidentStore, type ResourceModification } from '@/store/incidentStore'
-import { aiopsApi, type DesignTemplate } from '@/api/aiops'
-import fallbackDesignTemplates from '@/api/aiops'
+import { aiopsApi, type DesignTemplate, type MetricAnalysisResponse } from '@/api/aiops'
 import { IncidentFixDialog } from './IncidentFixDialog'
 import { DesignPreview } from './DesignPreview'
 import { FixWidget } from './FixWidget'
 import { FixHistoryList } from './FixHistory'
+import { AutoRemediationPanel } from './AutoRemediationPanel'
+import { RunbooksPanel } from './RunbooksPanel'
+import { PostMortemPanel } from './PostMortemPanel'
 import type { ProviderType, CanvasDesign } from '@/types/canvas.types'
 import type { Message, Incident, FixSuggestion, DesignChange } from './aiops.types'
 import {
@@ -25,7 +27,7 @@ import {
   statusColor,
 } from './aiops.utils'
 
-let designTemplates: DesignTemplate[] = [...fallbackDesignTemplates]
+let designTemplates: DesignTemplate[] = []
 
 // Initialize templates from API (async, won't block rendering)
 aiopsApi.getTemplates().then((templates) => {
@@ -68,6 +70,8 @@ export function AIOpsModule() {
       ...(hasCanvasDesign
         ? [`Analisar design atual: "${canvasName}"`, 'Analisar incidentes atuais', 'Sugerir otimizações de custo']
         : ['Analisar incidentes atuais', 'Sugerir otimizações de custo', 'Verificar saúde da infraestrutura']),
+      'Analisar métricas de CPU',
+      'Analisar métricas de memória',
     ],
   }])
   const [input, setInput] = useState('')
@@ -85,6 +89,16 @@ export function AIOpsModule() {
   } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const environmentId = 'default'
+
+  // Sub-tab navigation for Incident Intelligence features
+  const [aiopsTab, setAiopsTab] = useState<'chat' | 'remediation' | 'runbooks' | 'postmortem'>('chat')
+
+  const aiopsTabs = [
+    { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
+    { id: 'remediation' as const, label: 'Auto-Remoção', icon: Shield },
+    { id: 'runbooks' as const, label: 'Runbooks', icon: BookOpen },
+    { id: 'postmortem' as const, label: 'Pós-Mortem', icon: FileText },
+  ]
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -157,6 +171,49 @@ export function AIOpsModule() {
     }
   }, [hasCanvasDesign])
 
+  // ─── Metric Analysis ─────────────────────────────────────
+
+  const handleAnalyzeMetric = useCallback(async (metricName: string) => {
+    setIsTyping(true)
+    try {
+      // Generate sample recent values based on metric type
+      const recentValues = Array.from({ length: 24 }, (_, i) => {
+        const base = metricName.toLowerCase().includes('cpu') ? 45 : metricName.toLowerCase().includes('mem') ? 60 : 50
+        const variance = Math.sin(i / 4) * 15 + (Math.random() - 0.5) * 10
+        return Math.round((base + variance) * 10) / 10
+      })
+
+      const result = await aiopsApi.analyzeMetric({
+        metricName,
+        recentValues,
+        threshold: metricName.toLowerCase().includes('cpu') ? 30 : 35,
+      })
+
+      if (result) {
+        const msg: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: `## Análise de Métrica: ${result.metricName}\n\n${result.analysis}`,
+          suggestions: [
+            'Analisar incidentes atuais',
+            'Verificar saúde da infraestrutura',
+            'Sugerir otimizações',
+            ...getDesignSuggestions(),
+          ],
+        }
+        setMessages((prev) => [...prev, msg])
+      }
+    } catch {
+      setMessages((prev) => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Não foi possível analisar a métrica no momento. Tente novamente mais tarde.',
+      }])
+    } finally {
+      setIsTyping(false)
+    }
+  }, [getDesignSuggestions])
+
   // ─── Suggestion Handler ──────────────────────────────────
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
@@ -169,8 +226,12 @@ export function AIOpsModule() {
         : 'serverless-api'
       const response = generateDesignResponse(templateId, suggestion)
       setMessages((prev) => [...prev, response])
+    } else if (suggestion.startsWith('Analisar métricas de CPU')) {
+      handleAnalyzeMetric('cpu_utilization')
+    } else if (suggestion.startsWith('Analisar métricas de memória')) {
+      handleAnalyzeMetric('memory_utilization')
     }
-  }, [generateDesignResponse])
+  }, [generateDesignResponse, handleAnalyzeMetric])
 
   // ─── Send Handler ────────────────────────────────────────
 
@@ -194,32 +255,29 @@ export function AIOpsModule() {
       return
     }
 
-    // Fall back to API
+    // Fall back to API with context-aware query
     try {
-      const res = await fetch(`${API_BASE}/query`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question,
-          context: String(incidents.length),
-          canvas: hasCanvasDesign ? {
-            name: canvasName,
-            resourceCount: nodes.length,
-            connectionCount: edges.length,
-            providers,
-            nodes: nodes.map(n => ({
-              label: n.data?.label,
-              provider: n.data?.provider,
-              resourceType: n.data?.resourceType,
-              properties: n.data?.properties,
-            })),
-          } : null,
-        }),
-      })
+      const extraContext: Record<string, any> = {
+        incidentCount: incidents.length,
+      }
 
-      if (res.ok) {
-        const data = await res.json()
+      if (hasCanvasDesign) {
+        extraContext.canvas = {
+          name: canvasName,
+          resourceCount: nodes.length,
+          connectionCount: edges.length,
+          providers,
+          nodes: nodes.map(n => ({
+            label: n.data?.label,
+            provider: n.data?.provider,
+            resourceType: n.data?.resourceType,
+          })),
+        }
+      }
 
+      const data = await aiopsApi.chatQuery({ question, context: String(incidents.length), extraContext })
+
+      if (data) {
         const responseMsg: Message = {
           id: crypto.randomUUID(),
           role: 'assistant',
@@ -228,6 +286,7 @@ export function AIOpsModule() {
             'Analisar incidentes atuais',
             'Sugerir otimizações',
             'Gerar relatório',
+            'Analisar métricas de CPU',
             ...getDesignSuggestions(),
           ],
         }
@@ -499,7 +558,7 @@ export function AIOpsModule() {
         </ScrollArea>
       </div>
 
-      {/* Main Chat Area */}
+      {/* Main Content Area with Sub-tabs */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="h-16 border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
@@ -541,249 +600,301 @@ export function AIOpsModule() {
           </div>
         </div>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1">
-          <div className="p-6 space-y-4 max-w-4xl mx-auto">
-            {/* Selected Incident Detail */}
-            {selectedIncident && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={cn('w-2.5 h-2.5 rounded-full', severityColor(selectedIncident.severity))} />
-                    <h3 className="text-sm font-bold text-brand-navy">{selectedIncident.title}</h3>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => { setSelectedIncident(null); clearHighlightedIncidentNodes() }} className="text-slate-400 hover:text-slate-600">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-600">{selectedIncident.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', statusColor(selectedIncident.status))}>
-                    {selectedIncident.status === 'OPEN' ? 'Aberto' : 'Resolvido'}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium">
-                    {severityLabel(selectedIncident.severity)}
-                  </span>
-                  {selectedIncident.classification && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
-                      {selectedIncident.classification}
-                    </span>
-                  )}
-                </div>
-                {selectedIncident.suggestedRca && (
-                  <div className="bg-white rounded-lg p-3 border border-slate-200">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Causa Raiz Sugerida</p>
-                    <p className="text-xs text-slate-700">{selectedIncident.suggestedRca}</p>
-                  </div>
-                )}
-
-                {/* Fix History for this incident */}
-                <FixHistoryList incident={selectedIncident} fixHistory={fixHistory} />
-
-                {selectedIncident.status === 'OPEN' && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleAnalyzeIncident(selectedIncident)}
-                      className="px-3 py-1.5 bg-brand-navy text-white rounded-lg text-xs font-bold hover:bg-brand-navy/90 transition-colors"
-                    >
-                      <Search className="w-3 h-3 inline mr-1" />
-                      Analisar com IA
-                    </button>
-                    {selectedIncident.fixSuggestion && (
-                      <button
-                        onClick={() => handleOpenFixDialog(
-                          selectedIncident.fixSuggestion!,
-                          selectedIncident.id,
-                          selectedIncident.title
-                        )}
-                        className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors"
-                      >
-                        <Wrench className="w-3 h-3 inline mr-1" />
-                        Aplicar Correção
-                      </button>
-                    )}
-                    {selectedIncident.affectedNodeIds && selectedIncident.affectedNodeIds.length > 0 && (
-                      <button
-                        onClick={() => {
-                          clearHighlightedIncidentNodes()
-                          // small delay to allow ReactFlow to render before highlighting
-                          setTimeout(() => {
-                            setHighlightedIncidentNodes(selectedIncident.affectedNodeIds)
-                            setActiveModule('design')
-                          }, 50)
-                        }}
-                        className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors"
-                      >
-                        <Eye className="w-3 h-3 inline mr-1" />
-                        Ver no Canvas
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleResolveIncident(selectedIncident.id)}
-                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-colors"
-                    >
-                      <CheckCircle className="w-3 h-3 inline mr-1" />
-                      Resolver
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center justify-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">Hoje</span>
-            </div>
-
-            {messages.map((msg) => (
-              <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                <div className={cn(
-                  'max-w-[75%] text-sm',
-                  msg.role === 'user'
-                    ? 'bg-brand-navy text-white rounded-2xl rounded-br-sm p-4 shadow-md'
-                    : 'bg-white border border-slate-200 rounded-2xl rounded-bl-sm p-5 shadow-sm'
-                )}>
-                  {msg.role === 'assistant' && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-6 h-6 rounded-full bg-brand-lime/20 flex items-center justify-center">
-                        <Bot className="w-3.5 h-3.5 text-brand-navy" />
-                      </div>
-                      <span className="text-xs font-bold text-brand-navy">CloudBuilder AI</span>
-                      <span className="text-[10px] text-slate-400 font-mono ml-auto">&lt; 1s</span>
-                    </div>
-                  )}
-                  <p className={cn(
-                    msg.role === 'user' ? 'text-white' : 'text-slate-600',
-                    'whitespace-pre-wrap'
-                  )}>{msg.content}</p>
-
-                  {msg.changes && (
-                    <ul className="mt-3 space-y-2">
-                      {msg.changes.map((change, i) => (
-                        <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                          <div className={cn('w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5', change.color === 'text-green-500' ? 'bg-green-50' : change.color === 'text-blue-500' ? 'bg-blue-50' : 'bg-amber-50')}>
-                            {change.icon === 'add' ? <Plus className={cn('w-3 h-3', change.color)} /> : <CheckCircle className={cn('w-3 h-3', change.color)} />}
-                          </div>
-                          <span>{change.text}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {/* Design Preview Widget */}
-                  <DesignPreview
-                    msg={msg}
-                    expandedResources={expandedResources}
-                    onToggleResource={toggleResourceExpansion}
-                    onOpenInCanvas={handleOpenInCanvas}
-                  />
-
-                  {/* Fix Suggestion Widget */}
-                  <FixWidget
-                    msg={msg}
-                    selectedIncident={selectedIncident}
-                    onOpenFixDialog={handleOpenFixDialog}
-                  />
-
-                  {msg.suggestions && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {msg.suggestions.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => handleSuggestionClick(s)}
-                          className={cn(
-                            'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                            s.startsWith('Criar design:')
-                              ? 'bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-navy border-brand-lime/30'
-                              : s.includes('Aplicar correção') || s.includes('Ir para Deploy')
-                              ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-100'
-                          )}
-                        >
-                          {s.startsWith('Criar design:') && <Sparkles className="w-3 h-3 inline mr-1" />}
-                          {s.includes('Aplicar correção') && <Wrench className="w-3 h-3 inline mr-1" />}
-                          {s.includes('Ir para Deploy') && <Rocket className="w-3 h-3 inline mr-1" />}
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm p-4 shadow-sm flex items-center gap-1.5">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-brand-lime rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                    <div className="w-2 h-2 bg-brand-lime rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <div className="w-2 h-2 bg-brand-lime rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                  </div>
-                  <span className="text-xs text-slate-400 ml-2">Analisando infraestrutura...</span>
-                </div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-        </ScrollArea>
-
-        {/* Input */}
-        <div className="p-6 border-t border-slate-100">
-          <div className="max-w-4xl mx-auto">
-            <div className="relative">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy resize-none h-20 placeholder-slate-400 transition-all"
-                placeholder="Pergunte à IA para criar designs, analisar incidentes, sugerir otimizações..."
-              />
-              <div className="absolute bottom-2 right-2 flex gap-1">
+        {/* Sub-tab Bar */}
+        <div className="border-b border-slate-100 px-6 shrink-0">
+          <div className="flex items-center gap-1">
+            {aiopsTabs.map((tab) => {
+              const TabIcon = tab.icon
+              return (
                 <button
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                  className="p-2 rounded-lg bg-brand-navy text-white hover:bg-brand-navy/90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            <div className="mt-2 flex items-center justify-between px-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                  <Bolt className="w-2.5 h-2.5" /> CloudBuilder LLM v2 — Análise em tempo real
-                </span>
-                <button
-                  onClick={toggleAutoFix}
+                  key={tab.id}
+                  onClick={() => setAiopsTab(tab.id)}
                   className={cn(
-                    'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all',
-                    autoFixEnabled
-                      ? 'bg-brand-lime/20 text-brand-navy border border-brand-lime/30'
-                      : 'bg-slate-100 text-slate-500 border border-slate-200'
+                    'relative flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold transition-all border-b-2 -mb-px',
+                    aiopsTab === tab.id
+                      ? 'text-brand-navy border-brand-lime'
+                      : 'text-slate-500 border-transparent hover:text-brand-navy hover:border-slate-300'
                   )}
                 >
-                  {autoFixEnabled ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
-                  Auto-Fix
+                  <TabIcon className="w-3.5 h-3.5" />
+                  {tab.label}
                 </button>
-              </div>
-              <button onClick={() => setMessages([{
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: 'Olá! Sou o assistente de operações com IA do CloudBuilder. Como posso ajudar?',
-                suggestions: [
-                  ...getDesignSuggestions(),
-                  'Analisar incidentes atuais',
-                  'Sugerir otimizações de custo',
-                  'Verificar saúde da infraestrutura',
-                ],
-              }])} className="text-[10px] font-bold text-slate-500 hover:text-brand-navy uppercase tracking-wide">
-                Nova Conversa
-              </button>
-            </div>
+              )
+            })}
           </div>
         </div>
+
+        {/* Conditional Content based on sub-tab */}
+        {aiopsTab === 'chat' && (
+          <>
+            {/* Messages */}
+            <ScrollArea className="flex-1">
+              <div className="p-6 space-y-4 max-w-4xl mx-auto">
+                {/* Selected Incident Detail */}
+                {selectedIncident && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={cn('w-2.5 h-2.5 rounded-full', severityColor(selectedIncident.severity))} />
+                        <h3 className="text-sm font-bold text-brand-navy">{selectedIncident.title}</h3>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => { setSelectedIncident(null); clearHighlightedIncidentNodes() }} className="text-slate-400 hover:text-slate-600">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600">{selectedIncident.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', statusColor(selectedIncident.status))}>
+                        {selectedIncident.status === 'OPEN' ? 'Aberto' : 'Resolvido'}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium">
+                        {severityLabel(selectedIncident.severity)}
+                      </span>
+                      {selectedIncident.classification && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                          {selectedIncident.classification}
+                        </span>
+                      )}
+                    </div>
+                    {selectedIncident.suggestedRca && (
+                      <div className="bg-white rounded-lg p-3 border border-slate-200">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Causa Raiz Sugerida</p>
+                        <p className="text-xs text-slate-700">{selectedIncident.suggestedRca}</p>
+                      </div>
+                    )}
+
+                    {/* Fix History for this incident */}
+                    <FixHistoryList incident={selectedIncident} fixHistory={fixHistory} />
+
+                    {selectedIncident.status === 'OPEN' && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleAnalyzeIncident(selectedIncident)}
+                          className="px-3 py-1.5 bg-brand-navy text-white rounded-lg text-xs font-bold hover:bg-brand-navy/90 transition-colors"
+                        >
+                          <Search className="w-3 h-3 inline mr-1" />
+                          Analisar com IA
+                        </button>
+                        {selectedIncident.fixSuggestion && (
+                          <button
+                            onClick={() => handleOpenFixDialog(
+                              selectedIncident.fixSuggestion!,
+                              selectedIncident.id,
+                              selectedIncident.title
+                            )}
+                            className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors"
+                          >
+                            <Wrench className="w-3 h-3 inline mr-1" />
+                            Aplicar Correção
+                          </button>
+                        )}
+                        {selectedIncident.affectedNodeIds && selectedIncident.affectedNodeIds.length > 0 && (
+                          <button
+                            onClick={() => {
+                              clearHighlightedIncidentNodes()
+                              setTimeout(() => {
+                                setHighlightedIncidentNodes(selectedIncident.affectedNodeIds)
+                                setActiveModule('design')
+                              }, 50)
+                            }}
+                            className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition-colors"
+                          >
+                            <Eye className="w-3 h-3 inline mr-1" />
+                            Ver no Canvas
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleResolveIncident(selectedIncident.id)}
+                          className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-colors"
+                        >
+                          <CheckCircle className="w-3 h-3 inline mr-1" />
+                          Resolver
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded">Hoje</span>
+                </div>
+
+                {messages.map((msg) => (
+                  <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                    <div className={cn(
+                      'max-w-[75%] text-sm',
+                      msg.role === 'user'
+                        ? 'bg-brand-navy text-white rounded-2xl rounded-br-sm p-4 shadow-md'
+                        : 'bg-white border border-slate-200 rounded-2xl rounded-bl-sm p-5 shadow-sm'
+                    )}>
+                      {msg.role === 'assistant' && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-6 h-6 rounded-full bg-brand-lime/20 flex items-center justify-center">
+                            <Bot className="w-3.5 h-3.5 text-brand-navy" />
+                          </div>
+                          <span className="text-xs font-bold text-brand-navy">CloudBuilder AI</span>
+                          <span className="text-[10px] text-slate-400 font-mono ml-auto">&lt; 1s</span>
+                        </div>
+                      )}
+                      <p className={cn(
+                        msg.role === 'user' ? 'text-white' : 'text-slate-600',
+                        'whitespace-pre-wrap'
+                      )}>{msg.content}</p>
+
+                      {msg.changes && (
+                        <ul className="mt-3 space-y-2">
+                          {msg.changes.map((change, i) => (
+                            <li key={i} className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                              <div className={cn('w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5', change.color === 'text-green-500' ? 'bg-green-50' : change.color === 'text-blue-500' ? 'bg-blue-50' : 'bg-amber-50')}>
+                                {change.icon === 'add' ? <Plus className={cn('w-3 h-3', change.color)} /> : <CheckCircle className={cn('w-3 h-3', change.color)} />}
+                              </div>
+                              <span>{change.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {/* Design Preview Widget */}
+                      <DesignPreview
+                        msg={msg}
+                        expandedResources={expandedResources}
+                        onToggleResource={toggleResourceExpansion}
+                        onOpenInCanvas={handleOpenInCanvas}
+                      />
+
+                      {/* Fix Suggestion Widget */}
+                      <FixWidget
+                        msg={msg}
+                        selectedIncident={selectedIncident}
+                        onOpenFixDialog={handleOpenFixDialog}
+                      />
+
+                      {msg.suggestions && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {msg.suggestions.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => handleSuggestionClick(s)}
+                              className={cn(
+                                'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                                s.startsWith('Criar design:')
+                                  ? 'bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-navy border-brand-lime/30'
+                                  : s.includes('Aplicar correção') || s.includes('Ir para Deploy')
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-100'
+                              )}
+                            >
+                              {s.startsWith('Criar design:') && <Sparkles className="w-3 h-3 inline mr-1" />}
+                              {s.includes('Aplicar correção') && <Wrench className="w-3 h-3 inline mr-1" />}
+                              {s.includes('Ir para Deploy') && <Rocket className="w-3 h-3 inline mr-1" />}
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-white border border-slate-200 rounded-2xl rounded-bl-sm p-4 shadow-sm flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-brand-lime rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                        <div className="w-2 h-2 bg-brand-lime rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-2 h-2 bg-brand-lime rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
+                      <span className="text-xs text-slate-400 ml-2">Analisando infraestrutura...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+            </ScrollArea>
+
+            {/* Input */}
+            <div className="p-6 border-t border-slate-100">
+              <div className="max-w-4xl mx-auto">
+                <div className="relative">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy resize-none h-20 placeholder-slate-400 transition-all"
+                    placeholder="Pergunte à IA para criar designs, analisar incidentes, sugerir otimizações..."
+                  />
+                  <div className="absolute bottom-2 right-2 flex gap-1">
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim()}
+                      className="p-2 rounded-lg bg-brand-navy text-white hover:bg-brand-navy/90 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <Bolt className="w-2.5 h-2.5" /> CloudBuilder LLM v2 — Análise em tempo real
+                    </span>
+                    <button
+                      onClick={toggleAutoFix}
+                      className={cn(
+                        'flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all',
+                        autoFixEnabled
+                          ? 'bg-brand-lime/20 text-brand-navy border border-brand-lime/30'
+                          : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      )}
+                    >
+                      {autoFixEnabled ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
+                      Auto-Fix
+                    </button>
+                  </div>
+                  <button onClick={() => setMessages([{
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: 'Olá! Sou o assistente de operações com IA do CloudBuilder. Como posso ajudar?',
+                    suggestions: [
+                      ...getDesignSuggestions(),
+                      'Analisar incidentes atuais',
+                      'Sugerir otimizações de custo',
+                      'Verificar saúde da infraestrutura',
+                    ],
+                  }])} className="text-[10px] font-bold text-slate-500 hover:text-brand-navy uppercase tracking-wide">
+                    Nova Conversa
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {aiopsTab === 'remediation' && (
+          <ScrollArea className="flex-1">
+            <div className="p-6 max-w-4xl mx-auto">
+              <AutoRemediationPanel />
+            </div>
+          </ScrollArea>
+        )}
+
+        {aiopsTab === 'runbooks' && (
+          <ScrollArea className="flex-1">
+            <div className="p-6 max-w-4xl mx-auto">
+              <RunbooksPanel />
+            </div>
+          </ScrollArea>
+        )}
+
+        {aiopsTab === 'postmortem' && (
+          <ScrollArea className="flex-1">
+            <div className="p-6 max-w-4xl mx-auto">
+              <PostMortemPanel />
+            </div>
+          </ScrollArea>
+        )}
       </div>
 
       {/* Fix Dialog */}

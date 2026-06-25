@@ -3,7 +3,7 @@ package com.cloudbuilder.observability.domain.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 @Entity
-@Table(name = "observe_incidents", uniqueConstraints = {
+@Table(name = "incidents", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"alert_rule_id", "status"})
 })
 public class IncidentEntity {

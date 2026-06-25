@@ -32,13 +32,14 @@ class DashboardServiceTest {
     void getDashboards_ShouldReturnList() {
         var entity = new DashboardEntity();
         entity.setId(UUID.randomUUID().toString());
+        entity.setTenantId("tenant-1");
         entity.setName("My Dashboard");
         entity.setDescription("Desc");
         entity.setDefinition("{}");
         entity.setDefault(true);
-        when(repository.findByTenantId("tenant-1")).thenReturn(List.of(entity));
+        when(repository.findByTenantId(any())).thenReturn(List.of(entity));
 
-        var result = dashboardService.getDashboards("tenant-1");
+        var result = dashboardService.getDashboards();
 
         assertEquals(1, result.size());
         assertEquals("My Dashboard", result.getFirst().name());
@@ -46,9 +47,9 @@ class DashboardServiceTest {
 
     @Test
     void getDashboards_WhenEmpty_ShouldReturnEmpty() {
-        when(repository.findByTenantId("tenant-1")).thenReturn(List.of());
+        when(repository.findByTenantId(any())).thenReturn(List.of());
 
-        var result = dashboardService.getDashboards("tenant-1");
+        var result = dashboardService.getDashboards();
 
         assertTrue(result.isEmpty());
     }

@@ -3,6 +3,8 @@ package com.cloudbuilder.iam.infrastructure.web;
 import com.cloudbuilder.audit.domain.Audited;
 import com.cloudbuilder.iam.domain.model.*;
 import com.cloudbuilder.iam.domain.service.IamService;
+import com.cloudbuilder.iam.domain.service.MfaService;
+import com.cloudbuilder.iam.domain.service.SessionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,9 +18,13 @@ import java.util.List;
 public class IAMController {
 
     private final IamService iamService;
+    private final MfaService mfaService;
+    private final SessionService sessionService;
 
-    public IAMController(IamService iamService) {
+    public IAMController(IamService iamService, MfaService mfaService, SessionService sessionService) {
         this.iamService = iamService;
+        this.mfaService = mfaService;
+        this.sessionService = sessionService;
     }
 
     // --- Users ---
@@ -153,6 +159,64 @@ public class IAMController {
         return ResponseEntity.ok(iamService.hasPermission(req.tenantId(), req.userId(), req.action(), req.resource()));
     }
 
+    // ── MFA endpoints ─────────────────────────────────────────────────
+
+    @PostMapping("/mfa/setup/{userId}")
+    public ResponseEntity<UserMfa> setupMfa(@PathVariable String userId) {
+        return ResponseEntity.ok(mfaService.setupMfa(userId));
+    }
+
+    @PostMapping("/mfa/verify-and-enable/{userId}")
+    public ResponseEntity<UserMfa> verifyAndEnableMfa(@PathVariable String userId,
+                                                       @RequestBody VerifyMfaRequest req) {
+        return ResponseEntity.ok(mfaService.verifyAndEnable(userId, req.code()));
+    }
+
+    @PostMapping("/mfa/verify/{userId}")
+    public ResponseEntity<Boolean> verifyMfa(@PathVariable String userId,
+                                              @RequestBody VerifyMfaRequest req) {
+        return ResponseEntity.ok(mfaService.verify(userId, req.code()));
+    }
+
+    @PostMapping("/mfa/disable/{userId}")
+    public ResponseEntity<Void> disableMfa(@PathVariable String userId) {
+        mfaService.disableMfa(userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/mfa/status/{userId}")
+    public ResponseEntity<UserMfa> getMfaStatus(@PathVariable String userId) {
+        var mfa = mfaService.getMfaStatus(userId);
+        if (mfa == null) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.ok(mfa);
+    }
+
+    // ── Session endpoints ─────────────────────────────────────────────
+
+    @GetMapping("/sessions/user/{userId}/active")
+    public ResponseEntity<List<Session>> getActiveSessions(@PathVariable String userId) {
+        return ResponseEntity.ok(sessionService.getActiveSessionsByUser(userId));
+    }
+
+    @GetMapping("/sessions/user/{userId}")
+    public ResponseEntity<List<Session>> getAllSessions(@PathVariable String userId) {
+        return ResponseEntity.ok(sessionService.getAllSessionsByUser(userId));
+    }
+
+    @PostMapping("/sessions/{sessionId}/terminate")
+    public ResponseEntity<Void> terminateSession(@PathVariable String sessionId) {
+        sessionService.terminateSession(sessionId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/sessions/user/{userId}/terminate-all")
+    public ResponseEntity<Void> terminateAllSessions(@PathVariable String userId) {
+        sessionService.terminateAllUserSessions(userId);
+        return ResponseEntity.ok().build();
+    }
+
     // --- Requests ---
 
     record CreateUserRequest(String name, String email, String passwordHash) {}
@@ -161,4 +225,7 @@ public class IAMController {
     record CreatePermissionRequest(String action, String resource) {}
     record ValidateAccessRequest(String tenantId, String userId) {}
     record HasPermissionRequest(String tenantId, String userId, String action, String resource) {}
+
+    // MFA records
+    record VerifyMfaRequest(String code) {}
 }

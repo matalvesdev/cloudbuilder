@@ -62,11 +62,42 @@ const k8sComponents: ComponentDefinition[] = [
   { id: 'k8s-hpa', provider: 'k8s', resourceType: 'kubernetes_horizontal_pod_autoscaler', category: 'compute', displayName: 'HPA', description: 'Dimensionamento automático de pods', icon: 'Layers', propertiesSchema: {} },
 ]
 
+const vercelComponents: ComponentDefinition[] = [
+  { id: 'vercel-project', provider: 'vercel', resourceType: 'vercel_project', category: 'compute', displayName: 'Project', description: 'Projeto Vercel com deploy contínuo', icon: 'Globe', propertiesSchema: {} },
+  { id: 'vercel-deployment', provider: 'vercel', resourceType: 'vercel_deployment', category: 'compute', displayName: 'Deployment', description: 'Instância de deploy Vercel', icon: 'Rocket', propertiesSchema: {} },
+  { id: 'vercel-domain', provider: 'vercel', resourceType: 'vercel_domain', category: 'network', displayName: 'Domain', description: 'Domínio customizado Vercel', icon: 'Globe', propertiesSchema: {} },
+  { id: 'vercel-edge-function', provider: 'vercel', resourceType: 'vercel_edge_function', category: 'serverless', displayName: 'Edge Function', description: 'Função serverless edge Vercel', icon: 'FunctionSquare', propertiesSchema: {} },
+  { id: 'vercel-env', provider: 'vercel', resourceType: 'vercel_environment_variable', category: 'security', displayName: 'Env Variable', description: 'Variável de ambiente Vercel', icon: 'Lock', propertiesSchema: {} },
+  { id: 'vercel-analytics', provider: 'vercel', resourceType: 'vercel_analytics', category: 'monitoring', displayName: 'Analytics', description: 'Métricas e analytics Vercel', icon: 'Activity', propertiesSchema: {} },
+]
+
+const supabaseComponents: ComponentDefinition[] = [
+  { id: 'supabase-project', provider: 'supabase', resourceType: 'supabase_project', category: 'database', displayName: 'Project', description: 'Projeto Supabase com Postgres, Auth e Storage', icon: 'Database', propertiesSchema: {} },
+  { id: 'supabase-table', provider: 'supabase', resourceType: 'supabase_table', category: 'database', displayName: 'Table', description: 'Tabela Postgres no Supabase', icon: 'Database', propertiesSchema: {} },
+  { id: 'supabase-auth', provider: 'supabase', resourceType: 'supabase_auth', category: 'security', displayName: 'Authentication', description: 'Autenticação Supabase (email, OAuth, SSO)', icon: 'Shield', propertiesSchema: {} },
+  { id: 'supabase-storage', provider: 'supabase', resourceType: 'supabase_storage_bucket', category: 'storage', displayName: 'Storage Bucket', description: 'Bucket de armazenamento Supabase', icon: 'HardDrive', propertiesSchema: {} },
+  { id: 'supabase-edge-function', provider: 'supabase', resourceType: 'supabase_edge_function', category: 'serverless', displayName: 'Edge Function', description: 'Função serverless Deno no Supabase', icon: 'FunctionSquare', propertiesSchema: {} },
+  { id: 'supabase-realtime', provider: 'supabase', resourceType: 'supabase_realtime', category: 'integration', displayName: 'Realtime', description: 'Subscriptions WebSocket em tempo real', icon: 'Network', propertiesSchema: {} },
+]
+
+const renderComponents: ComponentDefinition[] = [
+  { id: 'render-web-service', provider: 'render', resourceType: 'render_web_service', category: 'compute', displayName: 'Web Service', description: 'Serviço web HTTP no Render', icon: 'Server', propertiesSchema: {} },
+  { id: 'render-static-site', provider: 'render', resourceType: 'render_static_site', category: 'compute', displayName: 'Static Site', description: 'Site estático no Render', icon: 'Globe', propertiesSchema: {} },
+  { id: 'render-cron-job', provider: 'render', resourceType: 'render_cron_job', category: 'compute', displayName: 'Cron Job', description: 'Job agendado no Render', icon: 'Clock', propertiesSchema: {} },
+  { id: 'render-background-worker', provider: 'render', resourceType: 'render_background_worker', category: 'compute', displayName: 'Background Worker', description: 'Worker em background no Render', icon: 'Activity', propertiesSchema: {} },
+  { id: 'render-postgres', provider: 'render', resourceType: 'render_postgres', category: 'database', displayName: 'PostgreSQL', description: 'Banco Postgres gerenciado no Render', icon: 'Database', propertiesSchema: {} },
+  { id: 'render-redis', provider: 'render', resourceType: 'render_redis', category: 'database', displayName: 'Redis', description: 'Cache Redis gerenciado no Render', icon: 'Database', propertiesSchema: {} },
+  { id: 'render-env-group', provider: 'render', resourceType: 'render_env_group', category: 'security', displayName: 'Env Group', description: 'Grupo de variáveis de ambiente', icon: 'Lock', propertiesSchema: {} },
+]
+
 export const allComponents: ComponentDefinition[] = [
   ...awsComponents,
   ...azureComponents,
   ...gcpComponents,
   ...k8sComponents,
+  ...vercelComponents,
+  ...supabaseComponents,
+  ...renderComponents,
 ]
 
 export function getComponentsByProvider(provider: ProviderType | string): ComponentDefinition[] {

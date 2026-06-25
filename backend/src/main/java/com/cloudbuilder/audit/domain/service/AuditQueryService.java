@@ -3,6 +3,9 @@ package com.cloudbuilder.audit.domain.service;
 import com.cloudbuilder.audit.domain.model.AuditEvent;
 import com.cloudbuilder.audit.domain.port.AuditEventRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,9 +13,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -34,25 +35,14 @@ public class AuditQueryService {
             int page,
             int size) {
 
-        Instant start = (startDate != null)
-                ? startDate.atStartOfDay(ZoneOffset.UTC).toInstant()
-                : Instant.EPOCH;
+        Instant start = toStartInstant(startDate);
+        Instant end = toEndInstant(endDate);
 
-        Instant end = (endDate != null)
-                ? endDate.atTime(LocalTime.MAX).atZone(ZoneOffset.UTC).toInstant()
-                : Instant.now();
+        Specification<AuditEvent> spec = AuditEventSpecifications.withFilters(
+                tenantId, userId, action, resourceType, start, end);
 
-        // Fetch paginated results from DB
-        var pageable = PageRequest.of(page, size);
-        List<AuditEvent> events = repository.findByTenantIdAndTimestampBetween(tenantId, start, end, pageable);
-
-        // Apply in-memory filters for optional parameters
-        return events.stream()
-                .filter(e -> userId == null || userId.isBlank() || userId.equals(e.getUserId()))
-                .filter(e -> action == null || action.isBlank() || action.equals(e.getAction()))
-                .filter(e -> resourceType == null || resourceType.isBlank() || resourceType.equals(e.getResourceType()))
-                .sorted(Comparator.comparing(AuditEvent::getTimestamp).reversed())
-                .collect(Collectors.toList());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
+        return repository.findAll(spec, pageable).getContent();
     }
 
     public long countEvents(
@@ -63,29 +53,24 @@ public class AuditQueryService {
             LocalDate startDate,
             LocalDate endDate) {
 
-        Instant start = (startDate != null)
+        Instant start = toStartInstant(startDate);
+        Instant end = toEndInstant(endDate);
+
+        Specification<AuditEvent> spec = AuditEventSpecifications.withFilters(
+                tenantId, userId, action, resourceType, start, end);
+
+        return repository.count(spec);
+    }
+
+    private static Instant toStartInstant(LocalDate startDate) {
+        return (startDate != null)
                 ? startDate.atStartOfDay(ZoneOffset.UTC).toInstant()
                 : Instant.EPOCH;
+    }
 
-        Instant end = (endDate != null)
+    private static Instant toEndInstant(LocalDate endDate) {
+        return (endDate != null)
                 ? endDate.atTime(LocalTime.MAX).atZone(ZoneOffset.UTC).toInstant()
                 : Instant.now();
-
-        long count = repository.countByTenantIdAndTimestampBetween(tenantId, start, end);
-
-        // If additional filters are present, we need to fetch and count in-memory
-        if ((userId != null && !userId.isBlank())
-                || (action != null && !action.isBlank())
-                || (resourceType != null && !resourceType.isBlank())) {
-            List<AuditEvent> all = repository.findByTenantIdAndTimestampBetween(
-                    tenantId, start, end, PageRequest.of(0, Integer.MAX_VALUE));
-            return all.stream()
-                    .filter(e -> userId == null || userId.isBlank() || userId.equals(e.getUserId()))
-                    .filter(e -> action == null || action.isBlank() || action.equals(e.getAction()))
-                    .filter(e -> resourceType == null || resourceType.isBlank() || resourceType.equals(e.getResourceType()))
-                    .count();
-        }
-
-        return count;
     }
 }

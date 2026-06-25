@@ -1,7 +1,9 @@
 # ADR-008: Native Observability Subsystem
 
 ## Status
-Proposto — 2026-06-17
+Auditado — 2026-06-21 (4 fases, ~16 dias-homem)
+
+> **Auditado em 2026-06-21**: Todos os componentes do backend (53 arquivos Java) e frontend (11 views React) foram verificados como implementações reais. 4 bugs corrigidos durante a auditoria: column mapping do MetricsTsEntity, tenantId incorreto no DashboardService, double toString() no TraceContext/TraceContextFilter. Schema PostgreSQL criado como V9__observability_schema.sql. Pendente: aplicar V9 migration no banco.
 
 ## Context
 O CloudBuilder atualmente depende (ou dependeu) de ferramentas externas de observabilidade:

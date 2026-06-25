@@ -46,6 +46,30 @@ const providerTheme: Record<string, { border: string; handle: string; labelColor
     badgeText: 'text-indigo-700',
     propertyBg: 'bg-indigo-50/30',
   },
+  vercel: {
+    border: 'border-[#000000]/40',
+    handle: '!bg-[#000000]',
+    labelColor: 'text-[#000000]',
+    badgeBg: 'bg-neutral-50',
+    badgeText: 'text-neutral-700',
+    propertyBg: 'bg-neutral-50/30',
+  },
+  supabase: {
+    border: 'border-[#3ECF8E]/40',
+    handle: '!bg-[#3ECF8E]',
+    labelColor: 'text-[#3ECF8E]',
+    badgeBg: 'bg-emerald-50',
+    badgeText: 'text-emerald-700',
+    propertyBg: 'bg-emerald-50/30',
+  },
+  render: {
+    border: 'border-[#46E3B7]/40',
+    handle: '!bg-[#46E3B7]',
+    labelColor: 'text-[#46E3B7]',
+    badgeBg: 'bg-teal-50',
+    badgeText: 'text-teal-700',
+    propertyBg: 'bg-teal-50/30',
+  },
 }
 
 function getProviderForTheme(data: CanvasNodeData): string {
@@ -54,6 +78,9 @@ function getProviderForTheme(data: CanvasNodeData): string {
   if (data.componentDefinitionId?.startsWith('azure-')) return 'azure'
   if (data.componentDefinitionId?.startsWith('gcp-')) return 'gcp'
   if (data.componentDefinitionId?.startsWith('k8s-')) return 'k8s'
+  if (data.componentDefinitionId?.startsWith('vercel-')) return 'vercel'
+  if (data.componentDefinitionId?.startsWith('supabase-')) return 'supabase'
+  if (data.componentDefinitionId?.startsWith('render-')) return 'render'
   return 'aws'
 }
 
@@ -63,6 +90,9 @@ const providerColors: Record<string, string> = {
   azure: '#0078D4',
   gcp: '#4285F4',
   k8s: '#326CE5',
+  vercel: '#000000',
+  supabase: '#3ECF8E',
+  render: '#46E3B7',
 }
 
 function CloudNode(props: CanvasNode) {

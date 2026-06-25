@@ -5,7 +5,7 @@ beforeEach(() => {
   useCostStore.setState({
     costSummary: {
       totalMonthly: 0,
-      byProvider: { aws: 0, azure: 0, gcp: 0 },
+      byProvider: { aws: 0, azure: 0, gcp: 0, vercel: 0, supabase: 0, render: 0 },
       byService: {},
       currency: 'USD',
     },
@@ -121,7 +121,7 @@ describe('costStore', () => {
       useCostStore.setState({
         costSummary: {
           totalMonthly: 12847,
-          byProvider: { aws: 6423, azure: 3854, gcp: 2570 },
+          byProvider: { aws: 6423, azure: 3854, gcp: 2570, vercel: 0, supabase: 0, render: 0 },
           byService: { compute: 3000 },
           currency: 'USD',
         },

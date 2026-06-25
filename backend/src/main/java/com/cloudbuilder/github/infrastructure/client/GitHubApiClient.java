@@ -2,6 +2,9 @@ package com.cloudbuilder.github.infrastructure.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -21,6 +24,7 @@ import java.util.*;
 @Component
 public class GitHubApiClient {
 
+    private static final Logger log = LoggerFactory.getLogger(GitHubApiClient.class);
     private static final String API_BASE = "https://api.github.com";
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final HttpClient httpClient;
@@ -34,6 +38,7 @@ public class GitHubApiClient {
     /**
      * Fetch all repositories for the authenticated user.
      */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "listRepositoriesFallback")
     public List<GitHubRepo> listRepositories(String token) throws Exception {
         String json = get("/user/repos?per_page=100&sort=updated", token);
         JsonNode arr = MAPPER.readTree(json);
@@ -58,8 +63,17 @@ public class GitHubApiClient {
     }
 
     /**
+     * Fallback when circuit breaker is OPEN for listRepositories.
+     */
+    public List<GitHubRepo> listRepositoriesFallback(String token, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub listRepositories: {}", ex.getMessage());
+        return Collections.emptyList();
+    }
+
+    /**
      * List files and directories in a repository path.
      */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "listContentsFallback")
     public List<GitHubFile> listContents(String token, String owner, String repo, String path, String branch) throws Exception {
         String encodedPath = path.isEmpty() ? "" : "/" + path;
         String url = "/repos/" + owner + "/" + repo + "/contents" + encodedPath + "?ref=" + branch;
@@ -79,8 +93,17 @@ public class GitHubApiClient {
     }
 
     /**
+     * Fallback when circuit breaker is OPEN for listContents.
+     */
+    public List<GitHubFile> listContentsFallback(String token, String owner, String repo, String path, String branch, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub listContents: {}", ex.getMessage());
+        return Collections.emptyList();
+    }
+
+    /**
      * Get the content of a single file (decoded from base64).
      */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "getFileContentFallback")
     public String getFileContent(String token, String owner, String repo, String path, String branch) throws Exception {
         String encodedPath = "/" + path;
         String url = "/repos/" + owner + "/" + repo + "/contents" + encodedPath + "?ref=" + branch;
@@ -95,8 +118,17 @@ public class GitHubApiClient {
     }
 
     /**
+     * Fallback when circuit breaker is OPEN for getFileContent.
+     */
+    public String getFileContentFallback(String token, String owner, String repo, String path, String branch, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub getFileContent: {}", ex.getMessage());
+        return "";
+    }
+
+    /**
      * Verify if a token has access to a repository.
      */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "verifyAccessFallback")
     public boolean verifyAccess(String token, String owner, String repo) {
         try {
             get("/repos/" + owner + "/" + repo, token);
@@ -104,6 +136,14 @@ public class GitHubApiClient {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * Fallback when circuit breaker is OPEN for verifyAccess.
+     */
+    public boolean verifyAccessFallback(String token, String owner, String repo, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub verifyAccess: {}", ex.getMessage());
+        return false;
     }
 
     private GitHubFile parseFileNode(JsonNode node) {

@@ -7,10 +7,11 @@ import {
   Link2, RefreshCw,
 } from 'lucide-react'
 import { useDocsStore, type DocTreeItem, type DocLink } from './docsStore'
-import { fetchDocTree, fetchDocContent, searchDocs, fetchStaleDocs, fetchDocLinks, saveDocContent } from '@/api/docs'
+import { fetchDocTree, fetchDocContent, searchDocs, fetchStaleDocs, fetchDocLinks, saveDocContent, generateDocFromCanvas } from '@/api/docs'
 import type { StaleDoc } from './docsStore'
 import { cn } from '@/lib/utils'
-import { showSuccess, showError } from '@/lib/toast'
+import { showSuccess, showError, showInfo } from '@/lib/toast'
+import { useCanvasStore } from '@/store/canvasStore'
 
 /* ──────────────── Renderer de Markdown Nativo ──────────────── */
 
@@ -396,6 +397,23 @@ export function DocsModule() {
     }
   }, [activeDoc])
 
+  const handleGenerateAdr = useCallback(async () => {
+    const { canvasId, canvasName, nodes } = useCanvasStore.getState()
+    if (!canvasId || nodes.length === 0) {
+      showInfo('Crie um design no módulo Design primeiro para gerar um ADR automaticamente.')
+      return
+    }
+    const description = `Documentação automática gerada a partir do design "${canvasName}" com ${nodes.length} recursos.`
+    try {
+      const result = await generateDocFromCanvas(canvasId, canvasName, description)
+      useDocsStore.setState({ activeDoc: result })
+      showSuccess(`ADR gerado com sucesso: "${result.title}"`)
+      fetchTree()
+    } catch {
+      showError('Falha ao gerar ADR. Verifique se o backend está disponível.')
+    }
+  }, [fetchTree])
+
   useEffect(() => {
     fetchTree()
     fetchStaleDocs().then(setStaleDocs).catch(() => {})
@@ -530,7 +548,7 @@ export function DocsModule() {
 
           {/* Generate ADR */}
           <button
-            onClick={() => openDoc('docs/architecture/adr-009-auto-documentation.md')}
+            onClick={handleGenerateAdr}
             className="w-full flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all shadow-sm"
           >
             <Sparkles className="w-3.5 h-3.5" />

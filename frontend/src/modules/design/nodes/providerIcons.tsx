@@ -5,6 +5,9 @@ const providerLogos: Record<string, string> = {
   azure: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="7" height="10" rx="2" fill="#0078D4"/><rect x="13" y="4" width="7" height="16" rx="2" fill="#0078D4" opacity=".7"/></svg>`,
   gcp: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#4285F4"/><rect x="7" y="7" width="10" height="10" rx="3" fill="#fff"/><path d="M12 7v10M7 12h10" stroke="#4285F4" stroke-width="1.5"/></svg>`,
   k8s: `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#326CE5"/><path d="M12 6v12M7 12h10" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="#fff" stroke-width="1.5" fill="none"/></svg>`,
+  vercel: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L2 22h20L12 2z" fill="#000"/></svg>`,
+  supabase: `<svg viewBox="0 0 24 24" fill="none"><path d="M14 2l-8 13h6l-2 7 8-13h-6l2-7z" fill="#3ECF8E"/></svg>`,
+  render: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="4" fill="#46E3B7"/><path d="M12 8v8M8 12h8" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>`,
 }
 
 const awsServiceIcons: Record<string, string> = {
@@ -69,11 +72,43 @@ const k8sServiceIcons: Record<string, string> = {
   'k8s-hpa': `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="7" height="6" rx="1" stroke="#326CE5" stroke-width="1.5" fill="none"/><rect x="13" y="13" width="7" height="6" rx="1" stroke="#326CE5" stroke-width="1.5" fill="none"/><path d="M7 11v8M17 5v8" stroke="#326CE5" stroke-width="1" opacity=".5"/><path d="M7 19l-3-3 3-3M17 11l3-3-3-3" stroke="#326CE5" stroke-width="1.2" fill="none"/></svg>`,
 }
 
+const vercelServiceIcons: Record<string, string> = {
+  'vercel-project': `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L2 22h20L12 2z" stroke="#000" stroke-width="1.5" fill="none"/><text x="12" y="16" fill="#000" font-size="6" text-anchor="middle" font-weight="bold">P</text></svg>`,
+  'vercel-deployment': `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#000" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  'vercel-domain': `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="18" height="10" rx="2" stroke="#000" stroke-width="1.5" fill="none"/><text x="12" y="16" fill="#000" font-size="6" text-anchor="middle" font-weight="bold">.app</text></svg>`,
+  'vercel-edge-function': `<svg viewBox="0 0 24 24" fill="none"><path d="M5 4l7 8-7 8" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M15 4l4 8-4 8" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+  'vercel-env': `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="2" stroke="#000" stroke-width="1.5" fill="none"/><text x="12" y="15" fill="#000" font-size="6" text-anchor="middle" font-weight="bold">ENV</text></svg>`,
+  'vercel-analytics': `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="8" rx="1" stroke="#000" stroke-width="1.2" fill="none"/><rect x="10" y="6" width="4" height="12" rx="1" stroke="#000" stroke-width="1.2" fill="none"/><rect x="16" y="12" width="4" height="6" rx="1" stroke="#000" stroke-width="1.2" fill="none"/></svg>`,
+}
+
+const supabaseServiceIcons: Record<string, string> = {
+  'supabase-project': `<svg viewBox="0 0 24 24" fill="none"><path d="M14 2l-8 13h6l-2 7 8-13h-6l2-7z" stroke="#3ECF8E" stroke-width="1.5" fill="none"/></svg>`,
+  'supabase-table': `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="#3ECF8E" stroke-width="1.5" fill="none"/><path d="M3 10h18M12 4v16" stroke="#3ECF8E" stroke-width="1" opacity=".5"/></svg>`,
+  'supabase-auth': `<svg viewBox="0 0 24 24" fill="none"><path d="M12 3c-4 0-8 2-8 6v4l8 8 8-8V9c0-4-4-6-8-6z" stroke="#3ECF8E" stroke-width="1.5" fill="none"/><path d="M9 12l2 2 4-4" stroke="#3ECF8E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+  'supabase-storage-bucket': `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="3" stroke="#3ECF8E" stroke-width="1.5" fill="none"/><path d="M3 8h18" stroke="#3ECF8E" stroke-width="1" opacity=".4"/><rect x="8" y="12" width="8" height="2" rx=".5" fill="#3ECF8E" opacity=".5"/></svg>`,
+  'supabase-edge-function': `<svg viewBox="0 0 24 24" fill="none"><path d="M5 4l6 8-6 8" stroke="#3ECF8E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14 20h5" stroke="#3ECF8E" stroke-width="1.5" stroke-linecap="round"/><path d="M11 12h8" stroke="#3ECF8E" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  'supabase-realtime': `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#3ECF8E" stroke-width="1.5" fill="none"/><path d="M12 8v4l2 2" stroke="#3ECF8E" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  'supabase-storage': `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="16" rx="3" stroke="#3ECF8E" stroke-width="1.5" fill="none"/><path d="M3 8h18" stroke="#3ECF8E" stroke-width="1" opacity=".4"/><rect x="8" y="12" width="8" height="2" rx=".5" fill="#3ECF8E" opacity=".5"/></svg>`,
+}
+
+const renderServiceIcons: Record<string, string> = {
+  'render-web-service': `<svg viewBox="0 0 24 24" fill="none"><rect x="5" y="4" width="14" height="16" rx="2" stroke="#46E3B7" stroke-width="1.5" fill="none"/><rect x="8" y="7" width="8" height="2" rx=".5" fill="#46E3B7" opacity=".5"/><rect x="8" y="11" width="5" height="2" rx=".5" fill="#46E3B7" opacity=".5"/><circle cx="17" cy="17" r="2" fill="#46E3B7" opacity=".6"/></svg>`,
+  'render-static-site': `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="12" rx="2" stroke="#46E3B7" stroke-width="1.5" fill="none"/><path d="M4 10h16" stroke="#46E3B7" stroke-width="1" opacity=".4"/><text x="12" y="16" fill="#46E3B7" font-size="5" text-anchor="middle" font-weight="bold">HTML</text></svg>`,
+  'render-cron-job': `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#46E3B7" stroke-width="1.5" fill="none"/><path d="M12 7v5l3 3" stroke="#46E3B7" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  'render-background-worker': `<svg viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="2" stroke="#46E3B7" stroke-width="1.5" fill="none"/><path d="M10 9l4 3-4 3" stroke="#46E3B7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
+  'render-postgres': `<svg viewBox="0 0 24 24" fill="none"><path d="M4 5c0-1.1 3.6-2 8-2s8 .9 8 2v14c0 1.1-3.6 2-8 2s-8-.9-8-2V5z" stroke="#46E3B7" stroke-width="1.5" fill="none"/><path d="M4 5c0 1.1 3.6 2 8 2s8-.9 8-2" stroke="#46E3B7" stroke-width="1" fill="none" opacity=".4"/><text x="12" y="14" fill="#46E3B7" font-size="5" text-anchor="middle" font-weight="bold">PG</text></svg>`,
+  'render-redis': `<svg viewBox="0 0 24 24" fill="none"><path d="M4 5c0-1.1 3.6-2 8-2s8 .9 8 2v12c0 1.1-3.6 2-8 2s-8-.9-8-2V5z" stroke="#46E3B7" stroke-width="1.5" fill="none"/><text x="12" y="14" fill="#46E3B7" font-size="5" text-anchor="middle" font-weight="bold">R</text></svg>`,
+  'render-env-group': `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="8" width="16" height="10" rx="2" stroke="#46E3B7" stroke-width="1.5" fill="none"/><text x="12" y="16" fill="#46E3B7" font-size="5" text-anchor="middle" font-weight="bold">.env</text></svg>`,
+}
+
 const allServiceIcons: Record<string, string> = {
   ...awsServiceIcons,
   ...azureServiceIcons,
   ...gcpServiceIcons,
   ...k8sServiceIcons,
+  ...vercelServiceIcons,
+  ...supabaseServiceIcons,
+  ...renderServiceIcons,
 }
 
 export function getProviderLogo(provider: string): string {
@@ -106,6 +141,9 @@ export function getProviderColor(provider: string): string {
     azure: '#0078D4',
     gcp: '#4285F4',
     k8s: '#326CE5',
+    vercel: '#000000',
+    supabase: '#3ECF8E',
+    render: '#46E3B7',
   }
   return colors[provider] || '#6b7280'
 }

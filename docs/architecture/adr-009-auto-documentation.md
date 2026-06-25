@@ -1,7 +1,9 @@
 # ADR-009: Auto-Documentation Feature
 
 ## Status
-Proposto — 2026-06-17
+Implementado — 2026-06-17 (Phase 4c)
+
+> **Phase 4c (2026-06-17)**: Backend DocScannerService (SHA-256, path traversal protection, frontmatter+H1 extraction) + AutoDocService + DocsController (6 endpoints). Frontend DocsModule (sidebar tree, native markdown viewer, search, import .md, "Gerar ADR" button, stale banners). TypeScript 0 errors, build 7.65s, vitest 62/62 pass, E2E 6/6 pass. Detalhes no summary AGENTS.md.
 
 ## Context
 O CloudBuilder possui documentação rica em `docs/` (roadmap, ADRs, personas, jornadas, análises competitivas) e o `AGENTS.md` central. No entanto:

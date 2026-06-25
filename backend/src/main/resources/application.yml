@@ -10,6 +10,9 @@ spring:
       maximum-pool-size: 20
       minimum-idle: 5
 
+  flyway:
+    enabled: false  # Flyway habilitado apenas no profile 'prod'
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -18,6 +21,12 @@ spring:
       hibernate:
         format_sql: true
         default_schema: public
+        # N+1 query detection (ADR-027): log queries that trigger additional selects
+        # Enable in dev profile for detecting N+1 issues during development
+        session:
+          events:
+            log:
+              LOG_QUERIES_SLOWER_THAN_MS: 100
 
   modulith:
     events:
@@ -32,16 +41,107 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+    jmx:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+    metrics:
+      enabled: true
+  metrics:
+    tags:
+      application: cloudbuilder
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
 
+
+# ── Resilience4j Circuit Breaker Configuration (ADR-023) ─────────────
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        recordExceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+      llmClient:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 40
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 3
+      gitHubClient:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 30
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+    instances:
+      opaClient:
+        baseConfig: default
+      llmClient:
+        baseConfig: llmClient
+      gitHubClient:
+        baseConfig: gitHubClient
+
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 10s
+      llmClient:
+        timeoutDuration: 30s
+    instances:
+      opaClient:
+        baseConfig: default
+      llmClient:
+        baseConfig: llmClient
+      gitHubClient:
+        baseConfig: default
 
 cloudbuilder:
+  sso:
+    enabled: false  # SSO desabilitado por padrão (ADR-025)
+
   security:
     jwt-secret: "${JWT_SECRET:?JWT_SECRET env var obrigatoria. Gere com: openssl rand -base64 64}"
     access-token-expiration: 900000
     refresh-token-expiration: 604800000
     cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
     h2-console-enabled: false
+
+  ai:
+    llm:
+      # provider: rule-based | openai | anthropic (default: rule-based)
+      provider: rule-based
+      openai:
+        api-key: "${OPENAI_API_KEY:}"
+        model: gpt-4o
+      anthropic:
+        api-key: "${ANTHROPIC_API_KEY:}"
+        model: claude-sonnet-4-20250514
+
+  opa:
+    # OPA sidecar URL — set to empty to disable OPA integration
+    url: "${OPA_URL:http://opa:8181}"
+
     rate-limit:
       auth-max-requests: 10
       auth-window-seconds: 60

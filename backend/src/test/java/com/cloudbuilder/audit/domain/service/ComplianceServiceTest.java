@@ -26,11 +26,17 @@ class ComplianceServiceTest {
     @Mock
     private AuditEventRepository auditEventRepository;
 
+    @Mock
+    private OpaClientService opaClient;
+
     private ComplianceService complianceService;
+
+    private ComplianceRuleEvaluator auditPatternEvaluator;
 
     @BeforeEach
     void setUp() {
-        complianceService = new ComplianceService(ruleRepository, auditEventRepository);
+        auditPatternEvaluator = new AuditPatternEvaluator(auditEventRepository);
+        complianceService = new ComplianceService(ruleRepository, List.of(auditPatternEvaluator), opaClient);
     }
 
     @Test

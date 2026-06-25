@@ -30,16 +30,23 @@ public class InMemoryDocAutoLinkRepository implements DocAutoLinkRepository {
     }
 
     @Override
-    public List<DocAutoLink> findByDocPath(String docPath) {
+    public List<DocAutoLink> findBySourcePath(String sourcePath) {
         return store.values().stream()
-                .filter(l -> l.getDocPath().equals(docPath))
+                .filter(l -> l.getSourcePath().equals(sourcePath))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<DocAutoLink> findByEntityTypeAndEntityId(String entityType, String entityId) {
+    public List<DocAutoLink> findByLinkedPath(String linkedPath) {
         return store.values().stream()
-                .filter(l -> entityType.equals(l.getEntityType()) && entityId.equals(l.getEntityId()))
+                .filter(l -> l.getLinkedPath().equals(linkedPath))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<DocAutoLink> findByRelationship(String relationship) {
+        return store.values().stream()
+                .filter(l -> relationship.equals(l.getRelationship()))
                 .collect(Collectors.toList());
     }
 
@@ -61,7 +68,7 @@ public class InMemoryDocAutoLinkRepository implements DocAutoLinkRepository {
     }
 
     @Override
-    public void deleteByDocPath(String docPath) {
-        store.values().removeIf(l -> l.getDocPath().equals(docPath));
+    public void deleteBySourcePath(String sourcePath) {
+        store.values().removeIf(l -> l.getSourcePath().equals(sourcePath));
     }
 }

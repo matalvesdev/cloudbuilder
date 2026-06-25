@@ -1,13 +1,54 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { ProviderCredential, Environment, Provider, ProviderCredentialStatus, Deployment } from '@/types/settings.types'
+import { api } from '@/api/client'
+
+// ─── API response types (matching backend DTOs) ───────────────────────────
+
+interface CredentialDTO {
+  id: string
+  tenantId: string
+  name: string
+  provider: Provider
+  keyId: string
+  maskedSecret: string
+  region: string
+  status: ProviderCredentialStatus
+  lastTestedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+interface CreateCredentialRequest {
+  name: string
+  provider: Provider
+  keyId: string
+  secret: string
+  region: string
+  tenantId: string
+}
+
+interface UpdateCredentialRequest {
+  name?: string
+  keyId?: string
+  secret?: string
+  region?: string
+}
 
 interface CredentialState {
   credentials: ProviderCredential[]
   environments: Environment[]
   deployments: Deployment[]
+  loading: boolean
+  error: string | null
 
-  // Credential actions
+  // API-backed credential actions
+  fetchCredentials: (tenantId?: string) => Promise<void>
+  createCredential: (request: CreateCredentialRequest) => Promise<ProviderCredential | null>
+  updateCredentialApi: (id: string, request: UpdateCredentialRequest) => Promise<void>
+  deleteCredential: (id: string) => Promise<void>
+  testCredentialConnection: (id: string) => Promise<boolean>
+
+  // Local credential actions (kept for backward compatibility)
   addCredential: (cred: Omit<ProviderCredential, 'id' | 'maskedSecret' | 'status' | 'lastTestedAt' | 'createdAt' | 'updatedAt'>) => void
   updateCredential: (id: string, updates: Partial<ProviderCredential>) => void
   removeCredential: (id: string) => void
@@ -27,13 +68,130 @@ interface CredentialState {
 }
 
 export const useCredentialStore = create<CredentialState>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       credentials: [],
       environments: [],
       deployments: [],
+      loading: false,
+      error: null,
 
-      // ─── Credential actions ───
+      // ─── API-backed credential actions ─────────────────────
+
+      fetchCredentials: async (tenantId?: string) => {
+        const tid = tenantId || localStorage.getItem('cloudbuilder-active-tenant') || 'default'
+        set({ loading: true, error: null })
+        try {
+          const data = await api.get<CredentialDTO[]>(`/credentials?tenantId=${encodeURIComponent(tid)}`)
+          const credentials: ProviderCredential[] = data.map((dto) => ({
+            id: dto.id,
+            name: dto.name,
+            provider: dto.provider,
+            keyId: dto.keyId,
+            maskedSecret: dto.maskedSecret,
+            secret: '',
+            region: dto.region,
+            status: dto.status,
+            lastTestedAt: dto.lastTestedAt,
+            createdAt: dto.createdAt,
+            updatedAt: dto.updatedAt,
+          }))
+          set({ credentials, loading: false })
+        } catch {
+          set({ loading: false, credentials: [] })
+        }
+      },
+
+      createCredential: async (request) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.post<CredentialDTO>('/credentials', request)
+          const newCred: ProviderCredential = {
+            id: dto.id,
+            name: dto.name,
+            provider: dto.provider,
+            keyId: dto.keyId,
+            maskedSecret: dto.maskedSecret,
+            secret: request.secret,
+            region: dto.region,
+            status: dto.status,
+            lastTestedAt: dto.lastTestedAt,
+            createdAt: dto.createdAt,
+            updatedAt: dto.updatedAt,
+          }
+          set((state) => ({ credentials: [...state.credentials, newCred], loading: false }))
+          return newCred
+        } catch {
+          set({ loading: false })
+          return null
+        }
+      },
+
+      updateCredentialApi: async (id, request) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.put<CredentialDTO>(`/credentials/${id}`, request)
+          set((state) => ({
+            credentials: state.credentials.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    name: dto.name,
+                    keyId: dto.keyId,
+                    maskedSecret: dto.maskedSecret,
+                    region: dto.region,
+                    status: dto.status,
+                    lastTestedAt: dto.lastTestedAt,
+                    updatedAt: dto.updatedAt,
+                    secret: request.secret || c.secret,
+                  }
+                : c
+            ),
+            loading: false,
+          }))
+        } catch {
+          set({ loading: false })
+        }
+      },
+
+      deleteCredential: async (id) => {
+        set({ loading: true, error: null })
+        try {
+          await api.delete(`/credentials/${id}`)
+          set((state) => ({
+            credentials: state.credentials.filter((c) => c.id !== id),
+            environments: state.environments.map((e) =>
+              e.credentialId === id ? { ...e, credentialId: '' } : e
+            ),
+            loading: false,
+          }))
+        } catch {
+          set({ loading: false })
+        }
+      },
+
+      testCredentialConnection: async (id) => {
+        set({ loading: true, error: null })
+        try {
+          await api.post<{ success: boolean }>(`/credentials/${id}/test`)
+          set((state) => ({
+            credentials: state.credentials.map((c) =>
+              c.id === id ? { ...c, status: 'valid' as ProviderCredentialStatus, lastTestedAt: new Date().toISOString() } : c
+            ),
+            loading: false,
+          }))
+          return true
+        } catch {
+          set((state) => ({
+            credentials: state.credentials.map((c) =>
+              c.id === id ? { ...c, status: 'invalid' as ProviderCredentialStatus, lastTestedAt: new Date().toISOString() } : c
+            ),
+            loading: false,
+          }))
+          return false
+        }
+      },
+
+      // ─── Local credential actions (kept for backward compatibility) ───
 
       addCredential: (cred) => {
         const now = new Date().toISOString()
@@ -67,24 +225,8 @@ export const useCredentialStore = create<CredentialState>()(
         }))
       },
 
-      testCredential: async (id) => {
-        const cred = get().credentials.find((c) => c.id === id)
-        if (!cred) return false
-
-        // Simulate connection test — in production this calls the backend
-        const success = await new Promise<boolean>((resolve) => {
-          setTimeout(() => resolve(true), 1500)
-        })
-
-        set((state) => ({
-          credentials: state.credentials.map((c) =>
-            c.id === id
-              ? { ...c, status: success ? 'valid' : 'invalid', lastTestedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-              : c
-          ),
-        }))
-
-        return success
+      testCredential: async (_id) => {
+        return get().testCredentialConnection(_id)
       },
 
       getCredentialById: (id) => get().credentials.find((c) => c.id === id),
@@ -141,14 +283,5 @@ export const useCredentialStore = create<CredentialState>()(
       getDeploymentsByEnvironment: (envId) => {
         return get().deployments.filter((d) => d.environmentId === envId)
       },
-    }),
-    {
-      name: 'cloudbuilder-credentials',
-      partialize: (state) => ({
-        credentials: state.credentials.map(({ secret, ...rest }) => ({ ...rest, secret: '' })),
-        environments: state.environments,
-        deployments: state.deployments,
-      }),
-    }
-  )
+    })
 )

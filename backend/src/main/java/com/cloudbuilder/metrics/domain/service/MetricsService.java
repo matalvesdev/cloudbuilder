@@ -17,7 +17,12 @@ import java.util.concurrent.ThreadLocalRandom;
  * would implement a ProviderMetricsClient interface and be injected here.
  * For now, generates realistic-looking mock data so the frontend overlay can be built
  * and tested without real cloud credentials.
+ *
+ * @deprecated Use real metrics persistence via CustomMetrics + MetricsEngine (ADR-008).
+ * This mock service will be removed once the native observability subsystem is complete.
+ * See ADR-008 Fase 1 — Substituir mock MetricsService por real.
  */
+@Deprecated
 @Service
 public class MetricsService {
 

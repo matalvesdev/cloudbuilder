@@ -16,7 +16,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRepoStore, MOCK_REPOS_BY_PROVIDER } from '@/store/repoStore'
+import { useRepoStore } from '@/store/repoStore'
 import {
   REPO_PROVIDER_LABELS,
   REPO_STATUS_LABELS,
@@ -50,44 +50,42 @@ function ConnectDialog({
   const { connectRepo, connectedRepos } = useRepoStore()
   const [provider, setProvider] = useState<RepoProvider>('github')
   const [token, setToken] = useState('')
+  const [repoUrl, setRepoUrl] = useState('')
   const [connecting, setConnecting] = useState(false)
-  const [connected, setConnected] = useState(false)
-  const [availableRepos, setAvailableRepos] = useState<typeof MOCK_REPOS_BY_PROVIDER['github']>([])
-  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set())
+  const [error, setError] = useState<string | null>(null)
 
   if (!open) return null
 
   const handleConnect = async () => {
-    if (!token.trim()) return
+    if (!token.trim() || !repoUrl.trim()) {
+      setError('Preencha o token e a URL do repositório')
+      return
+    }
     setConnecting(true)
-    await new Promise((r) => setTimeout(r, 1500))
-    setConnecting(false)
-    setConnected(true)
-    setAvailableRepos(MOCK_REPOS_BY_PROVIDER[provider])
-  }
-
-  const handleImport = () => {
-    availableRepos.forEach((repo) => {
-      const alreadyConnected = connectedRepos.some(
-        (r) => r.fullName === repo.fullName && r.provider === provider
-      )
-      if (!alreadyConnected && selectedRepos.has(repo.fullName)) {
-        connectRepo(provider, token, repo)
+    setError(null)
+    try {
+      const { api } = await import('@/api/client')
+      const response = await api.post<{ id: string }>('/git/connect', {
+        provider,
+        repoUrl,
+        token,
+      })
+      if (response?.id) {
+        connectRepo(provider, token, {
+          repoUrl,
+          repoName: repoUrl.split('/').pop() || 'repo',
+          fullName: repoUrl.replace(/https?:\/\/(www\.)?(github|gitlab|bitbucket)\.com\//, ''),
+          owner: repoUrl.split('/').slice(-2)[0] || 'owner',
+          defaultBranch: 'main',
+        })
       }
-    })
-    setSelectedRepos(new Set())
-    setConnected(false)
-    setToken('')
-    onClose()
-  }
-
-  const toggleRepo = (fullName: string) => {
-    setSelectedRepos((prev) => {
-      const next = new Set(prev)
-      if (next.has(fullName)) next.delete(fullName)
-      else next.add(fullName)
-      return next
-    })
+    } catch (err) {
+      setError(err && typeof err === 'object' && 'message' in err
+        ? (err as { message: string }).message
+        : 'Erro ao conectar repositório')
+    } finally {
+      setConnecting(false)
+    }
   }
 
   return (
@@ -103,150 +101,88 @@ function ConnectDialog({
           </p>
         </div>
         <div className="p-6 space-y-4">
-          {!connected ? (
-            <>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Provedor
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(Object.entries(REPO_PROVIDER_LABELS) as [RepoProvider, string][]).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setProvider(key)}
-                      className={cn(
-                        'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-xs font-medium',
-                        provider === key
-                          ? 'border-brand-navy bg-brand-navy/5 text-brand-navy'
-                          : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
-                      )}
-                    >
-                      <ProviderIcon provider={key} className="w-5 h-5" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Provedor
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.entries(REPO_PROVIDER_LABELS) as [RepoProvider, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setProvider(key)}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-xs font-medium',
+                    provider === key
+                      ? 'border-brand-navy bg-brand-navy/5 text-brand-navy'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                  )}
+                >
+                  <ProviderIcon provider={key} className="w-5 h-5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                  Token de Acesso
-                </label>
-                <input
-                  type="password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy bg-white transition-all"
-                  placeholder={
-                    provider === 'github'
-                      ? 'ghp_xxxxxxxxxxxxxxxxxxxx'
-                      : provider === 'gitlab'
-                        ? 'glpat-xxxxxxxxxxxxxxxxxxxx'
-                        : 'BBxxxx-xxxxxxxxxxxxxxxxxxxx'
-                  }
-                />
-                <p className="text-[10px] text-slate-400 mt-1.5">
-                  {provider === 'github'
-                    ? 'Crie um token em Settings → Developer settings → Personal access tokens'
-                    : provider === 'gitlab'
-                      ? 'Crie um token em Preferences → Access Tokens'
-                      : 'Crie um token em Personal settings → App passwords'}
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200 text-xs text-green-700">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                Autenticado como <strong>{provider}.com/{provider === 'github' ? 'cloudbuilder' : provider === 'gitlab' ? 'cloudbuilder' : 'acme'}</strong>
-              </div>
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Token de Acesso
+            </label>
+            <input
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy bg-white transition-all"
+              placeholder={
+                provider === 'github'
+                  ? 'ghp_xxxxxxxxxxxxxxxxxxxx'
+                  : provider === 'gitlab'
+                    ? 'glpat-xxxxxxxxxxxxxxxxxxxx'
+                    : 'BBxxxx-xxxxxxxxxxxxxxxxxxxx'
+              }
+            />
+            <p className="text-[10px] text-slate-400 mt-1.5">
+              {provider === 'github'
+                ? 'Crie um token em Settings → Developer settings → Personal access tokens'
+                : provider === 'gitlab'
+                  ? 'Crie um token em Preferences → Access Tokens'
+                  : 'Crie um token em Personal settings → App passwords'}
+            </p>
+          </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Repositórios encontrados
-                </label>
-                <div className="max-h-[240px] overflow-y-auto space-y-1.5 pr-1">
-                  {availableRepos.map((repo) => {
-                    const alreadyConnected = connectedRepos.some(
-                      (r) => r.fullName === repo.fullName && r.provider === provider
-                    )
-                    const isSelected = selectedRepos.has(repo.fullName)
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              URL do Repositório
+            </label>
+            <input
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy bg-white transition-all"
+              placeholder="https://github.com/meu-org/meu-repo"
+            />
+          </div>
 
-                    return (
-                      <button
-                        key={repo.fullName}
-                        onClick={() => !alreadyConnected && toggleRepo(repo.fullName)}
-                        disabled={alreadyConnected}
-                        className={cn(
-                          'w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left',
-                          alreadyConnected
-                            ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
-                            : isSelected
-                              ? 'border-brand-navy bg-brand-navy/5'
-                              : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            'w-4 h-4 rounded border-2 flex items-center justify-center shrink-0',
-                            alreadyConnected
-                              ? 'border-green-500 bg-green-50'
-                              : isSelected
-                                ? 'border-brand-navy bg-brand-navy'
-                                : 'border-slate-300'
-                          )}
-                        >
-                          {alreadyConnected ? (
-                            <CheckCircle2 className="w-3 h-3 text-green-600" />
-                          ) : isSelected ? (
-                            <CheckCircle2 className="w-3 h-3 text-white" />
-                          ) : null}
-                        </div>
-                        <GitBranch className="w-4 h-4 text-slate-400 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-brand-navy truncate">{repo.fullName}</p>
-                          <p className="text-[10px] text-slate-400">
-                            <Globe className="w-3 h-3 inline mr-0.5" />
-                            {repo.defaultBranch}
-                          </p>
-                        </div>
-                        {alreadyConnected && (
-                          <span className="text-[10px] text-green-600 font-medium shrink-0">Conectado</span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </>
+          {error && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
+              {error}
+            </div>
           )}
         </div>
         <div className="p-6 pt-0 flex items-center justify-end gap-2">
           <button
-            onClick={() => { setConnected(false); setToken(''); onClose() }}
+            onClick={() => { setToken(''); setRepoUrl(''); setError(null); onClose() }}
             className="px-4 h-9 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
           >
             Cancelar
           </button>
-          {!connected ? (
-            <button
-              onClick={handleConnect}
-              disabled={connecting || !token.trim()}
-              className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50"
-            >
-              {connecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              {connecting ? 'Conectando...' : 'Conectar'}
-            </button>
-          ) : (
-            <button
-              onClick={handleImport}
-              disabled={selectedRepos.size === 0}
-              className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Importar Selecionados ({selectedRepos.size})
-            </button>
-          )}
+          <button
+            onClick={handleConnect}
+            disabled={connecting || !token.trim() || !repoUrl.trim()}
+            className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50"
+          >
+            {connecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            {connecting ? 'Conectando...' : 'Conectar'}
+          </button>
         </div>
       </div>
     </div>

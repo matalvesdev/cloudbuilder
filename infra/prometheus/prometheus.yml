@@ -1,0 +1,51 @@
+# ─── CloudBuilder — Prometheus Configuration ──────────────────────────────
+# Targets:
+#   - Backend (8080): Micrometer /actuator/prometheus
+#   - Prometheus itself (9090): self-monitoring
+#
+# Alerting rules:
+#   - HighErrorRate: >1% errors over 5min
+#   - HighLatency: p95 > 500ms over 5min
+#   - LowDiskSpace: <500MB free
+#   - HighDbConnections: >80% pool utilization
+#
+# Integration: deployed alongside Grafana (port 3000) for dashboards.
+# ────────────────────────────────────────────────────────────────────────────
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+      # No AlertManager by default — alerts can be configured in Grafana
+
+# Rule files
+rule_files:
+  - "alerts.yml"
+
+# Scrape targets
+scrape_configs:
+  # ── CloudBuilder Backend ──────────────────────────────────────────────
+  - job_name: "cloudbuilder-backend"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: "/actuator/prometheus"
+    scheme: http
+    static_configs:
+      - targets:
+          - "backend:8080"
+        labels:
+          application: "cloudbuilder"
+          service: "backend"
+
+  # ── Prometheus self-monitoring ────────────────────────────────────────
+  - job_name: "prometheus"
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - "localhost:9090"

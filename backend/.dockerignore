@@ -1,0 +1,43 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Backend — .dockerignore
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Build output
+target/
+!target/*.jar
+
+# Maven wrapper JAR (keep the wrapper, ignore the download)
+.mvn/wrapper/maven-wrapper.jar
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+
+# Test reports
+test-output/
+surefire-reports/

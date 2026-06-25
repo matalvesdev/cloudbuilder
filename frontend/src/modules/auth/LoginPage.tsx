@@ -1,6 +1,8 @@
-import { useState, FormEvent } from 'react'
-import { Cloud, Eye, EyeOff, Loader2, AlertCircle, Compass } from 'lucide-react'
+import { useState, FormEvent, useCallback } from 'react'
+import { Cloud, Eye, EyeOff, Loader2, AlertCircle, Compass, Github, Globe, Shield, ExternalLink, X, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useTenantStore } from '@/store/tenantStore'
+import { cn } from '@/lib/utils'
 
 interface LoginPageProps {
   onSwitchToRegister?: () => void
@@ -11,7 +13,31 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const { login, isLoading, error } = useAuthStore()
+  const [genericSSOpen, setGenericSSOpen] = useState(false)
+  const [customProvider, setCustomProvider] = useState('')
+  const { login, isLoading, error, user } = useAuthStore()
+  const activeProject = useTenantStore((s) => s.getActiveProject())
+
+  const handleGoogleSSO = useCallback(() => {
+    const tenantId = user?.tenantId || activeProject?.id || ''
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/google`
+  }, [user, activeProject])
+
+  const handleGitHubSSO = useCallback(() => {
+    const tenantId = user?.tenantId || activeProject?.id || ''
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/github`
+  }, [user, activeProject])
+
+  const handleSamlSSO = useCallback(() => {
+    const tenantId = user?.tenantId || activeProject?.id || ''
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/saml`
+  }, [user, activeProject])
+
+  const handleGenericSSO = useCallback(() => {
+    if (!customProvider.trim()) return
+    const tenantId = user?.tenantId || activeProject?.id || ''
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/${encodeURIComponent(customProvider.trim())}`
+  }, [customProvider, user, activeProject])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -134,6 +160,95 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                   'Entrar'
                 )}
               </button>
+
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-slate-400 font-medium">Ou continuar com</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleGitHubSSO}
+                  className={cn(
+                    "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
+                    "border border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40"
+                  )}
+                >
+                  <Github className="w-4 h-4" />
+                  GitHub
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGoogleSSO}
+                  className={cn(
+                    "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
+                    "border border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40"
+                  )}
+                >
+                  <Globe className="w-4 h-4" />
+                  Google
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleSamlSSO}
+                className={cn(
+                  "w-full flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
+                  "border border-dashed border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40"
+                )}
+              >
+                <Shield className="w-4 h-4" />
+                SSO Corporativo (SAML)
+              </button>
+
+              {/* Generic SSO button */}
+              <div className="relative">
+                {genericSSOpen ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={customProvider}
+                      onChange={(e) => setCustomProvider(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleGenericSSO() }}
+                      placeholder="Nome do provedor (ex: okta, azure)"
+                      className="flex-1 h-10 px-3.5 rounded-xl border border-brand-navy/30 text-sm focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy outline-none transition-all placeholder:text-slate-300"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenericSSO}
+                      disabled={!customProvider.trim()}
+                      className="flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl text-sm font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setGenericSSOpen(false); setCustomProvider('') }}
+                      className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setGenericSSOpen(true)}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
+                      "border border-dashed border-brand-navy/20 text-slate-500 bg-transparent hover:bg-slate-50 hover:border-brand-navy/40"
+                    )}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Entrar com SSO
+                  </button>
+                )}
+              </div>
             </form>
 
             <div className="mt-4 text-center">

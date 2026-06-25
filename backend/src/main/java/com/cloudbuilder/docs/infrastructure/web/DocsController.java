@@ -66,6 +66,18 @@ public class DocsController {
     }
 
     /**
+     * Deletes a documentation file.
+     */
+    @DeleteMapping("/content")
+    public ResponseEntity<Void> deleteContent(@RequestParam("path") String path) {
+        boolean deleted = docScannerService.deleteFile(DEFAULT_DOCS_PATH, path);
+        if (deleted) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    /**
      * Saves (creates or updates) a documentation file.
      */
     @PutMapping("/content")
@@ -117,23 +129,23 @@ public class DocsController {
     // ── Cross-module links ──
 
     /**
-     * Returns all links for a given doc path.
+     * Returns all links for a given source doc path.
      */
     @GetMapping("/links")
-    public ResponseEntity<List<DocAutoLink>> getLinksForDoc(@RequestParam String path) {
-        return ResponseEntity.ok(docAutoLinkService.getLinksForDoc(path));
+    public ResponseEntity<List<DocAutoLink>> getLinksBySource(@RequestParam String path) {
+        return ResponseEntity.ok(docAutoLinkService.getLinksBySourcePath(path));
     }
 
     /**
-     * Creates a new cross-module link between a doc and an entity.
+     * Creates a new cross-module link between two docs.
      */
     @PostMapping("/links")
     public ResponseEntity<DocAutoLink> createLink(@RequestBody DocLinkRequest request) {
-        if (request.getDocPath() == null || request.getEntityType() == null || request.getEntityId() == null) {
+        if (request.getSourcePath() == null || request.getLinkedPath() == null || request.getRelationship() == null) {
             return ResponseEntity.badRequest().build();
         }
         DocAutoLink link = docAutoLinkService.createLink(
-                request.getDocPath(), request.getEntityType(), request.getEntityId(),
+                request.getSourcePath(), request.getLinkedPath(), request.getRelationship(),
                 request.getTenantId() != null ? request.getTenantId() : "default"
         );
         return ResponseEntity.ok(link);

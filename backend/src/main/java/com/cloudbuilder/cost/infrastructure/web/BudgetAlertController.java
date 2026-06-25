@@ -1,0 +1,55 @@
+package com.cloudbuilder.cost.infrastructure.web;
+
+import com.cloudbuilder.cost.domain.model.BudgetAlert;
+import com.cloudbuilder.cost.domain.service.BudgetAlertService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/budget-alerts")
+public class BudgetAlertController {
+
+    private final BudgetAlertService budgetAlertService;
+
+    public BudgetAlertController(BudgetAlertService budgetAlertService) {
+        this.budgetAlertService = budgetAlertService;
+    }
+
+    @PostMapping
+    public ResponseEntity<BudgetAlert> create(@RequestBody BudgetAlert alert) {
+        return ResponseEntity.ok(budgetAlertService.create(alert));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BudgetAlert> getById(@PathVariable String id) {
+        return budgetAlertService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<BudgetAlert>> getAll(@RequestParam(defaultValue = "default") String tenantId) {
+        return ResponseEntity.ok(budgetAlertService.findByTenantId(tenantId));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<BudgetAlert> update(@PathVariable String id, @RequestBody BudgetAlert alert) {
+        return budgetAlertService.update(id, alert)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        budgetAlertService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/check")
+    public ResponseEntity<List<BudgetAlert>> checkAlerts() {
+        var updated = budgetAlertService.checkAlerts();
+        return ResponseEntity.ok(updated);
+    }
+}

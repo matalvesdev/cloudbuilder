@@ -142,11 +142,11 @@ class AIOpsServiceTest {
 
     @Test
     void answerQuery_ShouldDelegateToAIService() {
-        when(aiService.answerQuery("question", "context")).thenReturn("answer");
+        when(aiService.answerQuery(eq("question"), anyMap())).thenReturn("answer");
 
         var result = service.answerQuery("question", "context");
 
         assertEquals("answer", result);
-        verify(aiService).answerQuery("question", "context");
+        verify(aiService).answerQuery(eq("question"), anyMap());
     }
 }

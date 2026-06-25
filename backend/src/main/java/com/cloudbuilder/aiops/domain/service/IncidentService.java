@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 @Service
 @Transactional
 public class IncidentService {
@@ -58,6 +60,8 @@ public class IncidentService {
 
     @Transactional(readOnly = true)
     public String answerQuery(String question, String context) {
-        return aiService.answerQuery(question, context);
+        var ctx = new HashMap<String, Object>();
+        ctx.put("incidentCount", context);
+        return aiService.answerQuery(question, ctx);
     }
 }

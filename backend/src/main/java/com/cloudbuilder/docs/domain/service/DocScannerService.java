@@ -157,6 +157,30 @@ public class DocScannerService {
     }
 
     /**
+     * Deletes a markdown file from the docs directory.
+     */
+    public boolean deleteFile(String rootPath, String relativePath) {
+        Path docsDir = Paths.get(rootPath).normalize();
+        Path targetPath = docsDir.resolve(relativePath).normalize();
+
+        // Security: prevent path traversal
+        if (!targetPath.startsWith(docsDir)) {
+            return false;
+        }
+
+        if (!Files.exists(targetPath) || !targetPath.toString().endsWith(".md")) {
+            return false;
+        }
+
+        try {
+            Files.delete(targetPath);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
      * Searches for documents matching a query string.
      */
     public List<DocTreeItem> searchDocs(String rootPath, String query) {

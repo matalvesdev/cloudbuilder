@@ -76,6 +76,7 @@ import { useCanvasStore } from '@/store/canvasStore'
 import { useCollaborationStore } from '@/store/collaborationStore'
 import { downloadCanvasJson, importCanvasFromFile } from './services'
 import { importTerraform } from '@/api/import'
+import { generateDocFromCanvas } from '@/api/docs'
 import { validateLocal, getNodeValidationStatus } from './validation/validationService'
 import { ValidationPanel } from './validation/ValidationPanel'
 import type { Node } from '@xyflow/react'
@@ -196,6 +197,18 @@ export function DesignModule() {
       localStorage.setItem(historyKey, JSON.stringify(updated))
     } catch { /* localStorage might be full */ }
     state.setCanvas(design)
+
+    // Auto-generate documentation from canvas design (ADR-009)
+    const canvasId = state.canvasId || design.id
+    const canvasName = state.canvasName || 'Design sem título'
+    generateDocFromCanvas(canvasId, canvasName, `Design com ${state.nodes.length} recursos e ${state.edges.length} conexões`)
+      .then(() => {
+        // silent — documentation generated in background
+      })
+      .catch(() => {
+        // silent — auto-documentation is best-effort
+      })
+
     showSuccess('Design salvo com sucesso!')
   }, [])
 

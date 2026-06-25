@@ -1,48 +1,62 @@
 # Architecture Memory
 
 ## ADRs Registrados
-Ver `docs/architecture/` para decisões arquiteturais completas.
+Ver docs/architecture/ para decisoes arquiteturais completas.
 
 - ADR-008: Native Observability Subsystem (PostgreSQL-native)
 - ADR-009: Auto-Documentation Module
-- ADR-010: Backend Quality Gate (test coverage + UUID→String migration)
+- ADR-010: Backend Quality Gate (test coverage + UUID->String migration)
 - ADR-011: What-if Cost + Preview Workflow Backend Persistence
+- ADR-012: Q3 Operations Architecture
+- ADR-013: LLM Provider Abstraction
+- ADR-014: Catalog Version History
+- ADR-015: Marketplace Browser Architecture
+- ADR-016: GitOps Webhook Event-Driven
+- ADR-017: Hybrid Auto-Remediation
+- ADR-018: TOTP MFA + JWT Refresh Rotation
+- ADR-019: Multi-Region Logical Replication
+- ADR-020: Policy-as-Code OPA (Nao Implementado)
+- ADR-021: Search Hexagonal Architecture (Proposto)
+- ADR-022: API Versioning Strategy (Proposto)
+- ADR-023: Circuit Breaker External Clients (Proposto)
+- ADR-024: Analytics Aggregation Strategy (Implementado com bugs)
+- ADR-025: SSO Authentication Flow (Implementado com bugs)
+- ADR-026: Enterprise Identity SCIM Provisioning (Proposto)
+- ADR-027: Performance Optimization Strategy (Proposto)
+- ADR-028: Security Hardening & Secrets (Proposto)
+- ADR-029: Compliance & Governance Framework (Proposto)
+- ADR-030: Production Readiness & Stabilization (Proposto)
+- ADR-031: Production Deployment Architecture (Proposto)
+- ADR-032: Public Beta Feature Flags (Proposto)
 
 ## Stack Decisions
-| Decisão | Escolha | Razão |
+| Decisao | Escolha | Razao |
 |---------|---------|-------|
 | Frontend | React 19 + Vite | Performance, ecossistema, HMR |
 | Backend | Java 21 + Spring Boot 3.4.4 | Maturidade, Modulith, JVM |
 | Engine | Go 1.22 | Performance IaC, CLI nativa |
-| DB | PostgreSQL 16 | JSONB, performance,成熟 |
-| Cache | Redis 7 | Simplicidade, performance |
-| Streaming | Kafka 7.9 | Event sourcing, modulith events |
-| Observability | OpenTelemetry → Prometheus → Grafana | Padrão CNCF, vendor-agnostic |
+| DB | PostgreSQL 16 | JSONB, performance, maduro |
+| Cache | Caffeine (in-process) | Substituiu Redis, zero custo |
+| Observability | Nativa PostgreSQL | Substituiu OTEL/Prometheus/Grafana |
 
 ## Architectural Principles
-1. **Modularidade**: Spring Modulith com domínios isolados, comunicação via eventos
-2. **Separação de Concerns**: Frontend (design visual) → Backend (API/regras) → Engine (provisionamento)
-3. **Validação Multi-Camada**: Frontend (visual) → Backend (regras negócio) → Engine (HCL syntax)
-4. **Event-Driven**: Comunicação cross-module assíncrona via Spring Modulith events + Kafka
-5. **Idempotência**: Operações de provisionamento idempotentes
-6. **Multi-Tenancy**: Isolamento por tenantId + TenantFilter + @PreAuthorize
-7. **API First**: OpenAPI spec, versionamento /api/v1/
+1. Modularidade: Spring Modulith com dominios isolados
+2. Separacao de Concerns: Frontend -> Backend -> Engine
+3. Validacao Multi-Camada: Frontend -> Backend -> Engine
+4. Event-Driven: Comunicacao cross-module assincrona via Domain Events + ApplicationEventPublisher
+5. Idempotencia: Operacoes de provisionamento idempotentes
+6. Multi-Tenancy: Isolamento por tenantId + TenantFilter + @PreAuthorize
+7. API First: /api/v1/ prefix, REST conventions
 
-## Known Gaps
-- ~~nanoid (frontend) vs UUID (backend)~~ ✅ Resolved — both sides use String (crypto.randomUUID()) with Phase 5d migration
-- ~~Grafana/Prometheus — removed ($0 infra)~~ ✅ Replaced by native observability (ADR-008)
-- XYPosition (objeto) vs positionX/positionY (flat doubles) — mismatch de modelo entre frontend e backend
-- card.tsx em provision/ deveria estar em components/ui/
-- What-if Cost + Preview Workflow: sem testes JUnit para novos services (CostScenarioService, DeployPlanService)
-- Observability schema sem migrations Flyway (schema.sql manual)
-- Containers sem resource limits → ✅ Resolvido (configurados no docker-compose.yml)
+## Known Gaps (2026-06-23)
+- gRPC bridge nao implementado: Go engine tem servidor gRPC mas backend Java nao tem cliente
+- Flyway migrations (V1-V12) usam id UUID, mas entidades JPA usam String -- V13 corrigiu para VARCHAR(36)
+- ADR-020 OPA: Marcado Nao-Implementado mas container OPA ja existe no docker-compose.yml
+- CodeGeneratorService gera templates in-memory sem chamar Go engine
+- JWT nao propagado para Go engine (gRPC nao implementado)
+- ADR-022/023/026/027/028/029: Propostos mas nao implementados
+- 6 pre-existing test failures nao corrigidos
 
-## Q3 2026 Operations Architecture
-- **ADR-012**: Q3 Operations Architecture — 3 sprints (Observabilidade, Cost Management, Audit & Compliance)
-- **Partitioning**: PostgreSQL native RANGE partitioning (monthly) for time-series tables
-- **Anomaly Detection**: Custom composite (trend-adjusted baseline + Z-score)
-- **Compliance**: Strategy pattern (4 initial strategies, extensible)
-- **Cross-module**: Modulith ApplicationEventPublisher for budget→observe alerts
-- **Projection**: Linear regression on 90-day cost data
-- **Audit Query**: Spring Data JPA Specifications for dynamic filtering
-- **File count**: ~54 new Java files, 4 new frontend components
+## ADRs 031-032 (2026-06-23)
+- ADR-031: Production Deployment -- EC2 + RDS + S3/CloudFront + Elastic Beanstalk
+- ADR-032: Feature Flags -- JPA FeatureFlag entity + uiStore.isEnabled()

@@ -119,6 +119,31 @@ const MOCK_PRICING: Partial<Record<string, number>> = {
   'horizontal-pod-autoscaler': 0,
   'cluster-role': 0,
   'service-account': 0,
+
+  // Vercel
+  'vercel-project': 20,
+  'vercel_deployment': 0,
+  'vercel_domain': 0,
+  'vercel_edge_function': 0.5,
+  'vercel_environment_variable': 0,
+  'vercel_analytics': 10,
+
+  // Supabase
+  'supabase_project': 25,
+  'supabase_table': 0,
+  'supabase_auth': 0,
+  'supabase_storage_bucket': 1,
+  'supabase_edge_function': 0.5,
+  'supabase_realtime': 5,
+
+  // Render
+  'render_web_service': 7,
+  'render_static_site': 0,
+  'render_cron_job': 0,
+  'render_background_worker': 7,
+  'render_postgres': 15,
+  'render_redis': 7,
+  'render_env_group': 0,
 }
 
 const PROVIDER_LABELS: Record<ProviderType, string> = {
@@ -126,6 +151,9 @@ const PROVIDER_LABELS: Record<ProviderType, string> = {
   azure: 'Azure',
   gcp: 'GCP',
   k8s: 'Kubernetes',
+  vercel: 'Vercel',
+  supabase: 'Supabase',
+  render: 'Render',
 }
 
 const PROVIDER_ICONS: Record<ProviderType, typeof Cloud> = {
@@ -133,6 +161,9 @@ const PROVIDER_ICONS: Record<ProviderType, typeof Cloud> = {
   azure: Globe,
   gcp: Database,
   k8s: HardDrive,
+  vercel: Globe,
+  supabase: Database,
+  render: Server,
 }
 
 const PROVIDER_COLORS: Record<ProviderType, string> = {
@@ -140,6 +171,9 @@ const PROVIDER_COLORS: Record<ProviderType, string> = {
   azure: 'text-blue-500 bg-blue-50 border-blue-200',
   gcp: 'text-green-500 bg-green-50 border-green-200',
   k8s: 'text-indigo-500 bg-indigo-50 border-indigo-200',
+  vercel: 'text-neutral-700 bg-neutral-50 border-neutral-200',
+  supabase: 'text-emerald-500 bg-emerald-50 border-emerald-200',
+  render: 'text-teal-500 bg-teal-50 border-teal-200',
 }
 
 export function getResourcePrice(resourceType: string): number {

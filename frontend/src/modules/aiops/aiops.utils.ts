@@ -9,6 +9,9 @@ export const PROVIDER_STYLES: Record<ProviderType, { color: string; bg: string; 
   azure: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', label: 'Azure' },
   gcp: { color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', label: 'GCP' },
   k8s: { color: 'text-indigo-700', bg: 'bg-indigo-50', border: 'border-indigo-200', label: 'K8s' },
+  vercel: { color: 'text-neutral-700', bg: 'bg-neutral-50', border: 'border-neutral-200', label: 'Vercel' },
+  supabase: { color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'Supabase' },
+  render: { color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-200', label: 'Render' },
 }
 
 export const CATEGORY_STYLES: Record<string, string> = {

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { aiopsApi } from '@/api/aiops'
 
 export interface ResourceModification {
   nodeId: string
@@ -21,9 +21,23 @@ export interface FixHistoryEntry {
   autoFix: boolean
 }
 
+export interface BackendIncident {
+  id: string
+  title?: string
+  description?: string
+  severity?: string
+  status?: string
+  environmentId?: string
+  detectedAt?: string
+  resolvedAt?: string | null
+}
+
 interface IncidentState {
   fixHistory: FixHistoryEntry[]
   autoFixEnabled: boolean
+  incidents: BackendIncident[]
+  loading: boolean
+  error: string | null
 
   addFixHistory: (entry: Omit<FixHistoryEntry, 'id' | 'appliedAt'>) => FixHistoryEntry
   markDeployed: (fixId: string) => void
@@ -31,54 +45,88 @@ interface IncidentState {
   getFixesByIncident: (incidentId: string) => FixHistoryEntry[]
   toggleAutoFix: () => void
   clearHistory: () => void
+  fetchIncidents: (environmentId: string) => Promise<void>
+  analyzeIncident: (incidentId: string) => Promise<any | null>
+  resolveIncident: (incidentId: string) => Promise<any | null>
 }
 
 export const useIncidentStore = create<IncidentState>()(
-  persist(
-    (set, get) => ({
-      fixHistory: [],
-      autoFixEnabled: false,
+  (set, get) => ({
+    fixHistory: [],
+    autoFixEnabled: false,
+    incidents: [],
+    loading: false,
+    error: null,
 
-      addFixHistory: (entry) => {
-        const newEntry: FixHistoryEntry = {
-          ...entry,
-          id: crypto.randomUUID(),
-          appliedAt: new Date().toISOString(),
+    addFixHistory: (entry) => {
+      const newEntry: FixHistoryEntry = {
+        ...entry,
+        id: crypto.randomUUID(),
+        appliedAt: new Date().toISOString(),
+      }
+      set((state) => ({ fixHistory: [...state.fixHistory, newEntry] }))
+      return newEntry
+    },
+
+    markDeployed: (fixId) => {
+      set((state) => ({
+        fixHistory: state.fixHistory.map((f) =>
+          f.id === fixId ? { ...f, deployedAt: new Date().toISOString() } : f
+        ),
+      }))
+    },
+
+    markResult: (fixId, result) => {
+      set((state) => ({
+        fixHistory: state.fixHistory.map((f) =>
+          f.id === fixId ? { ...f, result } : f
+        ),
+      }))
+    },
+
+    getFixesByIncident: (incidentId) => {
+      return get().fixHistory.filter((f) => f.incidentId === incidentId)
+    },
+
+    toggleAutoFix: () => {
+      set((state) => ({ autoFixEnabled: !state.autoFixEnabled }))
+    },
+
+    clearHistory: () => {
+      set({ fixHistory: [] })
+    },
+
+    fetchIncidents: async (environmentId: string) => {
+      set({ loading: true, error: null })
+      try {
+        const data = await aiopsApi.getIncidents(environmentId)
+        if (Array.isArray(data)) {
+          set({ incidents: data as BackendIncident[], loading: false })
+        } else {
+          set({ loading: false })
         }
-        set((state) => ({ fixHistory: [...state.fixHistory, newEntry] }))
-        return newEntry
-      },
+      } catch (err) {
+        const msg = err && typeof err === 'object' && 'message' in err
+          ? (err as { message: string }).message
+          : 'Erro ao carregar incidentes'
+        set({ error: msg, loading: false })
+      }
+    },
 
-      markDeployed: (fixId) => {
-        set((state) => ({
-          fixHistory: state.fixHistory.map((f) =>
-            f.id === fixId ? { ...f, deployedAt: new Date().toISOString() } : f
-          ),
-        }))
-      },
+    analyzeIncident: async (incidentId: string) => {
+      try {
+        return await aiopsApi.analyzeIncident(incidentId)
+      } catch {
+        return null
+      }
+    },
 
-      markResult: (fixId, result) => {
-        set((state) => ({
-          fixHistory: state.fixHistory.map((f) =>
-            f.id === fixId ? { ...f, result } : f
-          ),
-        }))
-      },
-
-      getFixesByIncident: (incidentId) => {
-        return get().fixHistory.filter((f) => f.incidentId === incidentId)
-      },
-
-      toggleAutoFix: () => {
-        set((state) => ({ autoFixEnabled: !state.autoFixEnabled }))
-      },
-
-      clearHistory: () => {
-        set({ fixHistory: [] })
-      },
-    }),
-    {
-      name: 'cloudbuilder-incident-store',
-    }
-  )
+    resolveIncident: async (incidentId: string) => {
+      try {
+        return await aiopsApi.resolveIncident(incidentId)
+      } catch {
+        return null
+      }
+    },
+  })
 )

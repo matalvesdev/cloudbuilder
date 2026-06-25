@@ -1,24 +1,38 @@
 package com.cloudbuilder.docs.domain.model;
 
+import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
+@Entity
+@Table(name = "doc_auto_links")
 public class DocAutoLink {
+
+    @Id
     private String id;
-    private String docPath;
-    private String entityType;
-    private String entityId;
+
+    @Column(nullable = false)
     private String tenantId;
-    private Instant lastSync;
+
+    @Column(name = "source_path", nullable = false)
+    private String sourcePath;
+
+    @Column(name = "linked_path", nullable = false)
+    private String linkedPath;
+
+    @Column(nullable = false)
+    private String relationship;
+
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    public DocAutoLink() {}
+    protected DocAutoLink() {}
 
-    public DocAutoLink(String docPath, String entityType, String entityId, String tenantId) {
+    public DocAutoLink(String sourcePath, String linkedPath, String relationship, String tenantId) {
         this.id = UUID.randomUUID().toString();
-        this.docPath = docPath;
-        this.entityType = entityType;
-        this.entityId = entityId;
+        this.sourcePath = sourcePath;
+        this.linkedPath = linkedPath;
+        this.relationship = relationship;
         this.tenantId = tenantId;
         this.createdAt = Instant.now();
     }
@@ -26,20 +40,17 @@ public class DocAutoLink {
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
-    public String getDocPath() { return docPath; }
-    public void setDocPath(String docPath) { this.docPath = docPath; }
-
-    public String getEntityType() { return entityType; }
-    public void setEntityType(String entityType) { this.entityType = entityType; }
-
-    public String getEntityId() { return entityId; }
-    public void setEntityId(String entityId) { this.entityId = entityId; }
-
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
 
-    public Instant getLastSync() { return lastSync; }
-    public void setLastSync(Instant lastSync) { this.lastSync = lastSync; }
+    public String getSourcePath() { return sourcePath; }
+    public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }
+
+    public String getLinkedPath() { return linkedPath; }
+    public void setLinkedPath(String linkedPath) { this.linkedPath = linkedPath; }
+
+    public String getRelationship() { return relationship; }
+    public void setRelationship(String relationship) { this.relationship = relationship; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

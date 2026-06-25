@@ -47,9 +47,12 @@ public class CatalogItem {
 
     public String getId() { return id; }
     public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
     public String getType() { return type; }
     public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public String getSchema() { return schema; }
+    public void setSchema(String schema) { this.schema = schema; }
     public String getVersion() { return version; }
     public void setVersion(String version) { this.version = version; }
     public String getStatus() { return status; }

@@ -625,7 +625,7 @@ Todas as dependências npm substituídas por implementações nativas:
 | **Módulos TS** | 2.829 | — |
 | **Build time** | 8.84s | < 15s |
 | **Testes frontend** | 62 (5 suites) | 100% pass |
-| **Testes backend** | 40 (4 suites) | 100% pass |
+| **Testes backend** | 479 (33 suites) | 98.7% pass (6 pre-existing failures) |
 | **Testes Go** | 23 | 100% pass |
 | **E2E Playwright** | 5 (smoke) | 100% pass |
 | **TypeScript** | 0 erros | 0 erros |
@@ -637,7 +637,41 @@ Todas as dependências npm substituídas por implementações nativas:
 | ADR | Título | Status |
 |-----|--------|--------|
 | ADR-008 | [Observabilidade Nativa](adr-008-native-observability.md) | ✅ Implementado |
-| ADR-009 | Auto-Documentation Feature | 📝 Proposto |
+| ADR-009 | [Auto-Documentation Feature](adr-009-auto-documentation.md) | ✅ Implementado |
+| ADR-010 | [Backend Quality Gate](adr-010-backend-quality-gate.md) | ✅ Implementado |
+| ADR-011 | [Cost Preview Persistence](adr-011-cost-preview-persistence.md) | ✅ Implementado |
+| ADR-012 | [Q3 Operations Architecture](adr-012-q3-operations-architecture.md) | ✅ Implementado |
+| ADR-013 | [LLM Provider Abstraction](adr-013-llm-provider-abstraction.md) | ✅ Implementado |
+| ADR-014 | [Catalog Version History](adr-014-catalog-version-history.md) | ✅ Implementado |
+| ADR-015 | [Marketplace Browser Architecture](adr-015-marketplace-browser-architecture.md) | ✅ Implementado |
+| ADR-016 | [GitOps Webhook Event-Driven](adr-016-gitops-webhook-event-driven.md) | ✅ Implementado |
+| ADR-017 | [Hybrid Auto-Remediation](adr-017-hybrid-auto-remediation.md) | ✅ Implementado |
+| ADR-018 | [TOTP MFA + JWT Refresh Rotation](adr-018-totp-mfa-jwt-refresh-rotation.md) | ✅ Implementado |
+| ADR-019 | [Multi-Region Logical Replication](adr-019-multi-region-logical-replication.md) | ✅ Implementado |
+| ADR-020 | [Policy-as-Code OPA](adr-020-policy-as-code-opa.md) | ❌ Não Implementado |
+| ADR-021 | [Search Hexagonal Architecture](adr-021-search-hexagonal-architecture.md) | 📝 Proposto |
+| ADR-022 | [API Versioning Strategy](adr-022-api-versioning-strategy.md) | 📝 Proposto |
+| ADR-023 | [Circuit Breaker External Clients](adr-023-circuit-breaker-external-clients.md) | 📝 Proposto |
+| ADR-024 | [Analytics Aggregation Strategy](adr-024-analytics-aggregation-strategy.md) | ⚠️ Implementado (com bugs) |
+| ADR-025 | [SSO Authentication Flow](adr-025-sso-authentication-flow.md) | ⚠️ Implementado (com bugs) |
+| ADR-026 | [Enterprise Identity SCIM Provisioning](adr-026-enterprise-identity-provisioning.md) | 📝 Proposto |
+| ADR-027 | [Performance Optimization Strategy](adr-027-performance-optimization-strategy.md) | 📝 Proposto |
+| ADR-028 | [Security Hardening & Secrets](adr-028-security-hardening-secrets-management.md) | 📝 Proposto |
+| ADR-029 | [Compliance & Governance Framework](adr-029-compliance-governance-framework.md) | 📝 Proposto |
+| ADR-030 | [Production Readiness & Stabilization](adr-030-production-readiness-stabilization.md) | 📝 Proposto |
+
+**Total: 23 ADRs** (008-030) — 12 implementados ✅, 2 implementados com bugs ⚠️ (024-025), 1 não implementado ❌ (ADR-020 OPA), 8 propostos 📝 (021-023, 026-030)
+
+---
+
+### Summary by Release
+
+| Release | ADRs | Status |
+|---------|------|--------|
+| **Q2 2026 — Foundation** (Sprints 1-8) | 008-012 | ✅ 5 implementados |
+| **Q3 2026 — Operations** (Sprints 9-14) | 012-019 | ✅ 8 implementados |
+| **Q4 2026 — Intelligence** (Sprints 15-21) | 020-025 | 1 implementado, 2 implementados com bugs, 1 não imp., 2 propostos |
+| **Q1 2027 — Scale** (Sprints 22-30) | 026-030 | 📝 5 propostos |
 
 ---
 

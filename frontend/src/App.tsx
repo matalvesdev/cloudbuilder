@@ -20,6 +20,7 @@ import {
   Search,
   X,
   ArrowRight,
+  BarChart3,
 } from 'lucide-react'
 import { useUiStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
@@ -27,6 +28,7 @@ import { useTenantStore } from '@/store/tenantStore'
 import { useOnboardingStore } from '@/store/onboardingStore'
 import { useCredentialStore } from '@/store/credentialStore'
 import { useRepoStore } from '@/store/repoStore'
+import { setToken } from '@/api/client'
 import { LoginPage } from '@/modules/auth/LoginPage'
 import { RegisterPage } from '@/modules/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/modules/auth/ForgotPasswordPage'
@@ -39,6 +41,7 @@ import { TenantSelector } from '@/components/TenantSelector'
 import { ProtectedContent } from '@/components/ProtectedContent'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { OfflineBanner } from '@/components/OfflineBanner'
+import GlobalSearch from '@/components/GlobalSearch'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -63,6 +66,7 @@ const AuditModule = lazyImport(() => import('@/modules/audit/AuditModule'), 'Aud
 const IAMModule = lazyImport(() => import('@/modules/iam/IAMModule'), 'IAMModule')
 const SettingsModule = lazyImport(() => import('@/modules/settings/SettingsModule'), 'SettingsModule')
 const DocsModule = lazyImport(() => import('@/modules/docs/DocsModule'), 'DocsModule')
+const AnalyticsModule = lazyImport(() => import('@/modules/analytics/AnalyticsModule'), 'AnalyticsModule')
 
 function ModuleFallback() {
   return (
@@ -89,6 +93,7 @@ const moduleHierarchy: Record<string, { section: string; path: string[] }> = {
   iam: { section: 'Governança', path: ['Governança', 'IAM'] },
   settings: { section: 'Sistema', path: ['Sistema', 'Configurações'] },
   docs: { section: 'Sistema', path: ['Sistema', 'Documentação'] },
+  analytics: { section: 'Visão Geral', path: ['Visão Geral', 'Análises'] },
 }
 
 const navGroups = [
@@ -96,6 +101,7 @@ const navGroups = [
     label: 'Visão Geral',
     items: [
       { id: 'dashboard' as const, label: 'Dashboard', icon: Activity },
+      { id: 'analytics' as const, label: 'Análises', icon: BarChart3 },
     ],
   },
   {
@@ -147,6 +153,7 @@ const moduleLabels: Record<string, string> = {
   iam: 'IAM',
   settings: 'Configurações',
   docs: 'Documentação',
+  analytics: 'Análises',
 }
 
 const moduleRoles: Record<string, string[]> = {
@@ -166,11 +173,12 @@ const moduleComponents: Record<string, React.ReactNode> = {
   audit: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="Auditoria"><Suspense fallback={<ModuleFallback />}><AuditModule /></Suspense></ErrorBoundary></ProtectedContent>,
   iam: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="IAM"><Suspense fallback={<ModuleFallback />}><IAMModule /></Suspense></ErrorBoundary></ProtectedContent>,
   docs: <ErrorBoundary moduleName="Documentação"><Suspense fallback={<ModuleFallback />}><DocsModule /></Suspense></ErrorBoundary>,
+  analytics: <ErrorBoundary moduleName="Análises"><Suspense fallback={<ModuleFallback />}><AnalyticsModule /></Suspense></ErrorBoundary>,
   settings: <ErrorBoundary moduleName="Configurações"><Suspense fallback={<ModuleFallback />}><SettingsModule /></Suspense></ErrorBoundary>,
 }
 
 function App() {
-  const { activeModule, setActiveModule } = useUiStore()
+  const { activeModule, setActiveModule, toggleSearch } = useUiStore()
   const { isAuthenticated, isLoading, checkAuth, logout, user } = useAuthStore()
   const { projects, activeProjectId, switchProject, getActiveProject } = useTenantStore()
   const { progress, hasSeenWelcome, setStage, skipOnboarding, markTourCompleted, resetToWelcome } = useOnboardingStore()
@@ -212,14 +220,25 @@ function App() {
   })
 
   useEffect(() => {
-    // Check for reset-password token in URL params (hash-based)
-    const params = new URLSearchParams(window.location.search)
+    // Check for URL params (SSO callback or reset-password)
+    // Backend redirects with URL fragment (#token=...) per ADR-025,
+    // so fall back to window.location.hash if search is empty
+    const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, '')
+    )
+    const params = searchParams.size > 0 ? searchParams : hashParams
     const mode = params.get('authMode')
     const token = params.get('token')
+    const refreshToken = params.get('refreshToken')
+
     if (mode === 'reset-password' && token) {
       setResetToken(token)
       setAuthMode('reset-password')
-      // Clean URL without reload
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (token && mode !== 'reset-password') {
+      // SSO callback: store token and let checkAuth() load user data
+      setToken(token, refreshToken || undefined)
       window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
@@ -227,6 +246,17 @@ function App() {
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        toggleSearch()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleSearch])
 
   if (isLoading) {
     return (
@@ -466,7 +496,7 @@ function App() {
                 searchResults.map((r) => (
                   <button
                     key={r.id}
-                    onClick={() => { setActiveModule(r.id as 'design' | 'provision' | 'observe' | 'cost' | 'platform' | 'aiops' | 'audit' | 'iam' | 'dashboard' | 'docs' | 'settings'); setQuery(''); setShowSearch(false) }}
+                    onClick={() => { setActiveModule(r.id as 'design' | 'provision' | 'observe' | 'cost' | 'platform' | 'aiops' | 'audit' | 'iam' | 'dashboard' | 'docs' | 'settings' | 'analytics'); setQuery(''); setShowSearch(false) }}
                     className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-left hover:bg-slate-50 transition-colors"
                   >
                     <r.icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -584,6 +614,7 @@ function App() {
         </div>
       </header>
       <OfflineBanner />
+      <GlobalSearch />
       <main className="flex-1 overflow-hidden">
         {moduleComponents[activeModule]}
       </main>

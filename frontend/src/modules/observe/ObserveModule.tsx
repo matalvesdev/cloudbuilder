@@ -8,18 +8,29 @@ import {
   TrendingUp,
   GitCompareArrows,
   Map,
+  Globe,
   Award,
   FileText,
   Bell,
   CheckCircle2,
   ShieldCheck,
+  Shield,
   Zap,
   Clock,
   PieChart,
+  ArrowLeftRight,
+  ArrowUpCircle,
+  RefreshCw,
+  X,
+  Check,
+  AlertCircle,
+  Monitor,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/api/client'
 import { useDriftStore } from '@/store/driftStore'
@@ -244,6 +255,451 @@ function OverviewView({ onTabChange }: { onTabChange: (tab: string) => void }) {
   )
 }
 
+interface RegionInfo {
+  id: string
+  name: string
+  provider: string
+  status: string
+  latencyMs: number
+  uptime: number
+  resources: number
+  lastFailover: string | null
+}
+
+const mockRegions: RegionInfo[] = [
+  { id: '1', name: 'us-east-1', provider: 'AWS', status: 'active', latencyMs: 12, uptime: 99.99, resources: 45, lastFailover: null },
+  { id: '2', name: 'us-west-2', provider: 'AWS', status: 'active', latencyMs: 28, uptime: 99.95, resources: 32, lastFailover: null },
+  { id: '3', name: 'eu-west-1', provider: 'AWS', status: 'active', latencyMs: 45, uptime: 99.98, resources: 28, lastFailover: '2026-03-15' },
+  { id: '4', name: 'sa-east-1', provider: 'AWS', status: 'degraded', latencyMs: 62, uptime: 98.75, resources: 15, lastFailover: null },
+  { id: '5', name: 'eastus', provider: 'Azure', status: 'active', latencyMs: 18, uptime: 99.97, resources: 38, lastFailover: null },
+  { id: '6', name: 'westeurope', provider: 'Azure', status: 'active', latencyMs: 42, uptime: 99.92, resources: 22, lastFailover: null },
+]
+
+const replicationLinks = [
+  { from: 'us-east-1', to: 'us-west-2', lagMs: 120, status: 'synced' },
+  { from: 'us-east-1', to: 'eu-west-1', lagMs: 240, status: 'synced' },
+  { from: 'us-east-1', to: 'sa-east-1', lagMs: 380, status: 'lagging' },
+  { from: 'eastus', to: 'westeurope', lagMs: 180, status: 'synced' },
+]
+
+function RegioesView() {
+  const [expandedRegion, setExpandedRegion] = useState<string | null>(null)
+  const [failoverLoading, setFailoverLoading] = useState(false)
+  const [failoverTarget, setFailoverTarget] = useState<string | null>(null)
+  const [failoverConfirmOpen, setFailoverConfirmOpen] = useState(false)
+  const [promotingRegion, setPromotingRegion] = useState<string | null>(null)
+  const [regions, setRegions] = useState<RegionInfo[]>(mockRegions)
+  const [links, setLinks] = useState(replicationLinks)
+
+  const activeCount = regions.filter((r) => r.status === 'active').length
+  const degradedCount = regions.filter((r) => r.status === 'degraded').length
+  const avgLatency = Math.round(regions.reduce((s, r) => s + r.latencyMs, 0) / regions.length)
+  const totalResources = regions.reduce((s, r) => s + r.resources, 0)
+
+  const handleManualFailover = async () => {
+    if (!failoverTarget) return
+    setFailoverLoading(true)
+    // Simulate failover delay
+    await new Promise(r => setTimeout(r, 1500))
+    setRegions(prev => prev.map(r => ({
+      ...r,
+      status: r.name === failoverTarget ? 'active' as const : r.status,
+      lastFailover: r.name === failoverTarget ? new Date().toISOString() : r.lastFailover,
+    })))
+    setLinks(prev => prev.map(l => ({
+      ...l,
+      status: l.to === failoverTarget || l.from === failoverTarget ? 'synced' as const : l.status,
+      lagMs: l.to === failoverTarget || l.from === failoverTarget ? Math.round(l.lagMs * 0.5) : l.lagMs,
+    })))
+    setFailoverLoading(false)
+    setFailoverConfirmOpen(false)
+    setFailoverTarget(null)
+    showSuccess(`Failover manual concluído: tráfego redirecionado para ${failoverTarget}`)
+  }
+
+  const handlePromoteRegion = async (regionName: string) => {
+    setPromotingRegion(regionName)
+    await new Promise(r => setTimeout(r, 1000))
+    setRegions(prev => prev.map(r => ({
+      ...r,
+      status: r.name === regionName ? 'active' as const : r.status,
+      lastFailover: r.name === regionName ? new Date().toISOString() : r.lastFailover,
+    })))
+    setPromotingRegion(null)
+    showSuccess(`Região ${regionName} promovida para primária com sucesso!`)
+  }
+
+  const [showSuccessMessage, setShowSuccessMessage] = useState<string | null>(null)
+  const showSuccess = (msg: string) => {
+    setShowSuccessMessage(msg)
+    setTimeout(() => setShowSuccessMessage(null), 3000)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Success toast */}
+      {showSuccessMessage && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl shadow-lg text-sm text-green-800 animate-in slide-in-from-right">
+          <Check className="w-4 h-4 text-green-600" />
+          {showSuccessMessage}
+        </div>
+      )}
+
+      {/* Failover Confirmation Dialog */}
+      <Dialog open={failoverConfirmOpen} onOpenChange={setFailoverConfirmOpen}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-brand-navy font-display flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5" />
+              Confirmar Failover Manual
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-amber-800">Atenção</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  O failover manual redirecionará o tráfego para{' '}
+                  <span className="font-bold">{failoverTarget}</span>. 
+                  Verifique se a região está saudável antes de prosseguir.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setFailoverConfirmOpen(false)}
+              >
+                <X className="w-4 h-4 mr-1.5" />
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-amber-600 text-white hover:bg-amber-700 rounded-xl"
+                onClick={handleManualFailover}
+                disabled={failoverLoading}
+              >
+                {failoverLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                ) : (
+                  <ArrowLeftRight className="w-4 h-4 mr-1.5" />
+                )}
+                Confirmar Failover
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid grid-cols-5 gap-4">
+        <Card title="Regiões Ativas" value={`${activeCount}/${regions.length}`} icon={Globe} />
+        <Card title="Degradadas" value={String(degradedCount)} icon={AlertTriangle} />
+        <Card title="Recursos Totais" value={String(totalResources)} icon={Server} />
+        <Card title="Latência Média" value={`${avgLatency}ms`} icon={Clock} />
+        <Card title="Uptime Médio" value={`99.9%`} icon={Heart} />
+      </div>
+
+      {/* Topology Map */}
+      <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-brand-lime" />
+            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Topologia de Regiões</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs rounded-lg"
+              onClick={() => {
+                setRegions(mockRegions)
+                setLinks(replicationLinks)
+                showSuccess('Visualização restaurada ao estado original')
+              }}
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1" />
+              Restaurar
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {regions.map((region) => (
+            <button
+              key={region.id}
+              onClick={() => setExpandedRegion(expandedRegion === region.id ? null : region.id)}
+              className={cn(
+                'rounded-xl border p-4 text-left transition-all',
+                region.status === 'active'
+                  ? 'border-slate-200 bg-white hover:shadow-sm'
+                  : 'border-amber-200 bg-amber-50/30'
+              )}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn(
+                    'w-2.5 h-2.5 rounded-full',
+                    region.status === 'active' ? 'bg-green-500' : 'bg-amber-500'
+                  )} />
+                  <div>
+                    <p className="text-sm font-bold text-brand-navy">{region.name}</p>
+                    <p className="text-[10px] text-slate-400">{region.provider}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {region.status === 'degraded' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handlePromoteRegion(region.name) }}
+                      disabled={promotingRegion === region.name}
+                      className={cn(
+                        'px-2 py-1 rounded-lg text-[9px] font-bold transition-all',
+                        'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300'
+                      )}
+                    >
+                      {promotingRegion === region.name ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        'Promover'
+                      )}
+                    </button>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px] font-medium',
+                      region.status === 'active'
+                        ? 'text-green-700 border-green-200 bg-green-50'
+                        : 'text-amber-700 border-amber-200 bg-amber-50'
+                    )}
+                  >
+                    {region.status === 'active' ? 'Ativo' : 'Degradado'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-3 text-center">
+                <div>
+                  <p className="text-xs font-bold text-brand-navy">{region.latencyMs}ms</p>
+                  <p className="text-[10px] text-slate-400">Latência</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-brand-navy">{region.uptime}%</p>
+                  <p className="text-[10px] text-slate-400">Uptime</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-brand-navy">{region.resources}</p>
+                  <p className="text-[10px] text-slate-400">Recursos</p>
+                </div>
+                <div>
+                  <div className="flex items-center justify-center gap-1">
+                    <Shield className={cn(
+                      'w-3 h-3',
+                      region.uptime > 99.9 ? 'text-green-500' : 'text-amber-500'
+                    )} />
+                    <p className={cn(
+                      'text-xs font-bold',
+                      region.uptime > 99.9 ? 'text-green-700' : 'text-amber-700'
+                    )}>
+                      {region.uptime > 99.9 ? 'Saudável' : 'Atenção'}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-slate-400">SLA</p>
+                </div>
+              </div>
+
+              {expandedRegion === region.id && (
+                <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-slate-400">
+                      Último failover: {region.lastFailover ? new Date(region.lastFailover).toLocaleDateString('pt-BR') : 'Nenhum'}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFailoverTarget(region.name)
+                        setFailoverConfirmOpen(true)
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all"
+                    >
+                      <ArrowLeftRight className="w-3 h-3" />
+                      Failover Manual
+                    </button>
+                  </div>
+
+                  {/* Replication links from this region */}
+                  {links
+                    .filter((l) => l.from === region.name)
+                    .map((link) => (
+                      <div key={`${link.from}-${link.to}`} className="flex items-center gap-2 text-xs">
+                        <GitCompareArrows className={cn(
+                          'w-3 h-3',
+                          link.status === 'synced' ? 'text-green-500' : 'text-amber-500'
+                        )} />
+                        <span className="text-slate-600">{link.to}</span>
+                        <span className="text-slate-400">— {link.lagMs}ms lag</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[9px] px-1.5 py-0 font-medium ml-auto',
+                            link.status === 'synced'
+                              ? 'text-green-600 border-green-200'
+                              : 'text-amber-600 border-amber-200'
+                          )}
+                        >
+                          {link.status === 'synced' ? 'Sincronizado' : 'Atrasado'}
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Replication Overview */}
+      <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-brand-lime" />
+          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Status de Réplica</h2>
+        </div>
+
+        <div className="space-y-2">
+          {links.map((link) => (
+            <div key={`${link.from}-${link.to}`} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3.5">
+              <GitCompareArrows className={cn(
+                'w-4 h-4 shrink-0',
+                link.status === 'synced' ? 'text-green-500' : 'text-amber-500'
+              )} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-brand-navy">{link.from} → {link.to}</p>
+                <p className="text-xs text-slate-400">
+                  Lag: {link.lagMs}ms · {link.status === 'synced' ? 'Sincronizado' : 'Atrasado'}
+                </p>
+              </div>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'text-xs font-medium',
+                  link.status === 'synced'
+                    ? 'text-green-700 border-green-200 bg-green-50'
+                    : 'text-amber-700 border-amber-200 bg-amber-50'
+                )}
+              >
+                {link.status === 'synced' ? 'OK' : 'Atenção'}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Failover Controls */}
+      <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-brand-lime" />
+          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Controles de Failover</h2>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          {/* Initiate Manual Failover */}
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <ArrowLeftRight className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-brand-navy">Failover Manual</p>
+              <p className="text-xs text-slate-400 mt-0.5">Redirecione o tráfego para uma região específica</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {regions
+                .filter(r => r.status === 'active')
+                .map(r => (
+                  <button
+                    key={r.name}
+                    onClick={() => {
+                      setFailoverTarget(r.name)
+                      setFailoverConfirmOpen(true)
+                    }}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-brand-navy hover:text-white transition-all"
+                  >
+                    {r.name}
+                  </button>
+                ))}
+            </div>
+          </div>
+
+          {/* Promote Region */}
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+              <ArrowUpCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-brand-navy">Promover Região</p>
+              <p className="text-xs text-slate-400 mt-0.5">Eleve uma região degradada a primária</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {regions
+                .filter(r => r.status === 'degraded')
+                .map(r => (
+                  <button
+                    key={r.name}
+                    onClick={() => handlePromoteRegion(r.name)}
+                    disabled={promotingRegion === r.name}
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all',
+                      promotingRegion === r.name
+                        ? 'bg-amber-100 text-amber-500'
+                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                    )}
+                  >
+                    {promotingRegion === r.name ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      r.name
+                    )}
+                  </button>
+                ))}
+              {regions.filter(r => r.status === 'degraded').length === 0 && (
+                <span className="text-[10px] text-slate-400 italic">Nenhuma região degradada</span>
+              )}
+            </div>
+          </div>
+
+          {/* DR Status Summary */}
+          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+              <Monitor className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-brand-navy">Status DR</p>
+              <p className="text-xs text-slate-400 mt-0.5">Resumo do plano de recuperação</p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Regiões primárias</span>
+                <span className="font-bold text-brand-navy">{activeCount}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Links de réplica</span>
+                <span className="font-bold text-brand-navy">{links.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Links sincronizados</span>
+                <span className="font-bold text-green-600">{links.filter(l => l.status === 'synced').length}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Links atrasados</span>
+                <span className="font-bold text-amber-600">{links.filter(l => l.status !== 'synced').length}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ObserveModule() {
   const [activeTab, setActiveTab] = useState('overview')
   const reports = useDriftStore((s) => s.reports)
@@ -319,6 +775,10 @@ export function ObserveModule() {
             <Award className="h-4 w-4" />
             Scorecards
           </TabsTrigger>
+          <TabsTrigger value="regioes" className="gap-2">
+            <Globe className="h-4 w-4" />
+            Regiões
+          </TabsTrigger>
           <TabsTrigger value="dr" className="gap-2">
             <Activity className="h-4 w-4" />
             DR
@@ -365,6 +825,9 @@ export function ObserveModule() {
           <ScorecardView />
         </TabsContent>
 
+        <TabsContent value="regioes">
+          <RegioesView />
+        </TabsContent>
         <TabsContent value="dr">
           <DisasterRecovery />
         </TabsContent>

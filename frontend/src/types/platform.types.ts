@@ -4,10 +4,22 @@ export interface CatalogTemplate {
   description: string
   type: 'infrastructure' | 'application' | 'network' | 'security' | 'storage' | 'serverless'
   category: string
-  provider: 'aws' | 'azure' | 'gcp' | 'k8s'
+  provider: 'aws' | 'azure' | 'gcp' | 'k8s' | 'vercel' | 'supabase' | 'render'
   resources: { type: string; count: number }[]
   estimatedCost: string
   complexity: 'basic' | 'intermediate' | 'advanced'
+}
+
+export interface CatalogItemVersion {
+  id: string
+  catalogItemId: string
+  name: string
+  type: string
+  description: string
+  schema: string
+  version: string
+  status: string
+  createdAt: string
 }
 
 export const templateCategories = [

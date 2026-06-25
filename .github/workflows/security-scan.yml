@@ -1,0 +1,161 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CloudBuilder Security Scan
+# Triggers: push to main, weekly schedule
+# Scans: OWASP Dependency Check (Maven), Trivy filesystem (backend/frontend)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CloudBuilder Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+
+jobs:
+  # ═════════════════════════════════════════════════════════════════════════
+  # OWASP Dependency Check — Maven backend
+  # ═════════════════════════════════════════════════════════════════════════
+  owasp-dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: OWASP Dependency Check
+        run: |
+          cd backend
+          ./mvnw org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -Dformat=HTML \
+            -q
+        continue-on-error: true
+
+      - name: Upload OWASP Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owasp-report
+          path: backend/target/dependency-check-report.html
+          retention-days: 30
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # OWASP Dependency Check — npm frontend (audit)
+  # ═════════════════════════════════════════════════════════════════════════
+  npm-audit:
+    name: npm Audit (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: npm Audit (high severity)
+        run: cd frontend && npm audit --audit-level=high
+        continue-on-error: true
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # Trivy Filesystem Scan — Backend + Frontend source code
+  # ═════════════════════════════════════════════════════════════════════════
+  trivy-scan:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy on Backend
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: 'fs'
+          scan-ref: './backend'
+          format: 'sarif'
+          output: 'trivy-backend.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'    # Do not fail — report only
+
+      - name: Run Trivy on Frontend
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: 'fs'
+          scan-ref: './frontend'
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Upload Trivy results (Backend)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-backend-report
+          path: trivy-backend.sarif
+          retention-days: 30
+
+      - name: Upload Trivy results (Frontend)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-frontend-report
+          path: trivy-frontend.sarif
+          retention-days: 30
+
+      # Upload SARIF to GitHub Security tab (requires GITHUB_TOKEN)
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-backend.sarif
+          category: trivy-backend
+
+      - name: Upload SARIF to GitHub (Frontend)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # Go Security Check — govulncheck
+  # ═════════════════════════════════════════════════════════════════════════
+  govulncheck:
+    name: Go Vulnerability Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: provision-engine/go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        working-directory: ./provision-engine
+        run: govulncheck ./...
+        continue-on-error: true

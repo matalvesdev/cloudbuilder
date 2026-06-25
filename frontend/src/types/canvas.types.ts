@@ -1,4 +1,4 @@
-export type ProviderType = 'aws' | 'azure' | 'gcp' | 'k8s';
+export type ProviderType = 'aws' | 'azure' | 'gcp' | 'k8s' | 'vercel' | 'supabase' | 'render';
 export type ComponentCategory = 'compute' | 'network' | 'storage' | 'database' | 'security' | 'serverless' | 'monitoring' | 'integration';
 
 export interface ComponentDefinition {

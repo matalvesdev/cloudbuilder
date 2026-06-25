@@ -1,12 +1,60 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
-WORKDIR /app
-COPY pom.xml mvnw.cmd ./
-COPY .mvn .mvn
-COPY src src
-RUN ./mvnw package -DskipTests -q
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Backend — Dockerfile (Multi-Stage)
+# ═══════════════════════════════════════════════════════════════════════════
+# Stage 1: Build      — maven:3.9-eclipse-temurin-21-alpine
+# Stage 2: JAR Layers — eclipse-temurin:21-jre-alpine (layered extraction)
+# Stage 3: Runtime    — eclipse-temurin:21-jre-alpine (non-root, JRE only)
+# ═══════════════════════════════════════════════════════════════════════════
 
-FROM eclipse-temurin:21-jre-alpine
+# ─── Stage 1: Build with Maven ───────────────────────────────────────────
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
+
+# Copy dependency descriptors first (layer caching)
+COPY pom.xml ./
+COPY .mvn .mvn
+
+# Download dependencies offline (docker layer cache)
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline -q
+
+# Copy sources and build
+COPY src src
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -DskipTests -q
+
+# ─── Stage 2: Extract Layered JAR ────────────────────────────────────────
+# Spring Boot fat-jar → extracted layers for efficient Docker caching.
+# Dependencies change less often than application code.
+FROM eclipse-temurin:21-jre-alpine AS layers
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
+
+# ─── Stage 3: Runtime ────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine
+
+# Create non-root user
+RUN addgroup -S cloudbuilder && \
+    adduser -S cloudbuilder -G cloudbuilder -u 1000 && \
+    apk add --no-cache curl
+
+WORKDIR /app
+
+# Copy extracted layers in dependency order (maximises layer caching)
+COPY --from=layers /app/dependencies/ ./
+COPY --from=layers /app/spring-boot-loader/ ./
+COPY --from=layers /app/snapshot-dependencies/ ./
+COPY --from=layers /app/application/ ./
+
+# Switch to non-root user
+USER cloudbuilder
+
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Healthcheck (liveness + readiness via Spring Boot Actuator)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+# Use Spring Boot's JarLauncher for extracted layers
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

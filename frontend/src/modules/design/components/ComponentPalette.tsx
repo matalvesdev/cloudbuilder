@@ -59,6 +59,30 @@ const providerConfig: Record<ProviderType, { color: string; bg: string; hoverBg:
     iconBg: 'bg-indigo-100',
     iconGroupHover: 'group-hover:bg-indigo-200',
   },
+  vercel: {
+    color: 'text-neutral-700',
+    bg: 'bg-neutral-50',
+    hoverBg: 'hover:bg-neutral-50/80',
+    borderHover: 'hover:border-neutral-200',
+    iconBg: 'bg-neutral-100',
+    iconGroupHover: 'group-hover:bg-neutral-200',
+  },
+  supabase: {
+    color: 'text-emerald-700',
+    bg: 'bg-emerald-50',
+    hoverBg: 'hover:bg-emerald-50/80',
+    borderHover: 'hover:border-emerald-200',
+    iconBg: 'bg-emerald-100',
+    iconGroupHover: 'group-hover:bg-emerald-200',
+  },
+  render: {
+    color: 'text-teal-700',
+    bg: 'bg-teal-50',
+    hoverBg: 'hover:bg-teal-50/80',
+    borderHover: 'hover:border-teal-200',
+    iconBg: 'bg-teal-100',
+    iconGroupHover: 'group-hover:bg-teal-200',
+  },
 }
 
 const categoryIcons: Record<ComponentCategory, typeof Server> = {
@@ -92,6 +116,9 @@ const providerMeta: Record<ProviderType, { label: string; color: string; bg: str
   azure: { label: 'Azure', color: '#0078D4', bg: '#E0F0FF' },
   gcp: { label: 'GCP', color: '#4285F4', bg: '#E0F0FF' },
   k8s: { label: 'K8s', color: '#326CE5', bg: '#EEE0FF' },
+  vercel: { label: 'Vercel', color: '#000000', bg: '#F0F0F0' },
+  supabase: { label: 'Supabase', color: '#3ECF8E', bg: '#E0FFF0' },
+  render: { label: 'Render', color: '#46E3B7', bg: '#E0FFF8' },
 }
 
 interface ComponentPaletteProps {
@@ -136,7 +163,7 @@ export function ComponentPalette({ variant = 'default' }: ComponentPaletteProps)
 
   const providerCounts = useMemo(() => {
     const counts: Record<string, number> = { all: allComponents.length }
-    for (const p of ['aws', 'azure', 'gcp', 'k8s']) {
+    for (const p of ['aws', 'azure', 'gcp', 'k8s', 'vercel', 'supabase', 'render']) {
       counts[p] = allComponents.filter(c => c.provider === p).length
     }
     return counts
@@ -171,6 +198,9 @@ export function ComponentPalette({ variant = 'default' }: ComponentPaletteProps)
     { id: 'azure', label: 'Azure' },
     { id: 'gcp', label: 'GCP' },
     { id: 'k8s', label: 'K8s' },
+    { id: 'vercel', label: 'Vercel' },
+    { id: 'supabase', label: 'Supabase' },
+    { id: 'render', label: 'Render' },
   ]
 
   return (
@@ -213,13 +243,16 @@ export function ComponentPalette({ variant = 'default' }: ComponentPaletteProps)
               {tab.id !== 'all' && (
                 <span
                   className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{
-                    backgroundColor:
-                      tab.id === 'aws' ? '#FF9900' :
-                      tab.id === 'azure' ? '#0078D4' :
-                      tab.id === 'gcp' ? '#4285F4' :
-                      tab.id === 'k8s' ? '#326CE5' : undefined,
-                  }}
+                    style={{
+                      backgroundColor:
+                        tab.id === 'aws' ? '#FF9900' :
+                        tab.id === 'azure' ? '#0078D4' :
+                        tab.id === 'gcp' ? '#4285F4' :
+                        tab.id === 'k8s' ? '#326CE5' :
+                        tab.id === 'vercel' ? '#000000' :
+                        tab.id === 'supabase' ? '#3ECF8E' :
+                        tab.id === 'render' ? '#46E3B7' : undefined,
+                    }}
                 />
               )}
               {tab.label}

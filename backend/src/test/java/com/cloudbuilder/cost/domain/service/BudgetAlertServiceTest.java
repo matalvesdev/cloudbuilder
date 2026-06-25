@@ -1,6 +1,7 @@
 package com.cloudbuilder.cost.domain.service;
 
 import com.cloudbuilder.cost.domain.model.Budget;
+import com.cloudbuilder.cost.domain.port.BudgetAlertRepository;
 import com.cloudbuilder.cost.domain.port.BudgetRepository;
 import com.cloudbuilder.cost.domain.port.CostRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,9 @@ import static org.mockito.Mockito.*;
 class BudgetAlertServiceTest {
 
     @Mock
+    private BudgetAlertRepository budgetAlertRepository;
+
+    @Mock
     private BudgetRepository budgetRepository;
 
     @Mock
@@ -30,7 +34,7 @@ class BudgetAlertServiceTest {
 
     @BeforeEach
     void setUp() {
-        budgetAlertService = new BudgetAlertService(budgetRepository, costRecordRepository);
+        budgetAlertService = new BudgetAlertService(budgetAlertRepository, budgetRepository, costRecordRepository);
     }
 
     @Test

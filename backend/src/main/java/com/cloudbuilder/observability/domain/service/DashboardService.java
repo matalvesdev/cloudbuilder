@@ -3,6 +3,7 @@ package com.cloudbuilder.observability.domain.service;
 import com.cloudbuilder.observability.application.dto.DashboardDTO;
 import com.cloudbuilder.observability.domain.model.DashboardEntity;
 import com.cloudbuilder.observability.domain.port.DashboardRepository;
+import com.cloudbuilder.shared.security.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +21,8 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardDTO> getDashboards(String tenantId) {
+    public List<DashboardDTO> getDashboards() {
+        String tenantId = TenantContext.getTenantId();
         return repository.findByTenantId(tenantId).stream()
             .map(this::toDto)
             .collect(Collectors.toList());
@@ -29,7 +31,7 @@ public class DashboardService {
     @Transactional
     public DashboardDTO createDashboard(DashboardDTO dto) {
         DashboardEntity entity = new DashboardEntity();
-        entity.setTenantId(dto.name());
+        entity.setTenantId(TenantContext.getTenantId());
         entity.setName(dto.name());
         entity.setDescription(dto.description());
         entity.setDefinition(dto.definition());

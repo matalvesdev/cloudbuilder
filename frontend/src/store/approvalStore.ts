@@ -1,5 +1,40 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { api } from '@/api/client'
+
+// ─── API DTOs ─────────────────────────────────────────────────────────────
+
+interface ApprovalRuleDTO {
+  id: string
+  environmentId: string
+  environmentName: string
+  requiresApproval: boolean
+  approverIds: string[]
+  approvalMode: 'any' | 'all'
+  tenantId: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface ApprovalRequestDTO {
+  id: string
+  promotionId: string
+  sourceEnvId: string
+  targetEnvId: string
+  sourceEnvName: string
+  targetEnvName: string
+  sourceEnvType: string
+  targetEnvType: string
+  requestedBy: string
+  requestedByName: string
+  requestedAt: string
+  resourceCount: number
+  diffSummary: { label: string; source: string | number; target: string | number; diff?: number; same?: boolean }[]
+  status: 'pending' | 'approved' | 'rejected'
+  resolvedBy: string | null
+  resolvedByName: string | null
+  resolvedAt: string | null
+  comment: string | null
+}
 
 export interface TeamMember {
   id: string
@@ -55,7 +90,19 @@ interface ApprovalState {
   approvalRules: ApprovalRule[]
   approvalRequests: ApprovalRequest[]
   approvalHistory: ApprovalHistoryEntry[]
+  loading: boolean
+  error: string | null
 
+  // API-backed actions
+  fetchApprovalRules: () => Promise<void>
+  addApprovalRule: (rule: Omit<ApprovalRule, 'id'>) => Promise<ApprovalRule | null>
+  updateApprovalRule: (id: string, rule: Partial<ApprovalRule>) => Promise<void>
+  removeApprovalRuleApi: (id: string) => Promise<void>
+  submitApprovalRequest: (req: Omit<ApprovalRequest, 'id' | 'status' | 'resolvedBy' | 'resolvedByName' | 'resolvedAt' | 'comment'>) => Promise<ApprovalRequest | null>
+  approveRequest: (id: string, comment?: string) => Promise<void>
+  rejectRequest: (id: string, reason: string) => Promise<void>
+
+  // Local actions (kept for backward compatibility)
   addTeamMember: (member: Omit<TeamMember, 'id'>) => void
   removeTeamMember: (id: string) => void
   updateTeamMember: (id: string, updates: Partial<TeamMember>) => void
@@ -76,20 +123,190 @@ interface ApprovalState {
   getApproversForEnv: (environmentId: string) => TeamMember[]
 }
 
-const defaultMembers: TeamMember[] = [
-  { id: 'admin-1', name: 'Admin CloudBuilder', email: 'admin@cloudbuilder.io', role: 'admin' },
-  { id: 'approver-1', name: 'Ana Supervisora', email: 'ana@cloudbuilder.io', role: 'approver' },
-  { id: 'approver-2', name: 'Carlos Revisor', email: 'carlos@cloudbuilder.io', role: 'approver' },
-  { id: 'dev-1', name: 'Beatriz Dev', email: 'beatriz@cloudbuilder.io', role: 'developer' },
-]
-
 export const useApprovalStore = create<ApprovalState>()(
-  persist(
-    (set, get) => ({
-      teamMembers: defaultMembers,
+  (set, get) => ({
+    teamMembers: [],
       approvalRules: [],
       approvalRequests: [],
       approvalHistory: [],
+      loading: false,
+      error: null,
+
+      // ─── API-backed approval rule actions ─────────────────
+
+      fetchApprovalRules: async () => {
+        set({ loading: true, error: null })
+        try {
+          const data = await api.get<ApprovalRuleDTO[]>('/approval/rules')
+          const rules: ApprovalRule[] = data.map((dto) => ({
+            id: dto.id,
+            environmentId: dto.environmentId,
+            environmentName: dto.environmentName,
+            requiresApproval: dto.requiresApproval,
+            approverIds: dto.approverIds,
+            approvalMode: dto.approvalMode,
+          }))
+          set({ approvalRules: rules, loading: false })
+        } catch {
+          set({ loading: false, approvalRules: [] })
+        }
+      },
+
+      addApprovalRule: async (rule) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.post<ApprovalRuleDTO>('/approval/rules', rule)
+          const newRule: ApprovalRule = {
+            id: dto.id,
+            environmentId: dto.environmentId,
+            environmentName: dto.environmentName,
+            requiresApproval: dto.requiresApproval,
+            approverIds: dto.approverIds,
+            approvalMode: dto.approvalMode,
+          }
+          set((state) => ({ approvalRules: [...state.approvalRules, newRule], loading: false }))
+          return newRule
+        } catch {
+          set({ loading: false })
+          return null
+        }
+      },
+
+      updateApprovalRule: async (id, rule) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.put<ApprovalRuleDTO>(`/approval/rules/${id}`, rule)
+          set((state) => ({
+            approvalRules: state.approvalRules.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    environmentId: dto.environmentId,
+                    environmentName: dto.environmentName,
+                    requiresApproval: dto.requiresApproval,
+                    approverIds: dto.approverIds,
+                    approvalMode: dto.approvalMode,
+                  }
+                : r
+            ),
+            loading: false,
+          }))
+        } catch {
+          set({ loading: false })
+        }
+      },
+
+      removeApprovalRuleApi: async (id) => {
+        set({ loading: true, error: null })
+        try {
+          await api.delete(`/approval/rules/${id}`)
+          set((state) => ({
+            approvalRules: state.approvalRules.filter((r) => r.id !== id),
+            loading: false,
+          }))
+        } catch {
+          set({ loading: false })
+        }
+      },
+
+      // ─── API-backed approval request actions ──────────────
+
+      submitApprovalRequest: async (req) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.post<ApprovalRequestDTO>('/approval/requests', req)
+          const newReq: ApprovalRequest = {
+            id: dto.id,
+            promotionId: dto.promotionId,
+            sourceEnvId: dto.sourceEnvId,
+            targetEnvId: dto.targetEnvId,
+            sourceEnvName: dto.sourceEnvName,
+            targetEnvName: dto.targetEnvName,
+            sourceEnvType: dto.sourceEnvType,
+            targetEnvType: dto.targetEnvType,
+            requestedBy: dto.requestedBy,
+            requestedByName: dto.requestedByName,
+            requestedAt: dto.requestedAt,
+            resourceCount: dto.resourceCount,
+            diffSummary: dto.diffSummary,
+            status: dto.status,
+            resolvedBy: dto.resolvedBy,
+            resolvedByName: dto.resolvedByName,
+            resolvedAt: dto.resolvedAt,
+            comment: dto.comment,
+          }
+          const historyEntry: ApprovalHistoryEntry = {
+            id: crypto.randomUUID(),
+            approvalRequestId: dto.id,
+            promotionId: req.promotionId,
+            action: 'requested',
+            actor: req.requestedBy,
+            actorName: req.requestedByName,
+            role: 'developer',
+            comment: '',
+            timestamp: dto.requestedAt,
+          }
+          set((state) => ({
+            approvalRequests: [...state.approvalRequests, newReq],
+            approvalHistory: [...state.approvalHistory, historyEntry],
+            loading: false,
+          }))
+          return newReq
+        } catch {
+          set({ loading: false })
+          return null
+        }
+      },
+
+      approveRequest: async (id, comment) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.post<ApprovalRequestDTO>(`/approval/requests/${id}/approve`, { comment: comment ?? '' })
+          set((state) => ({
+            approvalRequests: state.approvalRequests.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    status: dto.status,
+                    resolvedBy: dto.resolvedBy,
+                    resolvedByName: dto.resolvedByName,
+                    resolvedAt: dto.resolvedAt,
+                    comment: dto.comment,
+                  }
+                : r
+            ),
+            loading: false,
+          }))
+        } catch {
+          set({ loading: false })
+        }
+      },
+
+      rejectRequest: async (id, reason) => {
+        set({ loading: true, error: null })
+        try {
+          const dto = await api.post<ApprovalRequestDTO>(`/approval/requests/${id}/reject`, { comment: reason })
+          set((state) => ({
+            approvalRequests: state.approvalRequests.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    status: dto.status,
+                    resolvedBy: dto.resolvedBy,
+                    resolvedByName: dto.resolvedByName,
+                    resolvedAt: dto.resolvedAt,
+                    comment: dto.comment,
+                  }
+                : r
+            ),
+            loading: false,
+          }))
+        } catch {
+          set({ loading: false })
+        }
+      },
+
+      // ─── Local actions (kept for backward compatibility) ──
 
       addTeamMember: (member) => {
         const newMember: TeamMember = { ...member, id: crypto.randomUUID() }
@@ -273,9 +490,5 @@ export const useApprovalStore = create<ApprovalState>()(
         if (!rule) return []
         return get().teamMembers.filter((m) => rule.approverIds.includes(m.id))
       },
-    }),
-    {
-      name: 'cloudbuilder-approvals',
-    }
-  )
+    })
 )

@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Frontend — .dockerignore
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# E2E tests
+e2e/
+playwright.config.ts
+playwright-report/
+test-results/
+
+# ESLint
+eslint.config.js
+
+# Debug files
+debug_*.png
+debug_*.mjs
+nul

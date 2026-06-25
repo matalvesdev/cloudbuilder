@@ -40,11 +40,11 @@ public class TraceContextFilter extends OncePerRequestFilter {
 
         String traceId = request.getHeader(TRACE_ID_HEADER);
         if (traceId == null || traceId.isBlank()) {
-            traceId = UUID.randomUUID().toString().toString().replace("-", "").substring(0, 16);
+            traceId = UUID.randomUUID().toString().replace("-", "");
         }
 
         String parentSpanId = request.getHeader(PARENT_SPAN_ID_HEADER);
-        String spanId = UUID.randomUUID().toString().toString().replace("-", "").substring(0, 8);
+        String spanId = UUID.randomUUID().toString().replace("-", "");
 
         TraceContext.set(traceId, spanId, parentSpanId);
 

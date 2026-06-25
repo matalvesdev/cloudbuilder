@@ -15,6 +15,7 @@ import { useRepoStore } from '@/store/repoStore'
 import { useDeployStore } from '@/store/deployStore'
 import { ENVIRONMENT_TYPE_LABELS, ENVIRONMENT_STATUS_LABELS } from '@/types/settings.types'
 import { EnvironmentPipeline } from './EnvironmentPipeline'
+import { GitOpsSection } from './GitOpsSection'
 import { PromoteDialog } from './PromoteDialog'
 import { ApprovalDialog } from './ApprovalDialog'
 import { ApprovalGateConfig } from './ApprovalGateConfig'
@@ -775,6 +776,11 @@ export function ProvisionModule() {
 
       {/* Ephemeral Environments */}
       <EphemeralEnvironments className="mt-6" />
+
+      {/* GitOps — repository list, commits, pipelines */}
+      {connectedRepos.length > 0 && (
+        <GitOpsSection connectedRepos={connectedRepos} className="mt-6" />
+      )}
 
       {/* Deploy Modal — Plan → Review → Apply */}
       <DeployModal

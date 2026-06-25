@@ -1,9 +1,11 @@
 # ADR-010: Backend Quality Gate
 
-**Status**: Proposed  
+**Status**: Implementado  
 **Date**: 2026-06-18  
 **Author**: FAANg Tech Lead (Sisyphus)  
-**Deciders**: FAANg FAANg Agents (Tech Lead, Principal Architect, QA Engineer)  
+**Deciders**: FAANg Agents (Tech Lead, Principal Architect, QA Engineer)
+
+> **Phase 5a-d (2026-06-18)**: Executado em 4 fases — 5a (176 tests: CanvasService, ComponentDefinitionService, ValidationService, VersionService), 5b (277 tests: IAM, Observe, Platform, Cost, AIOps, MultiRegion, Git), 5c (122 tests: EphemeralEnvironmentService, AIOpsService, MarketplaceService, etc.), 5d (ID Type Migration: UUID→String em 559+ referências, 206+ arquivos Java). Total: 479 JUnit tests, 473 passing (6 pre-existing failures). TypeScript 0 errors.  
 
 ## Context
 

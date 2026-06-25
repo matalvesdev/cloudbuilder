@@ -46,6 +46,7 @@ class HttpClient {
   ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'application/vnd.cloudbuilder.v1+json',
     }
 
     if (!options?.skipAuth) {

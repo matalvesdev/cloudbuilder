@@ -4,7 +4,10 @@ import {
   BookOpen, Compass, FileCode, ShieldCheck, AlertTriangle,
   CheckCircle, XCircle, Plus, ArrowRight, Info, Layers,
   Globe, Server, HardDrive, Lock, Wrench, Filter, ChevronRight,
-  RefreshCw, Eye, Gavel
+  RefreshCw, Eye, Gavel, History as HistoryIcon,
+  Store, Puzzle, ExternalLink, Zap, UserCheck, Settings,
+  Activity, Clock, Tag, DollarSign, Columns, Building2,
+  Check, Ban, Play, Trash2
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,6 +29,9 @@ import { useCanvasStore } from '@/store/canvasStore'
 import { usePolicyStore } from '@/store/policyStore'
 import { useUiStore } from '@/store/uiStore'
 import { platformApi } from '@/api/platform'
+import type { MarketplaceListing, PartnerIntegration } from '@/api/platform'
+import { usePlatformStore } from '@/store/platformStore'
+import type { CatalogItemVersion } from '@/types/platform.types'
 import type { CanvasDesign, ProviderType } from '@/types/canvas.types'
 import type { PolicySeverity } from '@/types/policy.types'
 
@@ -57,6 +63,7 @@ interface TemplateDefinition {
   icon: string
   nodes: TemplateNode[]
   edges: TemplateEdge[]
+  status?: 'PUBLISHED' | 'DRAFT'
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -199,7 +206,12 @@ const CATEGORIES = [
 const PROVIDERS: { value: string; label: string; icon: any }[] = [
   { value: 'all', label: 'Todos Providers', icon: Cloud },
   { value: 'aws', label: 'AWS', icon: Cloud },
+  { value: 'azure', label: 'Azure', icon: Cloud },
+  { value: 'gcp', label: 'GCP', icon: Cloud },
   { value: 'k8s', label: 'Kubernetes', icon: Container },
+  { value: 'vercel', label: 'Vercel', icon: Cloud },
+  { value: 'supabase', label: 'Supabase', icon: Database },
+  { value: 'render', label: 'Render', icon: Cloud },
 ]
 
 const ROW_HEIGHT = 170
@@ -264,6 +276,9 @@ const PROVIDER_CONFIG: Record<string, { label: string; color: string }> = {
   azure: { label: 'Azure', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   gcp: { label: 'GCP', color: 'bg-sky-100 text-sky-700 border-sky-200' },
   k8s: { label: 'K8s', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  vercel: { label: 'Vercel', color: 'bg-neutral-100 text-neutral-700 border-neutral-200' },
+  supabase: { label: 'Supabase', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  render: { label: 'Render', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
 }
 
 const SEVERITY_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -292,6 +307,16 @@ export function PlatformModule() {
   const [showComplianceReport, setShowComplianceReport] = useState(false)
   const [templates, setTemplates] = useState<TemplateDefinition[]>(FALLBACK_TEMPLATES)
   const [fetchingTemplates, setFetchingTemplates] = useState(true)
+
+  // ─── Marketplace State ─────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'catalogo' | 'marketplace'>('catalogo')
+  const [marketplaceListings, setMarketplaceListings] = useState<MarketplaceListing[]>([])
+  const [partners, setPartners] = useState<PartnerIntegration[]>([])
+  const [marketplaceLoading, setMarketplaceLoading] = useState(true)
+  const [activeMarketplaceTab, setActiveMarketplaceTab] = useState<'listings' | 'partners'>('listings')
+  const [marketplaceSearch, setMarketplaceSearch] = useState('')
+  const [marketplaceProviderFilter, setMarketplaceProviderFilter] = useState('all')
+  const [partnerDialogOpen, setPartnerDialogOpen] = useState(false)
 
   useEffect(() => {
     platformApi.getCatalog().then((catalogData) => {
@@ -398,6 +423,39 @@ export function PlatformModule() {
     ignoreViolation(violationId)
   }
 
+  // ─── Platform Store Integration ──────────────────────────
+  const versionHistory = usePlatformStore((s) => s.versionHistory)
+  const versionHistoryLoading = usePlatformStore((s) => s.versionHistoryLoading)
+  const loadVersionHistory = usePlatformStore((s) => s.loadVersionHistory)
+  const publishItem = usePlatformStore((s) => s.publishItem)
+  const unpublishItem = usePlatformStore((s) => s.unpublishItem)
+
+  // ─── Marketplace Data Loading ─────────────────────────────
+  useEffect(() => {
+    if (activeTab !== 'marketplace') return
+    setMarketplaceLoading(true)
+    Promise.all([
+      platformApi.fetchMarketplaceListings().then(setMarketplaceListings),
+      platformApi.fetchPartners().then(setPartners),
+    ]).finally(() => setMarketplaceLoading(false))
+  }, [activeTab])
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      loadVersionHistory(selectedTemplate.id)
+    }
+  }, [selectedTemplate?.id])
+
+  const handlePublishTemplate = async (templateId: string) => {
+    await publishItem(templateId)
+    if (selectedTemplate) loadVersionHistory(selectedTemplate.id)
+  }
+
+  const handleUnpublishTemplate = async (templateId: string) => {
+    await unpublishItem(templateId)
+    if (selectedTemplate) loadVersionHistory(selectedTemplate.id)
+  }
+
   function handleNavigateToResource(resourceId: string) {
     setSelectedNode(resourceId)
     setActiveModule('design')
@@ -406,6 +464,23 @@ export function PlatformModule() {
   function handleVerifyCompliance() {
     checkPolicies()
     setShowComplianceReport(true)
+  }
+
+  // ─── Marketplace Handlers ─────────────────────────────────
+  const handleActivatePartner = async (partnerId: string) => {
+    const ok = await platformApi.activatePartner(partnerId)
+    if (ok) {
+      const updated = await platformApi.fetchPartners()
+      setPartners(updated)
+    }
+  }
+
+  const handleConfigurePartner = async (partnerId: string, apiEndpoint: string, configuration: string) => {
+    const ok = await platformApi.updatePartnerConfig(partnerId, apiEndpoint, configuration)
+    if (ok) {
+      const updated = await platformApi.fetchPartners()
+      setPartners(updated)
+    }
   }
 
   const summaryItems = [
@@ -420,77 +495,199 @@ export function PlatformModule() {
       <div className="p-6 pb-0 space-y-6 shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-brand-navy font-display">Catálogo da Plataforma</h1>
-            <p className="text-sm text-slate-400">Golden paths, templates e conformidade</p>
+            <h1 className="text-2xl font-bold text-brand-navy font-display">
+              {activeTab === 'catalogo' ? 'Catálogo da Plataforma' : 'Marketplace'}
+            </h1>
+            <p className="text-sm text-slate-400">
+              {activeTab === 'catalogo'
+                ? 'Golden paths, templates e conformidade'
+                : 'Explore templates e integrações de parceiros'
+              }
+            </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 card-shadow">
-            <ShieldCheck className="h-4 w-4 text-brand-navy" />
-            <span className="text-sm font-medium text-brand-navy">{complianceScore}% Conformidade</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-4 gap-4">
-          {summaryItems.map((item) => (
-            <Card key={item.title} title={item.title} value={item.value} icon={item.icon} />
-          ))}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Buscar templates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 bg-white border-slate-200 rounded-xl"
-            />
-            {searchQuery && (
+          <div className="flex items-center gap-3">
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-1 px-1.5 py-1 rounded-2xl bg-white border border-slate-100 card-shadow">
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                onClick={() => setActiveTab('catalogo')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-medium transition-all',
+                  activeTab === 'catalogo'
+                    ? 'bg-brand-navy text-white shadow-sm'
+                    : 'text-slate-500 hover:text-brand-navy hover:bg-slate-50'
+                )}
               >
-                <X className="h-4 w-4" />
+                <BookOpen className="h-3.5 w-3.5" />
+                Catálogo
               </button>
+              <button
+                onClick={() => setActiveTab('marketplace')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-medium transition-all',
+                  activeTab === 'marketplace'
+                    ? 'bg-brand-navy text-white shadow-sm'
+                    : 'text-slate-500 hover:text-brand-navy hover:bg-slate-50'
+                )}
+              >
+                <Store className="h-3.5 w-3.5" />
+                Marketplace
+              </button>
+            </div>
+            {activeTab === 'catalogo' && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 card-shadow">
+                <ShieldCheck className="h-4 w-4 text-brand-navy" />
+                <span className="text-sm font-medium text-brand-navy">{complianceScore}% Conformidade</span>
+              </div>
             )}
           </div>
-
-          <div className="flex gap-2">
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterProvider}
-              onChange={(e) => setFilterProvider(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-            >
-              {PROVIDERS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterComplexity}
-              onChange={(e) => setFilterComplexity(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
-            >
-              <option value="all">Todas Complexidades</option>
-              <option value="beginner">Iniciante</option>
-              <option value="intermediate">Intermediário</option>
-              <option value="advanced">Avançado</option>
-            </select>
-          </div>
         </div>
+
+        {activeTab === 'catalogo' && (
+          <>
+            <div className="grid grid-cols-4 gap-4">
+              {summaryItems.map((item) => (
+                <Card key={item.title} title={item.title} value={item.value} icon={item.icon} />
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Buscar templates..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-10 bg-white border-slate-200 rounded-xl"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterProvider}
+                  onChange={(e) => setFilterProvider(e.target.value)}
+                  className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                >
+                  {PROVIDERS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterComplexity}
+                  onChange={(e) => setFilterComplexity(e.target.value)}
+                  className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                >
+                  <option value="all">Todas Complexidades</option>
+                  <option value="beginner">Iniciante</option>
+                  <option value="intermediate">Intermediário</option>
+                  <option value="advanced">Avançado</option>
+                </select>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'marketplace' && (
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
+              />
+              <Input
+                placeholder={activeMarketplaceTab === 'listings'
+                  ? 'Buscar listagens...'
+                  : 'Buscar parceiros...'
+                }
+                value={marketplaceSearch}
+                onChange={(e) => setMarketplaceSearch(e.target.value)}
+                className="pl-9 h-10 bg-white border-slate-200 rounded-xl"
+              />
+              {marketplaceSearch && (
+                <button
+                  onClick={() => setMarketplaceSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Sub-tab toggle */}
+            <div className="flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden shrink-0">
+              <button
+                onClick={() => setActiveMarketplaceTab('listings')}
+                className={cn(
+                  'px-3 py-2 text-xs font-medium transition-all',
+                  activeMarketplaceTab === 'listings'
+                    ? 'bg-brand-navy text-white'
+                    : 'text-slate-500 hover:text-brand-navy'
+                )}
+              >
+                Listagens
+              </button>
+              <button
+                onClick={() => setActiveMarketplaceTab('partners')}
+                className={cn(
+                  'px-3 py-2 text-xs font-medium transition-all',
+                  activeMarketplaceTab === 'partners'
+                    ? 'bg-brand-navy text-white'
+                    : 'text-slate-500 hover:text-brand-navy'
+                )}
+              >
+                Parceiros
+              </button>
+            </div>
+            {activeMarketplaceTab === 'listings' && (
+              <div className="flex gap-2">
+                <select
+                  value={marketplaceProviderFilter}
+                  onChange={(e) => setMarketplaceProviderFilter(e.target.value)}
+                  className="h-10 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+                >
+                  <option value="all">Todos Providers</option>
+                  <option value="aws">AWS</option>
+                  <option value="azure">Azure</option>
+                  <option value="gcp">GCP</option>
+                  <option value="k8s">Kubernetes</option>
+                </select>
+              </div>
+            )}
+            {activeMarketplaceTab === 'partners' && (
+              <ProtectedAction roles={['admin']}>
+                <button
+                  onClick={() => setPartnerDialogOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-navy text-white text-xs font-medium hover:bg-brand-navy/90 transition-all"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Novo Parceiro
+                </button>
+              </ProtectedAction>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <ScrollArea className="flex-1 p-6 pt-4">
+      {activeTab === 'catalogo' && (
+        <div className="flex-1 flex overflow-hidden">
+          <ScrollArea className="flex-1 p-6 pt-4">
           {fetchingTemplates ? (
             <div className="grid grid-cols-2 gap-4">
               {[1,2,3,4].map((i) => (
@@ -626,9 +823,16 @@ export function PlatformModule() {
                 {selectedTemplate.nodes.map((n) => (
                   <div key={n.logicalId} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 text-xs">
                     <span className={cn(
-                      'w-1.5 h-1.5 rounded-full shrink-0',
-                      n.provider === 'aws' ? 'bg-orange-500' : 'bg-indigo-500'
-                    )} />
+                          'w-1.5 h-1.5 rounded-full shrink-0',
+                          n.provider === 'aws' ? 'bg-orange-500' :
+                          n.provider === 'azure' ? 'bg-blue-500' :
+                          n.provider === 'gcp' ? 'bg-sky-500' :
+                          n.provider === 'k8s' ? 'bg-indigo-500' :
+                          n.provider === 'vercel' ? 'bg-neutral-500' :
+                          n.provider === 'supabase' ? 'bg-emerald-500' :
+                          n.provider === 'render' ? 'bg-cyan-500' :
+                          'bg-indigo-500'
+                        )} />
                     <span className="text-brand-navy font-medium">{n.label}</span>
                     <span className="text-slate-400 ml-auto text-[10px]">{n.resourceType.replace(/_/g, ' ')}</span>
                   </div>
@@ -656,6 +860,77 @@ export function PlatformModule() {
               </div>
             </div>
 
+            {/* ─── Version History ─────────────────────────── */}
+            <div className="mb-4">
+              <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                <HistoryIcon className="h-3 w-3 inline mr-1" />
+                Histórico de Versões
+              </h5>
+              {versionHistoryLoading ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Carregando...
+                </div>
+              ) : versionHistory.length > 0 ? (
+                <div className="space-y-1.5">
+                  {versionHistory.slice(0, 5).map((v) => (
+                    <div key={v.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-50 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-brand-navy font-medium">v{v.version}</span>
+                        <span className={cn(
+                          'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                          v.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                        )}>
+                          {v.status === 'PUBLISHED' ? 'Publicado' : 'Rascunho'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(v.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  ))}
+                  {versionHistory.length > 5 && (
+                    <p className="text-[10px] text-slate-300 italic text-center">
+                      +{versionHistory.length - 5} versões anteriores
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-300 italic py-2">Nenhum histórico disponível</p>
+              )}
+            </div>
+
+            {/* ─── Publish Workflow ────────────────────────── */}
+            <div className="flex items-center justify-between mb-4 px-3 py-2 rounded-lg bg-slate-50">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400">Status:</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-medium',
+                  selectedTemplate.status === 'PUBLISHED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                )}>
+                  {selectedTemplate.status === 'PUBLISHED' ? 'Publicado' : 'Rascunho'}
+                </span>
+              </div>
+              <ProtectedAction roles={['admin']}>
+                {selectedTemplate.status === 'PUBLISHED' ? (
+                  <button
+                    onClick={() => handleUnpublishTemplate(selectedTemplate.id)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-amber-600 border border-amber-200 hover:bg-amber-50 transition-all"
+                  >
+                    Despublicar
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handlePublishTemplate(selectedTemplate.id)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium text-green-600 border border-green-200 hover:bg-green-50 transition-all"
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                    Publicar
+                  </button>
+                )}
+              </ProtectedAction>
+            </div>
+
             <ProtectedAction roles={['admin', 'editor']}>
               <Button
                 onClick={() => handleUseTemplate(selectedTemplate)}
@@ -668,7 +943,65 @@ export function PlatformModule() {
           </div>
         )}
       </div>
+      )}
 
+      {activeTab === 'marketplace' && (
+        <div className="flex-1 flex overflow-hidden">
+          <ScrollArea className="flex-1 p-6 pt-4">
+            {marketplaceLoading ? (
+              <div className="grid grid-cols-3 gap-4">
+                {[1,2,3,4,5,6].map((i) => (
+                  <div key={i} className="rounded-2xl border border-slate-100 bg-white p-5 card-shadow space-y-4">
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-5/6" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-8 w-28 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activeMarketplaceTab === 'listings' ? (
+              <MarketplaceListingsView
+                listings={marketplaceListings}
+                search={marketplaceSearch}
+                providerFilter={marketplaceProviderFilter}
+              />
+            ) : (
+              <PartnersView
+                partners={partners}
+                search={marketplaceSearch}
+                onActivate={handleActivatePartner}
+                onConfigure={handleConfigurePartner}
+                onPartnerCreated={() => {
+                  setPartnerDialogOpen(false)
+                  platformApi.fetchPartners().then(setPartners)
+                }}
+              />
+            )}
+          </ScrollArea>
+        </div>
+      )}
+
+      {activeTab === 'marketplace' && (
+        <NovoPartnerDialog
+          open={partnerDialogOpen}
+          onOpenChange={setPartnerDialogOpen}
+          onCreated={() => {
+            setPartnerDialogOpen(false)
+            platformApi.fetchPartners().then(setPartners)
+          }}
+        />
+      )}
+
+      {activeTab === 'catalogo' && (
       <div className="p-6 pt-0 shrink-0">
         <div className="bg-white rounded-3xl card-shadow border border-slate-100">
           <div className="p-5 pb-3">
@@ -929,6 +1262,7 @@ export function PlatformModule() {
           </div>
         </div>
       </div>
+      )}
 
       <Dialog open={!!confirmTemplate} onOpenChange={(open) => !open && setConfirmTemplate(null)}>
         <DialogContent className="sm:max-w-lg rounded-2xl">
@@ -989,5 +1323,493 @@ export function PlatformModule() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// ─── Marketplace Listings Sub-Component ─────────────────────
+
+const PROVIDER_BADGE_CONFIG: Record<string, { label: string; color: string }> = {
+  aws: { label: 'AWS', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  azure: { label: 'Azure', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  gcp: { label: 'GCP', color: 'bg-sky-100 text-sky-700 border-sky-200' },
+  k8s: { label: 'K8s', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+}
+
+const LISTING_TYPE_CONFIG: Record<string, { label: string; icon: any }> = {
+  template: { label: 'Template', icon: FileCode },
+  pipeline: { label: 'Pipeline', icon: Activity },
+  addon: { label: 'Add-on', icon: Puzzle },
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  PUBLISHED: { label: 'Publicado', color: 'bg-green-100 text-green-700 border-green-200' },
+  DRAFT: { label: 'Rascunho', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  UNPUBLISHED: { label: 'Despublicado', color: 'bg-slate-100 text-slate-500 border-slate-200' },
+}
+
+function MarketplaceListingsView({
+  listings,
+  search,
+  providerFilter,
+}: {
+  listings: MarketplaceListing[]
+  search: string
+  providerFilter: string
+}) {
+  const filtered = useMemo(() => {
+    return listings.filter((l) => {
+      if (search) {
+        const q = search.toLowerCase()
+        if (!l.name.toLowerCase().includes(q) && !l.description.toLowerCase().includes(q)) return false
+      }
+      if (providerFilter !== 'all' && l.cloudProvider !== providerFilter) return false
+      return true
+    })
+  }, [listings, search, providerFilter])
+
+  const handleUseListing = async (listing: MarketplaceListing) => {
+    // Navigate to design module with this listing as context
+    const { useUiStore } = await import('@/store/uiStore')
+    useUiStore.getState().setActiveModule('design')
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+        <Store className="h-12 w-12 mb-3" />
+        <p className="text-sm font-medium">Nenhuma listagem encontrada</p>
+        <p className="text-xs">Tente ajustar os filtros ou a busca</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {filtered.map((listing) => {
+        const TypeIcon = LISTING_TYPE_CONFIG[listing.listingType]?.icon || Puzzle
+        const statusCfg = STATUS_CONFIG[listing.status] || STATUS_CONFIG.DRAFT
+        const providerCfg = PROVIDER_BADGE_CONFIG[listing.cloudProvider] || { label: listing.cloudProvider, color: 'bg-slate-100 text-slate-600 border-slate-200' }
+
+        return (
+          <div
+            key={listing.id}
+            className="rounded-2xl border border-slate-100 bg-white p-5 card-shadow hover:shadow-md transition-all duration-200 flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-start gap-3 mb-3">
+              <div className="p-2.5 rounded-xl bg-brand-navy/5 border border-brand-navy/10 shrink-0">
+                <Store className="h-5 w-5 text-brand-navy" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-brand-navy truncate">{listing.name}</h3>
+                <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">{listing.description}</p>
+              </div>
+            </div>
+
+            {/* Tags row */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-3">
+              <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', providerCfg.color)}>
+                {providerCfg.label}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 font-medium flex items-center gap-1">
+                <TypeIcon className="h-3 w-3" />
+                {LISTING_TYPE_CONFIG[listing.listingType]?.label || listing.listingType}
+              </span>
+              <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', statusCfg.color)}>
+                {statusCfg.label}
+              </span>
+            </div>
+
+            {/* Meta */}
+            <div className="space-y-1 mb-4 text-xs text-slate-400">
+              <div className="flex items-center gap-1">
+                <UserCheck className="h-3 w-3" />
+                <span>{listing.publisherName}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Tag className="h-3 w-3" />
+                <span>v{listing.version}</span>
+              </div>
+              {listing.pricing && (
+                <div className="flex items-center gap-1">
+                  <DollarSign className="h-3 w-3" />
+                  <span>{listing.pricing}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>Atualizado em {new Date(listing.updatedAt).toLocaleDateString('pt-BR')}</span>
+              </div>
+            </div>
+
+            {/* Tags */}
+            {listing.tags && (
+              <div className="flex flex-wrap gap-1 mb-4">
+                {listing.tags.split(',').slice(0, 3).map((tag) => (
+                  <span
+                    key={tag.trim()}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-brand-ice-blue/50 text-brand-navy/70 font-medium"
+                  >
+                    {tag.trim()}
+                  </span>
+                ))}
+                {listing.tags.split(',').length > 3 && (
+                  <span className="text-[10px] text-slate-300">+{listing.tags.split(',').length - 3}</span>
+                )}
+              </div>
+            )}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* CTA */}
+            <div className="pt-3 border-t border-slate-50">
+              <ProtectedAction roles={['admin', 'editor']}>
+                <button
+                  onClick={() => handleUseListing(listing)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-brand-navy text-white text-xs font-medium hover:bg-brand-navy/90 transition-all"
+                >
+                  {listing.status === 'PUBLISHED' ? (
+                    <>Usar Template</>
+                  ) : (
+                    <>Ver Detalhes</>
+                  )}
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </ProtectedAction>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Partners Sub-Component ──────────────────────────────────
+
+const PARTNER_STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+  ACTIVE: { label: 'Ativo', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+  INACTIVE: { label: 'Inativo', color: 'bg-slate-100 text-slate-500 border-slate-200', icon: Ban },
+  PENDING: { label: 'Pendente', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
+}
+
+const INTEGRATION_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+  observability: { label: 'Observabilidade', color: 'bg-purple-50 text-purple-600' },
+  security: { label: 'Segurança', color: 'bg-red-50 text-red-600' },
+  'incident-management': { label: 'Incidentes', color: 'bg-orange-50 text-orange-600' },
+  'artifact-storage': { label: 'Artefatos', color: 'bg-blue-50 text-blue-600' },
+  monitoring: { label: 'Monitoramento', color: 'bg-cyan-50 text-cyan-600' },
+}
+
+function PartnersView({
+  partners,
+  search,
+  onActivate,
+  onConfigure,
+  onPartnerCreated,
+}: {
+  partners: PartnerIntegration[]
+  search: string
+  onActivate: (id: string) => void
+  onConfigure: (id: string, apiEndpoint: string, configuration: string) => void
+  onPartnerCreated: () => void
+}) {
+  const [configDialog, setConfigDialog] = useState<PartnerIntegration | null>(null)
+  const [configEndpoint, setConfigEndpoint] = useState('')
+  const [configData, setConfigData] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!search) return partners
+    const q = search.toLowerCase()
+    return partners.filter(
+      (p) =>
+        p.partnerName.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.integrationType.toLowerCase().includes(q)
+    )
+  }, [partners, search])
+
+  const openConfigDialog = (partner: PartnerIntegration) => {
+    setConfigDialog(partner)
+    setConfigEndpoint(partner.apiEndpoint || '')
+    setConfigData(partner.configuration || '')
+  }
+
+  const handleSaveConfig = () => {
+    if (configDialog) {
+      onConfigure(configDialog.id, configEndpoint, configData)
+      setConfigDialog(null)
+    }
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+        <Building2 className="h-12 w-12 mb-3" />
+        <p className="text-sm font-medium">Nenhum parceiro encontrado</p>
+        <p className="text-xs">Tente ajustar a busca</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="bg-white rounded-2xl border border-slate-100 card-shadow overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-100">
+              <th className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest px-5 py-3">Parceiro</th>
+              <th className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest px-5 py-3">Tipo</th>
+              <th className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest px-5 py-3">Endpoint</th>
+              <th className="text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest px-5 py-3">Status</th>
+              <th className="text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest px-5 py-3">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((partner) => {
+              const statusCfg = PARTNER_STATUS_CONFIG[partner.status] || PARTNER_STATUS_CONFIG.PENDING
+              const StatusIcon = statusCfg.icon
+              const integCfg = INTEGRATION_TYPE_CONFIG[partner.integrationType] || { label: partner.integrationType, color: 'bg-slate-50 text-slate-600' }
+
+              return (
+                <tr key={partner.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-brand-navy/5 border border-brand-navy/10 shrink-0">
+                        <Building2 className="h-4 w-4 text-brand-navy" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-brand-navy">{partner.partnerName}</p>
+                        <p className="text-xs text-slate-400 truncate max-w-[200px]">{partner.description}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className={cn(
+                      'text-[10px] px-2 py-0.5 rounded-full font-medium',
+                      integCfg.color
+                    )}>
+                      {integCfg.label}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="text-xs text-slate-500 font-mono truncate max-w-[180px] block">
+                      {partner.apiEndpoint || '—'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className={cn(
+                      'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium',
+                      statusCfg.color
+                    )}>
+                      <StatusIcon className="h-3 w-3" />
+                      {statusCfg.label}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {partner.status !== 'ACTIVE' && (
+                        <ProtectedAction roles={['admin']}>
+                          <button
+                            onClick={() => onActivate(partner.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-green-600 border border-green-200 hover:bg-green-50 transition-all"
+                          >
+                            <Play className="h-3 w-3" />
+                            Ativar
+                          </button>
+                        </ProtectedAction>
+                      )}
+                      <ProtectedAction roles={['admin']}>
+                        <button
+                          onClick={() => openConfigDialog(partner)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-brand-navy border border-brand-navy/20 hover:bg-brand-navy/5 transition-all"
+                        >
+                          <Settings className="h-3 w-3" />
+                          Configurar
+                        </button>
+                      </ProtectedAction>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Config Dialog */}
+      <Dialog open={!!configDialog} onOpenChange={(open) => !open && setConfigDialog(null)}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-brand-navy">
+              <Settings className="h-4 w-4" />
+              Configurar {configDialog?.partnerName}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              Configure o endpoint e as credenciais de integração
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1.5">API Endpoint</label>
+              <Input
+                value={configEndpoint}
+                onChange={(e) => setConfigEndpoint(e.target.value)}
+                placeholder="https://api.exemplo.com/v1"
+                className="h-9 rounded-xl text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1.5">Configuração (JSON)</label>
+              <textarea
+                value={configData}
+                onChange={(e) => setConfigData(e.target.value)}
+                placeholder='{"key": "value"}'
+                rows={5}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20 resize-none font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setConfigDialog(null)}
+              className="rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveConfig}
+              className="rounded-xl bg-brand-navy hover:bg-brand-navy/90 text-white"
+            >
+              <CheckCircle className="h-4 w-4 mr-1.5" />
+              Salvar Configuração
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+    </>
+  )
+}
+
+// ─── Novo Parceiro Sub-Component ────────────────────────────
+
+function NovoPartnerDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCreated: () => void
+}) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [integrationType, setIntegrationType] = useState('observability')
+  const [apiEndpoint, setApiEndpoint] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!name.trim()) return
+    setSaving(true)
+    const result = await platformApi.registerPartner({
+      partnerName: name,
+      description,
+      integrationType,
+      apiEndpoint: apiEndpoint || undefined,
+    })
+    setSaving(false)
+    if (result) {
+      setName('')
+      setDescription('')
+      setIntegrationType('observability')
+      setApiEndpoint('')
+      onCreated()
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-brand-navy">
+            <Plus className="h-4 w-4" />
+            Novo Parceiro
+          </DialogTitle>
+          <DialogDescription className="text-sm text-slate-500">
+            Registre uma nova integração de parceiro no marketplace
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Nome do Parceiro</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Datadog, Snyk, PagerDuty"
+              className="h-9 rounded-xl text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Descrição</label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descrição da integração"
+              className="h-9 rounded-xl text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">Tipo de Integração</label>
+            <select
+              value={integrationType}
+              onChange={(e) => setIntegrationType(e.target.value)}
+              className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-navy/20"
+            >
+              <option value="observability">Observabilidade</option>
+              <option value="security">Segurança</option>
+              <option value="incident-management">Gerenciamento de Incidentes</option>
+              <option value="artifact-storage">Armazenamento de Artefatos</option>
+              <option value="monitoring">Monitoramento</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">API Endpoint (opcional)</label>
+            <Input
+              value={apiEndpoint}
+              onChange={(e) => setApiEndpoint(e.target.value)}
+              placeholder="https://api.parceiro.com/v1"
+              className="h-9 rounded-xl text-sm"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!name.trim() || saving}
+            className="rounded-xl bg-brand-navy hover:bg-brand-navy/90 text-white"
+          >
+            {saving ? (
+              <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-1.5" />
+            )}
+            Registrar Parceiro
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

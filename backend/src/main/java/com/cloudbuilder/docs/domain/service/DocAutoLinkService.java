@@ -4,10 +4,8 @@ import com.cloudbuilder.docs.domain.model.DocAutoLink;
 import com.cloudbuilder.docs.domain.port.DocAutoLinkRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class DocAutoLinkService {
@@ -18,8 +16,8 @@ public class DocAutoLinkService {
         this.linkRepository = linkRepository;
     }
 
-    public DocAutoLink createLink(String docPath, String entityType, String entityId, String tenantId) {
-        DocAutoLink link = new DocAutoLink(docPath, entityType, entityId, tenantId);
+    public DocAutoLink createLink(String sourcePath, String linkedPath, String relationship, String tenantId) {
+        DocAutoLink link = new DocAutoLink(sourcePath, linkedPath, relationship, tenantId);
         return linkRepository.save(link);
     }
 
@@ -27,12 +25,16 @@ public class DocAutoLinkService {
         return linkRepository.findById(id);
     }
 
-    public List<DocAutoLink> getLinksForDoc(String docPath) {
-        return linkRepository.findByDocPath(docPath);
+    public List<DocAutoLink> getLinksBySourcePath(String sourcePath) {
+        return linkRepository.findBySourcePath(sourcePath);
     }
 
-    public List<DocAutoLink> getLinksForEntity(String entityType, String entityId) {
-        return linkRepository.findByEntityTypeAndEntityId(entityType, entityId);
+    public List<DocAutoLink> getLinksByLinkedPath(String linkedPath) {
+        return linkRepository.findByLinkedPath(linkedPath);
+    }
+
+    public List<DocAutoLink> getLinksByRelationship(String relationship) {
+        return linkRepository.findByRelationship(relationship);
     }
 
     public List<DocAutoLink> getLinksForTenant(String tenantId) {
@@ -47,29 +49,7 @@ public class DocAutoLinkService {
         linkRepository.delete(id);
     }
 
-    public void deleteLinksForDoc(String docPath) {
-        linkRepository.deleteByDocPath(docPath);
-    }
-
-    public DocAutoLink updateSync(DocAutoLink link) {
-        link.setLastSync(Instant.now());
-        return linkRepository.save(link);
-    }
-
-    /**
-     * Parses doc content for cross-reference patterns like [[entity:type:id]]
-     * and creates links automatically.
-     */
-    public int parseAndCreateLinks(String docPath, String content, String tenantId) {
-        var pattern = java.util.regex.Pattern.compile("\\[\\[(\\w+):([a-zA-Z0-9-]+)\\]\\]");
-        var matcher = pattern.matcher(content);
-        int count = 0;
-        while (matcher.find()) {
-            String entityType = matcher.group(1);
-            String entityId = matcher.group(2);
-            createLink(docPath, entityType, entityId, tenantId);
-            count++;
-        }
-        return count;
+    public void deleteLinksBySourcePath(String sourcePath) {
+        linkRepository.deleteBySourcePath(sourcePath);
     }
 }

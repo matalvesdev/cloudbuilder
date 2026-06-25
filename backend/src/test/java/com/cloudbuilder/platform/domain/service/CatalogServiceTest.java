@@ -2,6 +2,7 @@ package com.cloudbuilder.platform.domain.service;
 
 import com.cloudbuilder.platform.domain.model.CatalogItem;
 import com.cloudbuilder.platform.domain.port.CatalogItemRepository;
+import com.cloudbuilder.platform.domain.port.CatalogItemVersionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,11 +23,14 @@ class CatalogServiceTest {
     @Mock
     private CatalogItemRepository repository;
 
+    @Mock
+    private CatalogItemVersionRepository versionRepository;
+
     private CatalogService catalogService;
 
     @BeforeEach
     void setUp() {
-        catalogService = new CatalogService(repository);
+        catalogService = new CatalogService(repository, versionRepository);
     }
 
     @Test
@@ -89,16 +93,16 @@ class CatalogServiceTest {
     }
 
     @Test
-    void updateItem_ShouldUpdateVersionAndStatus() {
+    void updateItem_ShouldUpdateMetadataAndBumpVersion() {
         var id = UUID.randomUUID().toString();
         var item = new CatalogItem("VPC", "network", "VPC template", "{}", "1.0");
         when(repository.findById(id)).thenReturn(Optional.of(item));
         when(repository.save(any(CatalogItem.class))).thenReturn(item);
 
-        var result = catalogService.updateItem(id, "2.0", "DEPRECATED");
+        var result = catalogService.updateItem(id, "VPC Updated", "Updated VPC template", "{\"new\":\"schema\"}");
 
-        assertEquals("2.0", result.getVersion());
-        assertEquals("DEPRECATED", result.getStatus());
+        assertEquals("VPC Updated", result.getName());
+        assertEquals("Updated VPC template", result.getDescription());
         verify(repository).save(item);
     }
 

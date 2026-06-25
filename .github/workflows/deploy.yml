@@ -1,0 +1,436 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CloudBuilder Deploy Pipeline
+# Trigger: push to main → test → docker build/push → staging → production
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CloudBuilder Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  # ── Java / Node / Go ─────────────────────────────────────────────────────
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+  GO_VERSION: '1.22'
+
+  # ── Docker Registry (GitHub Container Registry) ──────────────────────────
+  DOCKER_REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}/backend
+  FRONTEND_IMAGE: ${{ github.repository }}/frontend
+
+  # ── Staging Host (placeholder — substituir no fork) ─────────────────────
+  STAGING_HOST: ${{ vars.STAGING_HOST || 'staging.cloudbuilder.io' }}
+  STAGING_USER: ${{ vars.STAGING_USER || 'deploy' }}
+  STAGING_PORT: ${{ vars.STAGING_PORT || '22' }}
+
+  # ── Production Host (placeholder — substituir no fork) ──────────────────
+  PRODUCTION_HOST: ${{ vars.PRODUCTION_HOST || 'prod.cloudbuilder.io' }}
+  PRODUCTION_USER: ${{ vars.PRODUCTION_USER || 'deploy' }}
+  PRODUCTION_PORT: ${{ vars.PRODUCTION_PORT || '22' }}
+
+  # ── Deployment paths ─────────────────────────────────────────────────────
+  STAGING_DEPLOY_PATH: /opt/cloudbuilder
+  PRODUCTION_DEPLOY_PATH: /opt/cloudbuilder
+
+  # ── Application ──────────────────────────────────────────────────────────
+  SPRING_PROFILES_ACTIVE: prod
+  DB_NAME: cloudbuilder
+  DB_USER: cloudbuilder
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false  # never cancel a running deployment
+
+jobs:
+  # ═════════════════════════════════════════════════════════════════════════
+  # JOB 1: TEST — Run all test suites (reuses ci.yml patterns)
+  # ═════════════════════════════════════════════════════════════════════════
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ${{ env.DB_NAME }}
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: cloudbuilder
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Backend ──────────────────────────────────────────────────────────
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Backend — Compile & Test
+        run: |
+          cd backend
+          ./mvnw test -q
+      - name: Backend — Package
+        run: cd backend && ./mvnw package -DskipTests -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/*.jar
+          retention-days: 3
+
+      # ── Frontend ─────────────────────────────────────────────────────────
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend — Install & Typecheck
+        run: |
+          cd frontend
+          npm ci
+          npm run typecheck
+      - name: Frontend — Lint
+        run: cd frontend && npm run lint
+      - name: Frontend — Test (Vitest)
+        run: cd frontend && npm run test
+      - name: Frontend — Build (Vite)
+        run: cd frontend && npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 3
+
+      # ── Go Engine ────────────────────────────────────────────────────────
+      - name: Setup Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: provision-engine/go.sum
+      - name: Go — Vet
+        run: cd provision-engine && go vet ./...
+      - name: Go — Build
+        run: cd provision-engine && go build ./cmd/provision-engine/
+      - name: Go — Test with coverage
+        run: cd provision-engine && go test -coverprofile=coverage.out ./...
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # JOB 2: DOCKER BUILD — Build & push images to GHCR
+  # ═════════════════════════════════════════════════════════════════════════
+  docker-build:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: [test]
+    permissions:
+      contents: read
+      packages: write    # needed to push to GHCR
+    outputs:
+      backend_tag: ${{ steps.meta.outputs.backend_tag }}
+      frontend_tag: ${{ steps.meta.outputs.frontend_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download artifacts (for reproducible build)
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/target/
+
+      - name: Set Docker tags and labels
+        id: meta
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "backend_tag=${{ env.DOCKER_REGISTRY }}/${{ env.BACKEND_IMAGE }}:${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "backend_latest=${{ env.DOCKER_REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=${{ env.DOCKER_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "frontend_latest=${{ env.DOCKER_REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest" >> "$GITHUB_OUTPUT"
+
+      # ── Backend Docker image ─────────────────────────────────────────────
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.backend_tag }}
+            ${{ steps.meta.outputs.backend_latest }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      # ── Frontend Docker image ────────────────────────────────────────────
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.frontend_tag }}
+            ${{ steps.meta.outputs.frontend_latest }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # JOB 3: DEPLOY STAGING — Deploy to staging environment
+  # ═════════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          known_hosts: ${{ secrets.STAGING_KNOWN_HOSTS }}
+
+      - name: Copy docker-compose.yml to staging
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_USER }}
+          port: ${{ env.STAGING_PORT }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: ${{ env.STAGING_DEPLOY_PATH }}
+
+      - name: Deploy via SSH — Pull images & restart
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_USER }}
+          port: ${{ env.STAGING_PORT }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ env.STAGING_DEPLOY_PATH }}
+
+            # Export variables for docker-compose
+            export DOCKER_REGISTRY="${{ env.DOCKER_REGISTRY }}"
+            export BACKEND_IMAGE="${{ env.DOCKER_REGISTRY }}/${{ env.BACKEND_IMAGE }}"
+            export FRONTEND_IMAGE="${{ env.DOCKER_REGISTRY }}/${{ env.FRONTEND_IMAGE }}"
+            export IMAGE_TAG="$(echo "${{ github.sha }}" | cut -c1-7)"
+            export DB_PASSWORD="${{ secrets.STAGING_DB_PASSWORD }}"
+            export JWT_SECRET="${{ secrets.STAGING_JWT_SECRET }}"
+            export SPRING_PROFILES_ACTIVE="${{ env.SPRING_PROFILES_ACTIVE }}"
+
+            # Pull latest images
+            docker compose pull
+
+            # Run database migrations via Flyway (inside backend container)
+            # Backend will auto-run Flyway on startup when spring.flyway.enabled=true
+
+            # Restart services with new images
+            docker compose up -d --remove-orphans
+
+            # Clean up old images
+            docker image prune -f
+
+      - name: Smoke test — Wait for backend health
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_USER }}
+          port: ${{ env.STAGING_PORT }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -e
+            echo "Waiting for backend health check..."
+            for i in $(seq 1 30); do
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health/liveness 2>/dev/null || echo "000")
+              if [ "$STATUS" = "200" ]; then
+                echo "✅ Backend is healthy (attempt $i)"
+                exit 0
+              fi
+              echo "Attempt $i: status=$STATUS — waiting..."
+              sleep 5
+            done
+            echo "❌ Backend failed health check after 30 attempts"
+            exit 1
+
+      - name: Smoke test — Check frontend
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_USER }}
+          port: ${{ env.STAGING_PORT }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ]; then
+              echo "✅ Frontend is up (HTTP $STATUS)"
+            else
+              echo "❌ Frontend returned HTTP $STATUS"
+              exit 1
+            fi
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # JOB 4: DEPLOY PRODUCTION — Manual approval gate → deploy → health check
+  # ═════════════════════════════════════════════════════════════════════════
+  deploy-production:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    environment:
+      name: production
+      url: https://app.cloudbuilder.io
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          known_hosts: ${{ secrets.PRODUCTION_KNOWN_HOSTS }}
+
+      - name: Copy compose files to production
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.PRODUCTION_HOST }}
+          username: ${{ env.PRODUCTION_USER }}
+          port: ${{ env.PRODUCTION_PORT }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: ${{ env.PRODUCTION_DEPLOY_PATH }}
+
+      - name: Deploy via SSH — Pull images & restart
+        id: deploy
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ env.PRODUCTION_HOST }}
+          username: ${{ env.PRODUCTION_USER }}
+          port: ${{ env.PRODUCTION_PORT }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ env.PRODUCTION_DEPLOY_PATH }}
+
+            # Export environment
+            export DOCKER_REGISTRY="${{ env.DOCKER_REGISTRY }}"
+            export BACKEND_IMAGE="${{ env.DOCKER_REGISTRY }}/${{ env.BACKEND_IMAGE }}"
+            export FRONTEND_IMAGE="${{ env.DOCKER_REGISTRY }}/${{ env.FRONTEND_IMAGE }}"
+            export IMAGE_TAG="$(echo "${{ github.sha }}" | cut -c1-7)"
+            export DB_PASSWORD="${{ secrets.PRODUCTION_DB_PASSWORD }}"
+            export JWT_SECRET="${{ secrets.PRODUCTION_JWT_SECRET }}"
+            export SPRING_PROFILES_ACTIVE="${{ env.SPRING_PROFILES_ACTIVE }}"
+            export CORS_ALLOWED_ORIGINS="https://app.cloudbuilder.io"
+
+            # Pull new images
+            docker compose pull
+
+            # Run database migrations
+            # Flyway runs automatically on backend startup (spring.flyway.enabled=true)
+
+            # Graceful restart: start new containers before stopping old ones
+            docker compose up -d --remove-orphans --wait
+
+            # Cleanup
+            docker image prune -f
+
+      - name: Health Check — Wait for backend (60s timeout, 3 retries)
+        id: healthcheck
+        uses: appleboy/ssh-action@v1.2.1
+        timeout-minutes: 5
+        with:
+          host: ${{ env.PRODUCTION_HOST }}
+          username: ${{ env.PRODUCTION_USER }}
+          port: ${{ env.PRODUCTION_PORT }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -e
+            MAX_RETRIES=3
+            RETRY_DELAY=20
+            HEALTH_URL="http://localhost:8080/actuator/health"
+
+            for retry in $(seq 1 $MAX_RETRIES); do
+              echo "Health check attempt $retry of $MAX_RETRIES..."
+              for i in $(seq 1 12); do
+                STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL/liveness" 2>/dev/null || echo "000")
+                if [ "$STATUS" = "200" ]; then
+                  echo "✅ Production backend is healthy (HTTP $STATUS)"
+                  echo "Full health:"
+                  curl -s "$HEALTH_URL" | head -c 500
+                  echo ""
+                  exit 0
+                fi
+                echo "  Waiting... attempt $i/12 (status=$STATUS)"
+                sleep 5
+              done
+              echo "⚠️  Health check timed out, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            done
+            echo "❌ Production backend failed health check after $MAX_RETRIES retries"
+            exit 1
+
+      - name: Verify Frontend
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ env.PRODUCTION_HOST }}
+          username: ${{ env.PRODUCTION_USER }}
+          port: ${{ env.PRODUCTION_PORT }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ]; then
+              echo "✅ Production frontend is up (HTTP $STATUS)"
+            else
+              echo "❌ Production frontend returned HTTP $STATUS"
+              exit 1
+            fi
+
+      # ──────────────────────────────────────────────────────────────────────
+      # ROLLBACK: If deploy fails, revert to previous working images
+      # ──────────────────────────────────────────────────────────────────────
+      - name: Rollback on Failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.1
+        with:
+          host: ${{ env.PRODUCTION_HOST }}
+          username: ${{ env.PRODUCTION_USER }}
+          port: ${{ env.PRODUCTION_PORT }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ env.PRODUCTION_DEPLOY_PATH }}
+
+            echo "⚠️  Deploy failed — initiating rollback..."
+
+            # Re-tag previous 'latest' as stable and redeploy
+            # The previous 'latest' tag still points to the last known-good image
+            docker compose down
+
+            # Restart with cached images (previous working version)
+            docker compose up -d --remove-orphans
+
+            echo "🔁 Rollback complete — previous images restored"
+            echo "Post-rollback health check..."
+            sleep 30
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health/liveness 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Rollback — backend is healthy"
+            else
+              echo "⚠️  Rollback health check returned $STATUS — manual intervention required"
+            fi

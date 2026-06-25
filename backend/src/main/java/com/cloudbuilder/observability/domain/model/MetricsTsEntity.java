@@ -16,13 +16,13 @@ public class MetricsTsEntity {
     @Column(name = "metric_name", nullable = false, length = 128)
     private String metricName;
 
-    @Column(columnDefinition = "TEXT DEFAULT '{}'")
+    @Column(columnDefinition = "JSONB DEFAULT '{}'")
     private String tags;
 
-    @Column(name = "metric_value", nullable = false)
+    @Column(name = "value", nullable = false)
     private double value;
 
-    @Column(name = "ts", nullable = false)
+    @Column(name = "timestamp", nullable = false)
     private Instant timestamp;
 
     public MetricsTsEntity() {}

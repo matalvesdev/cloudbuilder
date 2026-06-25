@@ -1,82 +1,35 @@
 import { api } from './client'
-import type { CatalogTemplate } from '@/types/platform.types'
+import type { CatalogTemplate, CatalogItemVersion } from '@/types/platform.types'
 
-// ─── Fallback mock templates when API is unavailable ─────────
+// ─── Marketplace & Partner Types ──────────────────────────────
 
-const MOCK_TEMPLATES: CatalogTemplate[] = [
-  {
-    id: 'standard-web-app',
-    name: 'Aplicação Web Padrão',
-    description: 'Stack completa para aplicações web com load balancing, containers e banco relacional',
-    type: 'application',
-    category: 'web',
-    provider: 'aws',
-    resources: [
-      { type: 'vpc', count: 1 },
-      { type: 'alb', count: 1 },
-      { type: 'ecs_cluster', count: 1 },
-      { type: 'ecs_service', count: 1 },
-      { type: 'rds_instance', count: 1 },
-      { type: 'elasticache', count: 1 },
-      { type: 'security_group', count: 2 },
-    ],
-    estimatedCost: '~$450/mês',
-    complexity: 'intermediate',
-  },
-  {
-    id: 'microservice-api',
-    name: 'API Microsserviço',
-    description: 'API serverless com API Gateway, Lambda, DynamoDB e monitoramento',
-    type: 'serverless',
-    category: 'api',
-    provider: 'aws',
-    resources: [
-      { type: 'vpc', count: 1 },
-      { type: 'api_gateway', count: 1 },
-      { type: 'lambda', count: 1 },
-      { type: 'ecs_service', count: 1 },
-      { type: 'dynamodb', count: 1 },
-      { type: 'cloudwatch', count: 1 },
-    ],
-    estimatedCost: '~$200/mês',
-    complexity: 'basic',
-  },
-  {
-    id: 'data-pipeline',
-    name: 'Pipeline de Dados',
-    description: 'ETL serverless com S3, Glue, Redshift e filas de processamento',
-    type: 'storage',
-    category: 'data',
-    provider: 'aws',
-    resources: [
-      { type: 's3_bucket', count: 1 },
-      { type: 'sqs', count: 1 },
-      { type: 'glue_job', count: 1 },
-      { type: 'lambda', count: 1 },
-      { type: 'redshift', count: 1 },
-    ],
-    estimatedCost: '~$800/mês',
-    complexity: 'advanced',
-  },
-  {
-    id: 'kubernetes-cluster',
-    name: 'Cluster Kubernetes',
-    description: 'Cluster EKS gerenciado com node groups, ingress e bancos de dados',
-    type: 'infrastructure',
-    category: 'infra',
-    provider: 'k8s',
-    resources: [
-      { type: 'vpc', count: 1 },
-      { type: 'eks_cluster', count: 1 },
-      { type: 'node_group', count: 1 },
-      { type: 'alb_ingress', count: 1 },
-      { type: 'rds_instance', count: 1 },
-      { type: 'elasticache', count: 1 },
-    ],
-    estimatedCost: '~$1.200/mês',
-    complexity: 'advanced',
-  },
-]
+export interface MarketplaceListing {
+  id: string
+  name: string
+  description: string
+  cloudProvider: string
+  marketplaceUrl?: string
+  listingType: string
+  version: string
+  status: 'DRAFT' | 'PUBLISHED' | 'UNPUBLISHED'
+  publisherName: string
+  tags?: string
+  pricing?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PartnerIntegration {
+  id: string
+  partnerName: string
+  description: string
+  integrationType: string
+  apiEndpoint?: string
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING'
+  configuration?: string | null
+  createdAt: string
+  updatedAt: string
+}
 
 // ─── Platform API Service ────────────────────────────────────
 
@@ -84,10 +37,9 @@ class PlatformApiService {
   async getCatalog(): Promise<CatalogTemplate[]> {
     try {
       const data = await api.get<CatalogTemplate[]>('/platform/catalog')
-      if (Array.isArray(data) && data.length > 0) return data
-      return MOCK_TEMPLATES
+      return Array.isArray(data) ? data : []
     } catch {
-      return MOCK_TEMPLATES
+      return []
     }
   }
 
@@ -98,6 +50,103 @@ class PlatformApiService {
       return []
     } catch {
       return []
+    }
+  }
+
+  async getVersionHistory(itemId: string): Promise<CatalogItemVersion[]> {
+    try {
+      const data = await api.get<CatalogItemVersion[]>(`/platform/catalog/${itemId}/versions`)
+      if (Array.isArray(data)) return data
+      return []
+    } catch {
+      return []
+    }
+  }
+
+  async publishItem(itemId: string): Promise<void> {
+    await api.post(`/platform/catalog/${itemId}/publish`, {})
+  }
+
+  async unpublishItem(itemId: string): Promise<void> {
+    await api.post(`/platform/catalog/${itemId}/unpublish`, {})
+  }
+
+  // ─── Marketplace API ────────────────────────────────────────
+
+  async fetchMarketplaceListings(cloudProvider?: string): Promise<MarketplaceListing[]> {
+    try {
+      const path = cloudProvider
+        ? `/platform/marketplace?cloudProvider=${encodeURIComponent(cloudProvider)}`
+        : '/platform/marketplace'
+      const data = await api.get<MarketplaceListing[]>(path)
+      return Array.isArray(data) ? data : []
+    } catch {
+      return []
+    }
+  }
+
+  async createListing(listing: Partial<MarketplaceListing>): Promise<MarketplaceListing | null> {
+    try {
+      const data = await api.post<MarketplaceListing>('/platform/marketplace', listing)
+      return data
+    } catch {
+      return null
+    }
+  }
+
+  async publishListing(listingId: string): Promise<boolean> {
+    try {
+      await api.post(`/platform/marketplace/${listingId}/publish`, {})
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async unpublishListing(listingId: string): Promise<boolean> {
+    try {
+      await api.post(`/platform/marketplace/${listingId}/unpublish`, {})
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // ─── Partner Integration API ────────────────────────────────
+
+  async fetchPartners(): Promise<PartnerIntegration[]> {
+    try {
+      const data = await api.get<PartnerIntegration[]>('/platform/partners')
+      return Array.isArray(data) ? data : []
+    } catch {
+      return []
+    }
+  }
+
+  async registerPartner(partner: Partial<PartnerIntegration>): Promise<PartnerIntegration | null> {
+    try {
+      const data = await api.post<PartnerIntegration>('/platform/partners', partner)
+      return data
+    } catch {
+      return null
+    }
+  }
+
+  async activatePartner(partnerId: string): Promise<boolean> {
+    try {
+      await api.post(`/platform/partners/${partnerId}/activate`, {})
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async updatePartnerConfig(partnerId: string, apiEndpoint?: string, configuration?: string): Promise<boolean> {
+    try {
+      await api.put(`/platform/partners/${partnerId}/config`, { apiEndpoint, configuration })
+      return true
+    } catch {
+      return false
     }
   }
 }

@@ -2,6 +2,7 @@ package com.cloudbuilder.aiops.domain.service;
 
 import com.cloudbuilder.aiops.domain.model.Incident;
 import com.cloudbuilder.aiops.domain.port.IncidentRepository;
+import com.cloudbuilder.aiops.domain.service.llm.LlmClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,12 +23,16 @@ class IncidentServiceTest {
     @Mock
     private IncidentRepository incidentRepository;
 
-    private final AIService aiService = new AIService();
+    @Mock
+    private LlmClient llmClient;
+
+    private AIService aiService;
 
     private IncidentService incidentService;
 
     @BeforeEach
     void setUp() {
+        aiService = new AIService(llmClient);
         incidentService = new IncidentService(incidentRepository, aiService);
     }
 
@@ -110,6 +115,8 @@ class IncidentServiceTest {
         var incident = new Incident("env-1", "Falha de rede", "Problema de conexão com banco de dados", "critical");
         when(incidentRepository.findById(id)).thenReturn(Optional.of(incident));
         when(incidentRepository.save(any(Incident.class))).thenReturn(incident);
+        when(llmClient.generateRca(anyString(), anyString(), anyString(), anyMap(), anyList()))
+                .thenReturn("RCA: Falha de infraestrutura detectada.");
 
         var result = incidentService.analyzeIncident(id);
 
@@ -121,6 +128,8 @@ class IncidentServiceTest {
 
     @Test
     void answerQuery_ShouldDelegateToAiService() {
+        when(llmClient.chat(anyString(), anyString(), anyMap()))
+                .thenReturn("Existem 3 incidente(s) ativos.");
         var result = incidentService.answerQuery("Quantos incidentes ativos?", "3");
 
         assertTrue(result.contains("3 incidente(s)"));

@@ -26,6 +26,12 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String roles;
 
+    @Column(name = "sso_only", nullable = false)
+    private boolean ssoOnly;
+
+    @Column(name = "sso_provider", length = 32)
+    private String ssoProvider;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -40,6 +46,7 @@ public class User {
         this.passwordHash = passwordHash;
         this.name = name;
         this.enabled = true;
+        this.ssoOnly = false;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
@@ -54,6 +61,10 @@ public class User {
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public String getRoles() { return roles; }
     public void setRoles(String roles) { this.roles = roles; }
+    public boolean isSsoOnly() { return ssoOnly; }
+    public void setSsoOnly(boolean ssoOnly) { this.ssoOnly = ssoOnly; }
+    public String getSsoProvider() { return ssoProvider; }
+    public void setSsoProvider(String ssoProvider) { this.ssoProvider = ssoProvider; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }

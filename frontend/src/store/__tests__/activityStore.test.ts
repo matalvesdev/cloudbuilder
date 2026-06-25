@@ -140,7 +140,7 @@ describe('activityStore', () => {
       expect(events[0].module).toBe('observe')
     })
 
-    it('mantém mock data quando API retorna alerts vazio', async () => {
+    it('mantém eventos vazios quando API retorna alerts vazio', async () => {
       const mockDashboardApi = await import('@/api/dashboardApi')
       vi.spyOn(mockDashboardApi.dashboardApi, 'getObserveDashboard').mockResolvedValue({
         totalServices: 3,
@@ -153,8 +153,9 @@ describe('activityStore', () => {
       })
 
       await useActivityStore.getState().fetchActivityEvents()
-      // Must have refreshed mock data (not empty)
-      expect(useActivityStore.getState().events.length).toBeGreaterThan(0)
+      // No mock data fallback — events remain empty
+      expect(useActivityStore.getState().events.length).toBe(0)
+      expect(useActivityStore.getState().loading).toBe(false)
     })
 
     it('mantém eventos existentes quando API falha', async () => {

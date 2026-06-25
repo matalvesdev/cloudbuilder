@@ -32,8 +32,8 @@ public final class TraceContext {
         if (ctx != null && ctx.traceId() != null) {
             return ctx.traceId();
         }
-        String newTraceId = UUID.randomUUID().toString().toString().replace("-", "").substring(0, 16);
-        String newSpanId = UUID.randomUUID().toString().toString().replace("-", "").substring(0, 8);
+        String newTraceId = UUID.randomUUID().toString().replace("-", "");
+        String newSpanId = UUID.randomUUID().toString().replace("-", "");
         set(newTraceId, newSpanId, null);
         return newTraceId;
     }

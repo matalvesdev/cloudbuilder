@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import { nanoId } from '@/lib/utils'
 import type {
   TeamMember,
@@ -10,46 +9,6 @@ import type {
 } from '@/types/collaboration.types'
 
 const NOW = () => new Date().toISOString()
-
-const MOCK_MEMBERS: TeamMember[] = [
-  { id: crypto.randomUUID(), name: 'Thiago', email: 'thiago@cloudbuilder.io', avatar: 'T', role: 'owner', status: 'online', lastSeen: NOW() },
-  { id: crypto.randomUUID(), name: 'Ana', email: 'ana@cloudbuilder.io', avatar: 'A', role: 'editor', status: 'online', lastSeen: NOW() },
-  { id: crypto.randomUUID(), name: 'Pedro', email: 'pedro@cloudbuilder.io', avatar: 'P', role: 'viewer', status: 'offline', lastSeen: new Date(Date.now() - 3600000).toISOString() },
-  { id: crypto.randomUUID(), name: 'Camila', email: 'camila@cloudbuilder.io', avatar: 'C', role: 'editor', status: 'away', lastSeen: new Date(Date.now() - 600000).toISOString() },
-]
-
-const MOCK_COMMENTS: Comment[] = [
-  {
-    id: crypto.randomUUID(),
-    nodeId: null,
-    authorId: MOCK_MEMBERS[0].id,
-    authorName: MOCK_MEMBERS[0].name,
-    authorAvatar: MOCK_MEMBERS[0].avatar,
-    content: 'Precisamos habilitar Multi-AZ para esta instância de banco de dados?',
-    createdAt: new Date(Date.now() - 120000).toISOString(),
-    resolved: false,
-  },
-  {
-    id: crypto.randomUUID(),
-    nodeId: null,
-    authorId: MOCK_MEMBERS[1].id,
-    authorName: MOCK_MEMBERS[1].name,
-    authorAvatar: MOCK_MEMBERS[1].avatar,
-    content: 'Sim, para o ambiente de produção é mandatório. Vou atualizar as configurações.',
-    createdAt: new Date().toISOString(),
-    resolved: false,
-  },
-  {
-    id: crypto.randomUUID(),
-    nodeId: null,
-    authorId: MOCK_MEMBERS[2].id,
-    authorName: MOCK_MEMBERS[2].name,
-    authorAvatar: MOCK_MEMBERS[2].avatar,
-    content: 'O range de IPs do CIDR foi ajustado.',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    resolved: true,
-  },
-]
 
 interface CollaborationState {
   teamMembers: TeamMember[]
@@ -68,87 +27,77 @@ interface CollaborationState {
 }
 
 export const useCollaborationStore = create<CollaborationState>()(
-  persist(
-    (set, get) => ({
-      teamMembers: MOCK_MEMBERS,
-      comments: MOCK_COMMENTS,
-      shareLinks: [],
-      selectedCommentNodeId: null,
+  (set, get) => ({
+    teamMembers: [],
+    comments: [],
+    shareLinks: [],
+    selectedCommentNodeId: null,
 
-      addComment: (nodeId, authorId, authorName, authorAvatar, content) => {
-        const newComment: Comment = {
-          id: crypto.randomUUID(),
-          nodeId,
-          authorId,
-          authorName,
-          authorAvatar,
-          content,
-          createdAt: NOW(),
-          resolved: false,
-        }
-        set({ comments: [...get().comments, newComment] })
-      },
+    addComment: (nodeId, authorId, authorName, authorAvatar, content) => {
+      const newComment: Comment = {
+        id: crypto.randomUUID(),
+        nodeId,
+        authorId,
+        authorName,
+        authorAvatar,
+        content,
+        createdAt: NOW(),
+        resolved: false,
+      }
+      set({ comments: [...get().comments, newComment] })
+    },
 
-      resolveComment: (commentId) => {
-        set({
-          comments: get().comments.map((c) =>
-            c.id === commentId ? { ...c, resolved: true } : c
-          ),
-        })
-      },
+    resolveComment: (commentId) => {
+      set({
+        comments: get().comments.map((c) =>
+          c.id === commentId ? { ...c, resolved: true } : c
+        ),
+      })
+    },
 
-      getCommentsByNode: (nodeId) => {
-        return get().comments.filter((c) => c.nodeId === nodeId && !c.resolved)
-      },
+    getCommentsByNode: (nodeId) => {
+      return get().comments.filter((c) => c.nodeId === nodeId && !c.resolved)
+    },
 
-      inviteMember: (name, email, role) => {
-        const newMember: TeamMember = {
-          id: crypto.randomUUID(),
-          name,
-          email,
-          avatar: name.charAt(0).toUpperCase(),
-          role,
-          status: 'offline',
-          lastSeen: NOW(),
-        }
-        set({ teamMembers: [...get().teamMembers, newMember] })
-      },
+    inviteMember: (name, email, role) => {
+      const newMember: TeamMember = {
+        id: crypto.randomUUID(),
+        name,
+        email,
+        avatar: name.charAt(0).toUpperCase(),
+        role,
+        status: 'offline',
+        lastSeen: NOW(),
+      }
+      set({ teamMembers: [...get().teamMembers, newMember] })
+    },
 
-      removeMember: (memberId) => {
-        set({ teamMembers: get().teamMembers.filter((m) => m.id !== memberId) })
-      },
+    removeMember: (memberId) => {
+      set({ teamMembers: get().teamMembers.filter((m) => m.id !== memberId) })
+    },
 
-      updateMemberStatus: (memberId, status) => {
-        set({
-          teamMembers: get().teamMembers.map((m) =>
-            m.id === memberId ? { ...m, status, lastSeen: NOW() } : m
-          ),
-        })
-      },
+    updateMemberStatus: (memberId, status) => {
+      set({
+        teamMembers: get().teamMembers.map((m) =>
+          m.id === memberId ? { ...m, status, lastSeen: NOW() } : m
+        ),
+      })
+    },
 
-      generateShareLink: (designId, createdBy) => {
-        const token = nanoId(32)
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        const newLink: ShareLink = {
-          id: crypto.randomUUID(),
-          designId,
-          token,
-          expiresAt,
-          createdBy,
-        }
-        set({ shareLinks: [...get().shareLinks, newLink] })
-        return token
-      },
+    generateShareLink: (designId, createdBy) => {
+      const token = nanoId(32)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const newLink: ShareLink = {
+        id: crypto.randomUUID(),
+        designId,
+        token,
+        expiresAt,
+        createdBy,
+      }
+      set({ shareLinks: [...get().shareLinks, newLink] })
+      return token
+    },
 
-      setSelectedCommentNodeId: (nodeId) => set({ selectedCommentNodeId: nodeId }),
-    }),
-    {
-      name: 'cloudbuilder-collaboration',
-      partialize: (state) => ({
-        teamMembers: state.teamMembers,
-        comments: state.comments,
-        shareLinks: state.shareLinks,
-      }),
-    }
-  )
+    setSelectedCommentNodeId: (nodeId) => set({ selectedCommentNodeId: nodeId }),
+  })
 )

@@ -1,8 +1,10 @@
 # ADR-012: Q3 2026 Operations Architecture
 
-**Status**: Proposed
+**Status**: Implemented
 **Date**: 2026-06-19
 **Author**: Principal Architect Agent
+
+> **Verificado em 2026-06-21**: Todas as 7 decisões arquiteturais verificadas no código: (1) PostgreSQL RANGE partitioning via V9/V11 migrations, (2) AnomalyDetectionService (moving average + stddev), (3) ComplianceService (strategy pattern com 3 regras), (4) Modulith domain events (CodeGeneratedEvent), (5) CostProjectionService (linear regression 90d), (6) @Scheduled services (AlertEvaluationService 30s, SloService hourly), (7) AuditQueryService (Spring Data Specifications). Todos os 54+ arquivos Java e 4 componentes frontend implementados nas sessões 2026-06-19/20.
 
 ## Context
 CloudBuilder MVP is complete. Q3 2026 shifts focus to Operations — observability, cost management, and audit/compliance. The existing codebase has:
@@ -37,9 +39,9 @@ How to design the Q3 2026 Operations architecture to maximize reuse, minimize ne
 
 ### 4. Cross-Module Communication: Modulith Domain Events
 **Chosen**: Spring Modulith `ApplicationEventPublisher` for BudgetThresholdBreachedEvent → Observe module.
-**Alternatives considered**: Kafka topic (heavyweight for single-JVM), direct service injection (tight coupling).
-**Rationale**: Loose coupling. Observe module can subscribe without Cost module knowing about it. Same JVM — no serialization overhead.
-**Consequences**: Only works within same Spring Boot process. If modules are split into separate services later, migrate to Kafka.
+**Alternatives considered**: Kafka topic (heavyweight for single-JVM, removed infra Phase 4), direct service injection (tight coupling).
+**Rationale**: Loose coupling. Observe module can subscribe without Cost module knowing about it. Same JVM — no serialization overhead. Kafka/Redis were removed in Phase 4 infra cleanup ($0 infra strategy); Caffeine cache replaced Redis for in-process caching.
+**Consequences**: Only works within same Spring Boot process. If modules are split into separate services later, re-evaluate message broker (Kafka/PubSub) at that point.
 
 ### 5. Cost Projection: Linear Regression
 **Chosen**: Ordinary least squares linear regression on 90-day daily aggregated costs.
@@ -70,6 +72,8 @@ How to design the Q3 2026 Operations architecture to maximize reuse, minimize ne
 ## References
 - ADR-008: Native Observability Subsystem (PostgreSQL-native)
 - ADR-010: Backend Quality Gate (UUID→String migration)
+- ADR-020: Policy-as-Code with OPA (compliance rule evaluation via OPA sidecar)
+- ADR-029: Compliance & Governance Framework (supersedes section 3 with full compliance model)
 - schema.sql: Existing observability schema (12 tables, partitioned)
 - HealthCheckService.java: Existing @Scheduled pattern (30s)
 - AuditService.java: Existing audit recording pattern

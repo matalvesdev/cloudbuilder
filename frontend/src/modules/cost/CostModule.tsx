@@ -19,6 +19,8 @@ import {
   PieChart,
   Activity,
   BarChart3,
+  Plus,
+  PlusCircle,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -28,17 +30,49 @@ import { useUiStore } from '@/store/uiStore'
 import { WhatIfCost } from './WhatIfCost'
 import { BudgetComparisonView } from './BudgetComparisonView'
 import { CostAnomaliesView } from './CostAnomaliesView'
-import { CostProjectionChart } from './CostProjectionChart'
 import { cn } from '@/lib/utils'
 import { ProtectedAction } from '@/components/ProtectedContent'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { OptimizationSuggestion, ProviderType } from '@/types/cost.types'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from 'recharts'
+import { useCostForecastStore } from '@/store/costForecastStore'
+import type { OptimizationSuggestion, ProviderType, BudgetAlert, CostForecast } from '@/types/cost.types'
 
 const providerConfig: Record<ProviderType, { label: string; barColor: string; badge: string }> = {
   aws: { label: 'AWS', barColor: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' },
   azure: { label: 'Azure', barColor: 'bg-blue-600', badge: 'bg-blue-100 text-blue-700' },
   gcp: { label: 'GCP', barColor: 'bg-blue-500', badge: 'bg-green-100 text-green-700' },
+  vercel: { label: 'Vercel', barColor: 'bg-neutral-900', badge: 'bg-neutral-100 text-neutral-700' },
+  supabase: { label: 'Supabase', barColor: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700' },
+  render: { label: 'Render', barColor: 'bg-teal-500', badge: 'bg-teal-100 text-teal-700' },
 }
 
 const serviceConfig: Record<string, { label: string; icon: typeof Server }> = {
@@ -63,6 +97,134 @@ function formatSavings(value: number): string {
   return `US$ ${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}/mês`
 }
 
+function NewBudgetDialog() {
+  const { addBudget } = useCostForecastStore()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [budgetAmount, setBudgetAmount] = useState('')
+  const [period, setPeriod] = useState('Mensal')
+  const [warningThreshold, setWarningThreshold] = useState('80')
+  const [criticalThreshold, setCriticalThreshold] = useState('95')
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name || !budgetAmount) return
+    addBudget({
+      name,
+      budgetAmount: parseFloat(budgetAmount),
+      period,
+      warningThreshold: parseInt(warningThreshold, 10),
+      criticalThreshold: parseInt(criticalThreshold, 10),
+    })
+    setName('')
+    setBudgetAmount('')
+    setPeriod('Mensal')
+    setWarningThreshold('80')
+    setCriticalThreshold('95')
+    setOpen(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-navy text-xs font-bold text-white hover:opacity-90 transition-opacity">
+          <PlusCircle className="w-3.5 h-3.5" />
+          Novo Orçamento
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md rounded-3xl">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-brand-navy font-display">Novo Orçamento</DialogTitle>
+          <DialogDescription className="text-sm text-slate-500">
+            Defina um orçamento para monitorar seus gastos
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="budget-name" className="text-sm font-medium text-slate-700">Nome do Orçamento</Label>
+            <Input
+              id="budget-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Infraestrutura"
+              className="rounded-xl border-slate-200"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="budget-amount" className="text-sm font-medium text-slate-700">Valor do Orçamento (US$)</Label>
+            <Input
+              id="budget-amount"
+              type="number"
+              min="0"
+              step="100"
+              value={budgetAmount}
+              onChange={(e) => setBudgetAmount(e.target.value)}
+              placeholder="Ex: 10000"
+              className="rounded-xl border-slate-200"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="budget-period" className="text-sm font-medium text-slate-700">Período</Label>
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger id="budget-period" className="rounded-xl border-slate-200">
+                <SelectValue placeholder="Selecione o período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Mensal">Mensal</SelectItem>
+                <SelectItem value="Trimestral">Trimestral</SelectItem>
+                <SelectItem value="Anual">Anual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="warning-threshold" className="text-sm font-medium text-slate-700">Alerta (%)</Label>
+              <Input
+                id="warning-threshold"
+                type="number"
+                min="1"
+                max="100"
+                value={warningThreshold}
+                onChange={(e) => setWarningThreshold(e.target.value)}
+                className="rounded-xl border-slate-200"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="critical-threshold" className="text-sm font-medium text-slate-700">Crítico (%)</Label>
+              <Input
+                id="critical-threshold"
+                type="number"
+                min="1"
+                max="100"
+                value={criticalThreshold}
+                onChange={(e) => setCriticalThreshold(e.target.value)}
+                className="rounded-xl border-slate-200"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors sm:flex-none"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-brand-navy text-sm font-bold text-white hover:opacity-90 transition-opacity sm:flex-none"
+            >
+              Criar Orçamento
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function navigateToDesign(resourceName: string) {
   const { nodes } = useCanvasStore.getState()
   const match = nodes.find(
@@ -72,6 +234,224 @@ function navigateToDesign(resourceName: string) {
     useCanvasStore.getState().setSelectedNode(match.id)
   }
   useUiStore.getState().setActiveModule('design')
+}
+
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })
+}
+
+function ForecastSection() {
+  const { forecasts, forecastsLoading, fetchForecasts } = useCostForecastStore()
+  const [initialLoad, setInitialLoad] = useState(true)
+  const envId = localStorage.getItem('cloudbuilder-active-environment') || 'default'
+
+  useEffect(() => {
+    if (forecasts.length === 0) {
+      fetchForecasts(envId).finally(() => setInitialLoad(false))
+    } else {
+      setInitialLoad(false)
+    }
+  }, [forecasts.length, fetchForecasts, envId])
+
+  if (forecastsLoading && initialLoad) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-3xl border border-slate-100 card-shadow p-4 text-center space-y-2">
+              <Skeleton className="h-3 w-16 mx-auto" />
+              <Skeleton className="h-6 w-24 mx-auto" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6">
+          <Skeleton className="h-4 w-32 mb-6" />
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+        </div>
+      </div>
+    )
+  }
+
+  if (forecasts.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-brand-navy font-display">Previsão de Custos</h2>
+            <p className="text-sm text-slate-400">Estimativa de gastos para os próximos 30 dias</p>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 border border-slate-100 p-12 text-center">
+          <BarChart3 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+          <p className="text-sm font-medium text-slate-500">Nenhum dado de previsão disponível</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Os dados aparecerão aqui após alguns dias de coleta
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const latest = forecasts[forecasts.length - 1]
+  const earliest = forecasts[0]
+  const totalProjected = forecasts.reduce((s, f) => s + f.predictedAmount, 0)
+  const trendPct = earliest.predictedAmount > 0
+    ? ((latest.predictedAmount - earliest.predictedAmount) / earliest.predictedAmount * 100).toFixed(1)
+    : '0.0'
+  const isUp = parseFloat(trendPct) >= 0
+
+  const chartData = forecasts.map((f) => ({
+    date: formatShortDate(f.forecastDate),
+    predicted: f.predictedAmount,
+    lower: f.lowerBound,
+    upper: f.upperBound,
+  }))
+
+  interface CustomTooltipProps {
+    active?: boolean
+    payload?: Array<{ name: string; value: number; color: string }>
+    label?: string
+  }
+
+  function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+    if (!active || !payload || payload.length === 0) return null
+    return (
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-xl p-4 space-y-1.5 text-sm">
+        <p className="font-semibold text-brand-navy mb-1">{label}</p>
+        {payload.map((entry, idx) => (
+          <p key={idx} className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-slate-500">{entry.name}:</span>
+            <span className="font-semibold text-slate-700">
+              US$ {entry.value.toLocaleString('en-US')}
+            </span>
+          </p>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Projeção Atual</p>
+          <p className="text-xl font-bold text-brand-navy">
+            US$ {latest.predictedAmount.toLocaleString('en-US')}
+          </p>
+        </div>
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Total Projetado</p>
+          <p className="text-xl font-bold text-brand-navy">
+            US$ {totalProjected.toLocaleString('en-US')}
+          </p>
+        </div>
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tendência</p>
+          <div className={cn('text-xl font-bold flex items-center justify-center gap-1', isUp ? 'text-red-600' : 'text-green-600')}>
+            {isUp ? '+' : ''}{trendPct}%
+            <TrendingUp className={cn('w-5 h-5', !isUp && 'rotate-180')} />
+          </div>
+        </div>
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Variação Média</p>
+          <p className="text-xl font-bold text-brand-navy">
+            ±{((forecasts.reduce((s, f) => s + (f.upperBound - f.lowerBound), 0) / forecasts.length / 2) / latest.predictedAmount * 100).toFixed(1)}%
+          </p>
+        </div>
+      </div>
+
+      {/* Recharts LineChart */}
+      <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <span className="w-2 h-2 rounded-full bg-brand-lime" />
+          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Previsão Diária</h2>
+        </div>
+        <ResponsiveContainer width="100%" height={340}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+            <defs>
+              <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0a1128" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#0a1128" stopOpacity={0.01} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tickLine={false}
+              axisLine={false}
+              interval={4}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => `US$${(v / 1000).toFixed(0)}k`}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="upper"
+              stroke="none"
+              fill="none"
+            />
+            <Area
+              type="monotone"
+              dataKey="lower"
+              stroke="none"
+              fill="url(#forecastGradient)"
+            />
+            <Area
+              type="monotone"
+              dataKey="predicted"
+              stroke="#0a1128"
+              strokeWidth={2.5}
+              fill="none"
+              dot={false}
+              activeDot={{ r: 5, fill: '#0a1128' }}
+            />
+            <Line
+              type="monotone"
+              dataKey="upper"
+              stroke="#0a1128"
+              strokeWidth={1}
+              strokeDasharray="6 3"
+              dot={false}
+              opacity={0.3}
+            />
+            <Line
+              type="monotone"
+              dataKey="lower"
+              stroke="#0a1128"
+              strokeWidth={1}
+              strokeDasharray="6 3"
+              dot={false}
+              opacity={0.3}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 bg-brand-navy rounded-full" />
+            <span className="text-xs text-slate-500">Previsão</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 bg-brand-navy/30" style={{ borderTop: '2px dashed rgba(10,17,40,0.3)' }} />
+            <span className="text-xs text-slate-500">Intervalo de Confiança</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-3 bg-brand-navy/15 rounded" />
+            <span className="text-xs text-slate-500">Margem de Variação</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ConfirmationModal({
@@ -566,7 +946,12 @@ export function CostModule() {
         </TabsContent>
 
         <TabsContent value="budgets">
-          <BudgetComparisonView />
+          <div className="space-y-4">
+            <div className="flex items-center justify-end">
+              <NewBudgetDialog />
+            </div>
+            <BudgetComparisonView />
+          </div>
         </TabsContent>
 
         <TabsContent value="anomalies">
@@ -574,7 +959,7 @@ export function CostModule() {
         </TabsContent>
 
         <TabsContent value="projection">
-          <CostProjectionChart />
+          <ForecastSection />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,8 +1,10 @@
 # ADR-011: What-if Cost + Preview Workflow Backend Persistence
 
 **Data**: 2026-06-19
-**Status**: Accepted
+**Status**: Implementado
 **Decisão**: `CostScenario` e `DeployPlan` como entidades JPA independentes nos respectivos módulos (cost e provision), com serviços CRUD dedicados e endpoints REST no controlador existente.
+
+> **Verificado em 2026-06-21**: CostScenario (entity + repository + service), DeployPlan (entity + repository + service) todos existem compilando. CostScenario endpoints via CostController, DeployPlan via CodeGeneratorController conforme especificado.
 
 ---
 

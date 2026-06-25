@@ -34,11 +34,11 @@ class AuditApiService {
     return response.blob()
   }
 
-  // ─── Compliance ───────────────────────────────────────────
+  // ─── Compliance (per ADR-020 Policy-as-Code) ──────────────
 
   async getComplianceScore(tenantId: string): Promise<ComplianceScore | null> {
     try {
-      return await api.get<ComplianceScore>(`/audit/compliance/${tenantId}/score`)
+      return await api.get<ComplianceScore>(`/compliance/score/${tenantId}`)
     } catch {
       return null
     }
@@ -46,7 +46,7 @@ class AuditApiService {
 
   async getComplianceEvaluations(tenantId: string): Promise<ComplianceEvaluation[]> {
     try {
-      const data = await api.get<ComplianceEvaluation[]>(`/audit/compliance/${tenantId}/evaluations`)
+      const data = await api.get<ComplianceEvaluation[]>(`/compliance/evaluate/${tenantId}`)
       return Array.isArray(data) ? data : []
     } catch {
       return []
@@ -55,7 +55,7 @@ class AuditApiService {
 
   async getComplianceRules(tenantId: string): Promise<ComplianceRule[]> {
     try {
-      const data = await api.get<ComplianceRule[]>(`/audit/compliance/rules/${tenantId}`)
+      const data = await api.get<ComplianceRule[]>(`/compliance/rules/${tenantId}`)
       return Array.isArray(data) ? data : []
     } catch {
       return []
@@ -64,7 +64,16 @@ class AuditApiService {
 
   async createComplianceRule(rule: Partial<ComplianceRule>): Promise<ComplianceRule | null> {
     try {
-      return await api.post<ComplianceRule>('/audit/compliance/rules', rule)
+      const tenantId = localStorage.getItem('cloudbuilder-active-tenant-id') || 'default'
+      return await api.post<ComplianceRule>(`/compliance/rules/${tenantId}`, rule)
+    } catch {
+      return null
+    }
+  }
+
+  async updateComplianceRule(id: string, rule: Partial<ComplianceRule>): Promise<ComplianceRule | null> {
+    try {
+      return await api.put<ComplianceRule>(`/compliance/rules/${id}`, rule)
     } catch {
       return null
     }
@@ -72,10 +81,18 @@ class AuditApiService {
 
   async deleteComplianceRule(id: string): Promise<boolean> {
     try {
-      await api.delete(`/audit/compliance/rules/${id}`)
+      await api.delete(`/compliance/rules/${id}`)
       return true
     } catch {
       return false
+    }
+  }
+
+  async getOpaStatus(): Promise<{ opaEnabled: boolean; reachable: boolean; message: string } | null> {
+    try {
+      return await api.get<{ opaEnabled: boolean; reachable: boolean; message: string }>('/compliance/opa/status')
+    } catch {
+      return null
     }
   }
 }

@@ -2,10 +2,12 @@ import { useState } from 'react'
 import {
   Clock,
   ShieldCheck,
+  Code2,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditTimelineView } from './AuditTimelineView'
 import { ComplianceDashboardView } from './ComplianceDashboardView'
+import { RegoPolicyView } from './RegoPolicyView'
 
 export function AuditModule() {
   const [activeTab, setActiveTab] = useState('timeline')
@@ -27,6 +29,10 @@ export function AuditModule() {
             <ShieldCheck className="h-4 w-4" />
             Conformidade
           </TabsTrigger>
+          <TabsTrigger value="rego" className="gap-2">
+            <Code2 className="h-4 w-4" />
+            Políticas OPA
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="timeline">
@@ -35,6 +41,10 @@ export function AuditModule() {
 
         <TabsContent value="compliance">
           <ComplianceDashboardView />
+        </TabsContent>
+
+        <TabsContent value="rego">
+          <RegoPolicyView />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,21 +1,22 @@
 package com.cloudbuilder.aiops.domain.service;
 
 import com.cloudbuilder.aiops.domain.model.Incident;
+import com.cloudbuilder.aiops.domain.service.llm.LlmClient;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 
+/**
+ * AI service that delegates to the configured LLM client.
+ * Supports OpenAI, Anthropic, or rule-based fallback.
+ *
+ * TIER 0 references:
+ *   - https://platform.openai.com/docs/api-reference/chat
+ *   - https://docs.anthropic.com/en/api/messages
+ */
 @Service
 public class AIService {
-
-    private static final Map<String, String> RCA_TEMPLATES = Map.of(
-        "critical", "Possível falha de infraestrutura subjacente. Verificar disponibilidade do provedor de nuvem, "
-            + "status de rede e recursos críticos como bancos de dados e balanceadores de carga.",
-        "warning", "Degradação de performance detectada. Pode estar relacionada a picos de tráfego, "
-            + "alocação insuficiente de recursos ou contenção em recursos compartilhados.",
-        "info", "Evento informacional. Monitorar para identificar padrões que possam indicar "
-            + "problemas futuros."
-    );
 
     private static final Map<String, String> CLASSIFICATION_TEMPLATES = Map.of(
         "infra", "infraestrutura",
@@ -26,12 +27,34 @@ public class AIService {
         "default", "geral"
     );
 
-    public String analyzeIncident(Incident incident) {
-        var rca = RCA_TEMPLATES.getOrDefault(incident.getSeverity(),
-            "Análise não conclusiva. Revisar logs e métricas para identificar a causa raiz.");
-        return rca;
+    private final LlmClient llmClient;
+
+    public AIService(LlmClient llmClient) {
+        this.llmClient = llmClient;
     }
 
+    /**
+     * Analyze an incident using the LLM client for RCA generation.
+     * Passes related context from the incident (description, severity) plus
+     * any metric/log context attached to the incident.
+     */
+    public String analyzeIncident(Incident incident) {
+        return llmClient.generateRca(
+            incident.getTitle(),
+            incident.getDescription(),
+            incident.getSeverity(),
+            Map.of(
+                "environmentId", incident.getEnvironmentId(),
+                "status", incident.getStatus()
+            ),
+            List.of()
+        );
+    }
+
+    /**
+     * Rule-based classification (deterministic, not LLM-dependent).
+     * Kept as a fast pre-filter before RCA generation.
+     */
     public String classifyIncident(String description) {
         var desc = description.toLowerCase();
         if (desc.contains("rede") || desc.contains("network") || desc.contains("conexão")) {
@@ -52,21 +75,22 @@ public class AIService {
         return CLASSIFICATION_TEMPLATES.get("default");
     }
 
-    public String answerQuery(String question, String context) {
-        var q = question.toLowerCase();
-        if (q.contains("incidente") || q.contains("alerta")) {
-            return "Foram detectados " + context + " incidente(s) ativo(s). "
-                + "Recomendo revisar os incidentes de severidade crítica primeiro.";
-        }
-        if (q.contains("custo") || q.contains("economia") || q.contains("otimização")) {
-            return "Com base na análise atual, identifiquei oportunidades de otimização de custos. "
-                + "Recursos subutilizados podem ser redimensionados para reduzir despesas.";
-        }
-        if (q.contains("saúde") || q.contains("health") || q.contains("status")) {
-            return "A saúde geral da infraestrutura está estável. "
-                + "Nenhum problema crítico detectado no momento.";
-        }
-        return "Com base nos dados disponíveis, não foi possível determinar uma resposta específica. "
-            + "Por favor, forneça mais detalhes sobre sua consulta.";
+    /**
+     * Answer a user query using the LLM client.
+     * Context can include incident count, metric data, design state, etc.
+     */
+    public String answerQuery(String question, Map<String, Object> context) {
+        var systemPrompt = "Você é o assistente de IA do CloudBuilder, uma plataforma de engenharia de infraestrutura como código. "
+            + "Responda em português de forma técnica e objetiva. "
+            + "Use os dados de contexto fornecidos para enriquecer sua resposta. "
+            + "Se não tiver informações suficientes, sugira o que o usuário pode fazer para obtê-las.";
+        return llmClient.chat(systemPrompt, question, context);
+    }
+
+    /**
+     * Analyze a metric for anomalies using the LLM client.
+     */
+    public String analyzeMetric(String metricName, List<Double> recentValues, double threshold) {
+        return llmClient.analyzeMetric(metricName, recentValues, threshold);
     }
 }

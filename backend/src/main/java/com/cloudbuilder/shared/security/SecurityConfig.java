@@ -59,9 +59,24 @@ public class SecurityConfig {
                 }
                 auth.anyRequest().authenticated();
             })
-            .headers(headers -> headers.frameOptions(frame -> {
-                if (h2ConsoleEnabled) frame.sameOrigin(); else frame.deny();
-            }))
+            .headers(headers -> {
+                headers.frameOptions(frame -> {
+                    if (h2ConsoleEnabled) frame.sameOrigin(); else frame.deny();
+                });
+                // Security headers per ADR-028 (Security Hardening)
+                headers.httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .maxAgeInSeconds(31536000)
+                    .preload(true));
+                headers.contentTypeOptions();
+                // Content-Security-Policy: allow inline for dev, restrict in prod
+                headers.contentSecurityPolicy(csp -> csp
+                    .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'"));
+                headers.referrerPolicy(referrer -> referrer
+                    .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                headers.permissionsPolicy(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=(), payment=()"));
+            })
             .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(tenantFilter, UsernamePasswordAuthenticationFilter.class);

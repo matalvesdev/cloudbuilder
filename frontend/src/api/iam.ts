@@ -51,6 +51,56 @@ export interface CreateUserRequest {
   passwordHash: string
 }
 
+// ─── MFA Types ──────────────────────────────────────────────────
+
+export interface MfaConfig {
+  id: string
+  userId: string
+  enabled: boolean
+  method: 'totp' | 'sms' | 'email' | 'none'
+  secret: string | null
+  verified: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MfaSetupResponse {
+  config: MfaConfig
+  qrCode: string
+  secretKey: string
+}
+
+export interface MfaVerifyRequest {
+  userId: string
+  code: string
+}
+
+// ─── Session Types ──────────────────────────────────────────────
+
+export interface UserSession {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  ipAddress: string
+  userAgent: string
+  deviceName: string
+  location: string
+  lastActivity: string
+  createdAt: string
+  expiresAt: string
+  isCurrent: boolean
+  status: 'active' | 'expired' | 'revoked'
+}
+
+// ─── Permission Matrix Types ────────────────────────────────────
+
+export interface PermissionMatrixEntry {
+  roleId: string
+  roleName: string
+  permissions: Permission[]
+}
+
 // ─── IAM API Service ────────────────────────────────────────────
 
 class IamApiService {
@@ -130,6 +180,44 @@ class IamApiService {
 
   async deactivateTenant(id: string): Promise<void> {
     return api.post(`/iam/tenants/${id}/deactivate`)
+  }
+
+  // ── MFA ──
+
+  async getMfaConfig(userId: string): Promise<MfaConfig> {
+    return api.get<MfaConfig>(`/iam/users/${userId}/mfa`)
+  }
+
+  async setupMfa(userId: string): Promise<MfaSetupResponse> {
+    return api.post<MfaSetupResponse>(`/iam/users/${userId}/mfa/setup`)
+  }
+
+  async verifyMfa(userId: string, code: string): Promise<MfaConfig> {
+    return api.post<MfaConfig>(`/iam/users/${userId}/mfa/verify`, { code })
+  }
+
+  async disableMfa(userId: string): Promise<void> {
+    return api.post(`/iam/users/${userId}/mfa/disable`)
+  }
+
+  // ── Sessions ──
+
+  async listSessions(userId: string): Promise<UserSession[]> {
+    return api.get<UserSession[]>(`/iam/users/${userId}/sessions`)
+  }
+
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    return api.post(`/iam/users/${userId}/sessions/${sessionId}/revoke`)
+  }
+
+  async revokeAllSessions(userId: string): Promise<void> {
+    return api.post(`/iam/users/${userId}/sessions/revoke-all`)
+  }
+
+  // ── Permission Matrix ──
+
+  async getPermissionMatrix(tenantId: string): Promise<PermissionMatrixEntry[]> {
+    return api.get<PermissionMatrixEntry[]>(`/iam/tenants/${tenantId}/permission-matrix`)
   }
 
   // ── Validation ──

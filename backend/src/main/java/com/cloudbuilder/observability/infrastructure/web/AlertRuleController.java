@@ -1,7 +1,10 @@
 package com.cloudbuilder.observability.infrastructure.web;
 
 import com.cloudbuilder.observability.application.dto.AlertRuleDTO;
+import com.cloudbuilder.observability.application.dto.AlertRuleEvaluationDTO;
 import com.cloudbuilder.observability.domain.model.AlertRuleEntity;
+import com.cloudbuilder.observability.domain.model.AlertRuleEvaluationEntity;
+import com.cloudbuilder.observability.domain.port.AlertRuleEvaluationRepository;
 import com.cloudbuilder.observability.domain.port.AlertRuleRepository;
 import com.cloudbuilder.shared.security.TenantContext;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +21,12 @@ import java.util.stream.Collectors;
 public class AlertRuleController {
 
     private final AlertRuleRepository repository;
+    private final AlertRuleEvaluationRepository evaluationRepository;
 
-    public AlertRuleController(AlertRuleRepository repository) {
+    public AlertRuleController(AlertRuleRepository repository,
+                               AlertRuleEvaluationRepository evaluationRepository) {
         this.repository = repository;
+        this.evaluationRepository = evaluationRepository;
     }
 
     @GetMapping
@@ -75,12 +81,33 @@ public class AlertRuleController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}/evaluations")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EDITOR', 'VIEWER')")
+    public List<AlertRuleEvaluationDTO> getEvaluations(@PathVariable String id) {
+        String tenantId = TenantContext.getTenantId();
+        return evaluationRepository.findByAlertRuleIdAndTenantIdOrderByEvaluatedAtDesc(id, tenantId)
+            .stream()
+            .map(this::toEvalDto)
+            .collect(Collectors.toList());
+    }
+
     private AlertRuleDTO toDto(AlertRuleEntity e) {
         return new AlertRuleDTO(
             e.getId(), e.getTenantId(), e.getName(), e.getDescription(),
             e.getMetricName(), e.getCondition(), e.getThreshold(), e.getDurationSec(),
             e.getSeverity(), e.isEnabled(), e.getNotifyChannels(),
             e.getCreatedAt(), e.getUpdatedAt()
+        );
+    }
+
+    private AlertRuleEvaluationDTO toEvalDto(AlertRuleEvaluationEntity e) {
+        return new AlertRuleEvaluationDTO(
+            e.getId(),
+            e.getAlertRuleId(),
+            e.getEvaluatedAt(),
+            e.getCurrentValue(),
+            e.getThreshold(),
+            e.isBreached()
         );
     }
 }

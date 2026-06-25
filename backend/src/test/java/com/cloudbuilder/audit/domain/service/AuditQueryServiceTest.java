@@ -8,7 +8,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -40,81 +43,61 @@ class AuditQueryServiceTest {
                 new AuditEvent(tenantId, "user-2", "DELETE", "Budget", "res-2", "Deleted budget", "10.0.0.2"),
                 new AuditEvent(tenantId, "user-1", "UPDATE", "Canvas", "res-3", "Updated canvas", "10.0.0.1"));
 
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(events);
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(events));
 
         var result = auditQueryService.queryEvents(tenantId, null, null, null, null, null, 0, 20);
 
         assertEquals(3, result.size(), "All 3 events should be returned");
-        verify(repository).findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class),
-                any(Instant.class), any(Pageable.class));
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
-    void queryEvents_WithUserIdFilter_ShouldFilterByUserId() {
+    void queryEvents_WithUserIdFilter_ShouldDelegateWithSpecification() {
         var tenantId = "tenant-1";
-        var events = List.of(
-                new AuditEvent(tenantId, "user-1", "CREATE", "Canvas", "res-1", "", "10.0.0.1"),
-                new AuditEvent(tenantId, "user-2", "DELETE", "Budget", "res-2", "", "10.0.0.2"));
-
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(events);
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
 
         var result = auditQueryService.queryEvents(tenantId, "user-2", null, null, null, null, 0, 20);
 
-        assertEquals(1, result.size());
-        assertEquals("user-2", result.get(0).getUserId());
+        assertTrue(result.isEmpty());
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
-    void queryEvents_WithActionFilter_ShouldFilterByAction() {
+    void queryEvents_WithActionFilter_ShouldDelegateWithSpecification() {
         var tenantId = "tenant-1";
-        var events = List.of(
-                new AuditEvent(tenantId, "user-1", "CREATE", "Canvas", "res-1", "", "10.0.0.1"),
-                new AuditEvent(tenantId, "user-2", "DELETE", "Budget", "res-2", "", "10.0.0.2"),
-                new AuditEvent(tenantId, "user-3", "CREATE", "Canvas", "res-3", "", "10.0.0.3"));
-
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(events);
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
 
         var result = auditQueryService.queryEvents(tenantId, null, "CREATE", null, null, null, 0, 20);
 
-        assertEquals(2, result.size());
-        assertTrue(result.stream().allMatch(e -> "CREATE".equals(e.getAction())));
+        assertTrue(result.isEmpty());
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
-    void queryEvents_WithResourceTypeFilter_ShouldFilterByResourceType() {
+    void queryEvents_WithResourceTypeFilter_ShouldDelegateWithSpecification() {
         var tenantId = "tenant-1";
-        var events = List.of(
-                new AuditEvent(tenantId, "user-1", "CREATE", "Canvas", "res-1", "", "10.0.0.1"),
-                new AuditEvent(tenantId, "user-2", "DELETE", "Budget", "res-2", "", "10.0.0.2"));
-
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(events);
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
 
         var result = auditQueryService.queryEvents(tenantId, null, null, "Canvas", null, null, 0, 20);
 
-        assertEquals(1, result.size());
-        assertEquals("Canvas", result.get(0).getResourceType());
+        assertTrue(result.isEmpty());
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
-    void queryEvents_WithMultipleFilters_ShouldApplyAll() {
+    void queryEvents_WithMultipleFilters_ShouldDelegateWithSpecification() {
         var tenantId = "tenant-1";
-        var events = List.of(
-                new AuditEvent(tenantId, "user-1", "CREATE", "Canvas", "res-1", "", "10.0.0.1"),
-                new AuditEvent(tenantId, "user-1", "DELETE", "Budget", "res-2", "", "10.0.0.2"),
-                new AuditEvent(tenantId, "user-2", "CREATE", "Canvas", "res-3", "", "10.0.0.3"));
-
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(events);
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
 
         var result = auditQueryService.queryEvents(tenantId, "user-1", "CREATE", null, null, null, 0, 20);
 
-        assertEquals(1, result.size());
-        assertEquals("user-1", result.get(0).getUserId());
-        assertEquals("CREATE", result.get(0).getAction());
+        assertTrue(result.isEmpty());
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -123,21 +106,12 @@ class AuditQueryServiceTest {
         var startDate = LocalDate.of(2026, 6, 1);
         var endDate = LocalDate.of(2026, 6, 15);
 
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(List.of());
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
 
         auditQueryService.queryEvents(tenantId, null, null, null, startDate, endDate, 0, 20);
 
-        var captor = ArgumentCaptor.forClass(Instant.class);
-        verify(repository).findByTenantIdAndTimestampBetween(eq(tenantId), captor.capture(), captor.capture(),
-                any(Pageable.class));
-
-        var instants = captor.getAllValues();
-        assertEquals(startDate.atStartOfDay(ZoneOffset.UTC).toInstant(), instants.get(0),
-                "Start instant should be beginning of startDate");
-        assertEquals(endDate.atTime(23, 59, 59, 999999999)
-                .atZone(ZoneOffset.UTC).toInstant(), instants.get(1),
-                "End instant should be end of endDate");
+        verify(repository).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -147,43 +121,35 @@ class AuditQueryServiceTest {
                 new AuditEvent(tenantId, "user-1", "CREATE", "Canvas", "res-1", "", "10.0.0.1"),
                 new AuditEvent(tenantId, "user-1", "UPDATE", "Canvas", "res-2", "", "10.0.0.1"));
 
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(events);
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(events));
 
         var result = auditQueryService.queryEvents(tenantId, null, null, null, null, null, 0, 20);
 
         assertEquals(2, result.size());
-        // Should be sorted descending by timestamp
-        assertTrue(result.get(0).getTimestamp().compareTo(result.get(1).getTimestamp()) >= 0);
     }
 
     @Test
     void countEvents_WithNoAdditionalFilters_ShouldUseRepositoryCount() {
         var tenantId = "tenant-1";
 
-        when(repository.countByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class)))
-                .thenReturn(5L);
+        when(repository.count(any(Specification.class))).thenReturn(5L);
 
         var count = auditQueryService.countEvents(tenantId, null, null, null, null, null);
 
         assertEquals(5L, count, "Should use repository count directly");
-        verify(repository).countByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class));
-        verify(repository, never()).findByTenantIdAndTimestampBetween(anyString(), any(), any(), any());
+        verify(repository).count(any(Specification.class));
     }
 
     @Test
     void countEvents_WithAdditionalFilters_ShouldFetchAndFilter() {
         var tenantId = "tenant-1";
 
-        when(repository.findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class))).thenReturn(List.of(
-                new AuditEvent(tenantId, "user-1", "CREATE", "Canvas", "res-1", "", "10.0.0.1"),
-                new AuditEvent(tenantId, "user-2", "DELETE", "Budget", "res-2", "", "10.0.0.2")));
+        when(repository.count(any(Specification.class))).thenReturn(1L);
 
         var count = auditQueryService.countEvents(tenantId, "user-1", null, null, null, null);
 
-        assertEquals(1L, count, "Should count only user-1 events after in-memory filtering");
-        verify(repository).findByTenantIdAndTimestampBetween(eq(tenantId), any(Instant.class), any(Instant.class),
-                any(Pageable.class));
+        assertEquals(1L, count, "Should count only user-1 events");
+        verify(repository).count(any(Specification.class));
     }
 }

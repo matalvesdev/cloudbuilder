@@ -1,4 +1,4 @@
-export type ProviderType = 'aws' | 'azure' | 'gcp'
+export type ProviderType = 'aws' | 'azure' | 'gcp' | 'vercel' | 'supabase' | 'render'
 
 export interface CostSummary {
   totalMonthly: number
@@ -51,4 +51,13 @@ export interface BudgetAlert {
   usagePct: number
   severity: 'WARNING' | 'CRITICAL' | 'EXCEEDED'
   evaluatedAt: string
+}
+
+export interface CostForecast {
+  id: string
+  predictedAmount: number
+  lowerBound: number
+  upperBound: number
+  period: string
+  forecastDate: string
 }

@@ -384,6 +384,21 @@ Full details at `docs/roadmap/12-month-roadmap.md`
     - **TypeScript**: 0 errors (`npx tsc --noEmit`)
     - **Total scope**: ~559 UUID references across 206 Java files → all migrated to String
 
+- **Session 2026-06-22 — FAANg Comprehensive ADR Audit + Bug Fix**: ✅ Complete
+  - **Audit**: 23 ADRs (008-030) verified against actual source code — all gaps/bugs confirmed or corrected
+  - **Report**: Generated `docs/architecture/adr-final-comprehensive-audit.md` (393 lines, 12 sections) documenting every bug with code evidence
+  - **9 bugs fixed** across 7 files:
+    - `SsoAuthController.java`: Removed email PII from callback URL (H6)
+    - `AnalyticsService.java`: Merge function `(a,b)->a` → `(a,b)->a+b` (M5)
+    - `SsoAuthService.java`: Roles from DB not hardcoded VIEWER (H2); Jackson not custom parser (M1); tenantId in login log (M8)
+    - `AnalyticsUserRollupDailyRepository.java`: Added upsert query method (H5)
+    - `AnalyticsRollupMonthlyRepository.java`: Added delete methods (M3)
+    - `AnalyticsRollupDailyRepository.java`: Added tenant-isolated delete (M4)
+    - `AggregationService.java`: User rollup upsert (H5); monthly cleanup (M3); tenant-isolated cleanup (M4)
+  - **3 false positives corrected**: C6 (README already correct), C7 (ADR-020 header already correct), C8 (SSO frontend buttons already exist)
+  - **Still open**: H1 (JWKS signature verification), C9 (SSO refresh token endpoint), M2 (hardcoded encryption key), M6/M7 (documentation cleanup)
+  - **Backend compile**: ✅ clean. **Frontend TypeScript**: ✅ 0 errors. **Tests**: ⚠️ same 6 pre-existing failures
+
 ## Installed Plugins
 
 - `oh-my-opencode` — multi-agent orchestration (OMO)
