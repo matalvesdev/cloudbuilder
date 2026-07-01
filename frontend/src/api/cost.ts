@@ -52,7 +52,7 @@ export const costApi = {
       }
       // Single object response (e.g., paginated wrapper)
       if (data && typeof data === 'object') {
-        const records = (data as any).content ?? (data as any).records ?? []
+        const records = (data as unknown as Record<string, unknown>).content ?? (data as unknown as Record<string, unknown>).records ?? []
         if (Array.isArray(records)) {
           return records.map((r: CostRecordDTO) => ({
             month: r.month,

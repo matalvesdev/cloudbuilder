@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker/master/packages/core/schema/stryker-core.schema.json",
+  "mutate": [
+    "src/lib/utils.ts",
+    "src/store/uiStore.ts",
+    "src/store/authStore.ts",
+    "src/store/canvasStore.ts",
+    "src/store/costStore.ts",
+    "src/store/driftStore.ts",
+    "src/store/deployStore.ts",
+    "src/store/policyStore.ts",
+    "src/store/tenantStore.ts",
+    "src/api/client.ts",
+    "src/api/featureFlags.ts"
+  ],
+  "testRunner": "vitest",
+  "testRunnerNodeArgs": ["--experimental-vm-modules"],
+  "coverageAnalysis": "perTest",
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": false
+  },
+  "reporters": ["html", "clear-text", "progress"],
+  "concurrency": 4,
+  "timeoutMS": 60000,
+  "plugins": ["@stryker-mutator/vitest-runner"]
+}

@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area,
 } from 'recharts'
-import { DollarSign, TrendingUp, TrendingDown, Cpu, Server, Cloud, Shield, Zap } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, Cpu, Server, Cloud, Shield, Zap, type LucideIcon } from 'lucide-react'
 import { useCostStore } from '@/store/costStore'
 import { useCanvasStore } from '@/store/canvasStore'
 import { useActivityStore } from '@/store/activityStore'
@@ -253,7 +253,15 @@ function ActivityHealthSummary() {
     return { deploysTotal, deploysOk, deploysFail, alertsTotal, driftEvents, violations, optimizations }
   }, [events])
 
-  const items = [
+  const items: Array<{
+    label: string
+    value: number
+    icon: LucideIcon
+    color: string
+    bg: string
+    ok?: number
+    fail?: number
+  }> = [
     {
       label: 'Deploys',
       value: stats.deploysTotal,
@@ -308,8 +316,8 @@ function ActivityHealthSummary() {
               <p className="text-xs text-slate-500 font-medium mt-0.5">{item.label}</p>
               {isOkFail && item.value > 0 && (
                 <div className="flex items-center justify-center gap-1 mt-1">
-                  <span className="text-[10px] text-green-600 font-bold">{(item as any).ok}✓</span>
-                  {(item as any).fail > 0 && <span className="text-[10px] text-red-600 font-bold">{(item as any).fail}✗</span>}
+                  <span className="text-[10px] text-green-600 font-bold">{item.ok}✓</span>
+                  {(item.fail ?? 0) > 0 && <span className="text-[10px] text-red-600 font-bold">{item.fail}✗</span>}
                 </div>
               )}
             </div>

@@ -9,7 +9,7 @@ import java.util.List;
 @Table(name = "canvases")
 public class Canvas extends AggregateRoot {
 
-    @Column(nullable = false)
+    @Column(name = "tenant_id", nullable = false)
     private String tenantId;
 
     @Column(nullable = false)
@@ -18,13 +18,13 @@ public class Canvas extends AggregateRoot {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
+    @Column(name = "design_version", nullable = false)
     private int designVersion;
 
     @Column(columnDefinition = "TEXT")
     private String metadata;
 
-    @Column(nullable = false)
+    @Column(name = "created_by", nullable = false)
     private String createdBy;
 
     @OneToMany(mappedBy = "canvas", cascade = CascadeType.ALL, orphanRemoval = true)

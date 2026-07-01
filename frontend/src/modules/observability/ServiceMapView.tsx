@@ -1,0 +1,479 @@
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import {
+  ReactFlow,
+  MiniMap,
+  Controls,
+  Background,
+  BackgroundVariant,
+  useNodesState,
+  useEdgesState,
+  MarkerType,
+  type Node,
+  type Edge,
+  type NodeProps,
+  Handle,
+  Position,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { api } from '@/api/client'
+import { Loader2, AlertTriangle, Server, Activity, Clock, Zap, Hash, AlertCircle, RefreshCw, X, TrendingUp } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import type { CanvasNodeData } from '@/types/canvas.types'
+
+/* ─── Types ────────────────────────────────────────────────────────── */
+
+interface ServiceMapNodeDTO {
+  nodeId: string
+  componentDefinitionId: string
+  positionX: number
+  positionY: number
+  status: string
+  latencyMs: number
+  uptimePercent: number
+  alertCount: number
+  hasCriticalAlert: boolean
+}
+
+interface ServiceMapEdgeDTO {
+  edgeId: string
+  sourceNodeId: string
+  targetNodeId: string
+  edgeType: string
+}
+
+interface ServiceMapResponse {
+  canvasId: string
+  canvasName: string
+  environmentId: string
+  overallStatus: string
+  nodes: ServiceMapNodeDTO[]
+  edges: ServiceMapEdgeDTO[]
+}
+
+interface NodeDetailResponse {
+  nodeId: string
+  componentDefinitionId: string
+  positionX: number
+  positionY: number
+  status: string
+  latencyMs: number
+  uptimePercent: number
+  alertCount: number
+  hasCriticalAlert: boolean
+  alerts: { id: string; severity: string; message: string; createdAt: string }[]
+  healthHistory: { timestamp: string; status: string; latencyMs: number; uptimePercent: number }[]
+}
+
+/* ─── Custom Node ──────────────────────────────────────────────────── */
+
+interface ServiceMapNodeData {
+  label: string
+  status: string
+  latencyMs: number
+  uptimePercent: number
+  alertCount: number
+  hasCriticalAlert: boolean
+  nodeId: string
+}
+
+function ServiceMapNode({ data }: NodeProps) {
+  const d = data as unknown as ServiceMapNodeData
+  const statusColor = {
+    healthy: 'bg-green-500 border-green-300',
+    degraded: 'bg-yellow-500 border-yellow-300',
+    down: 'bg-red-500 border-red-300',
+    critical: 'bg-red-600 border-red-400',
+    unknown: 'bg-slate-300 border-slate-200',
+  }[d.status] || 'bg-slate-300 border-slate-200'
+
+  const statusLabel = {
+    healthy: 'Saudável',
+    degraded: 'Degradado',
+    down: 'Indisponível',
+    critical: 'Crítico',
+    unknown: 'Desconhecido',
+  }[d.status] || 'Desconhecido'
+
+  return (
+    <div className={cn(
+      'px-4 py-3 rounded-2xl border-2 shadow-lg bg-white min-w-[180px] transition-all hover:shadow-xl cursor-pointer',
+      d.status === 'healthy' && 'border-green-300',
+      d.status === 'degraded' && 'border-yellow-300',
+      d.status === 'down' && 'border-red-300',
+      d.status === 'critical' && 'border-red-400',
+      d.status === 'unknown' && 'border-slate-200',
+    )}>
+      <Handle type="target" position={Position.Top} className="!bg-slate-300" />
+      <div className="flex items-center gap-2 mb-2">
+        <div className={cn('w-3 h-3 rounded-full border-2', statusColor)} />
+        <span className="text-sm font-bold text-brand-navy truncate">{d.label}</span>
+        {d.alertCount > 0 && (
+          <Badge variant="destructive" className="ml-auto text-[10px] h-5 px-1.5 gap-1">
+            <AlertCircle className="w-3 h-3" />
+            {d.alertCount}
+          </Badge>
+        )}
+      </div>
+      <div className="flex items-center gap-3 text-[11px] text-slate-500">
+        <span className="flex items-center gap-1">
+          <Activity className="w-3 h-3" />
+          {d.latencyMs.toFixed(0)}ms
+        </span>
+        <span className="flex items-center gap-1">
+          <Zap className="w-3 h-3" />
+          {d.uptimePercent.toFixed(1)}%
+        </span>
+      </div>
+      <div className={cn(
+        'text-[10px] font-semibold mt-1.5',
+        d.status === 'healthy' && 'text-green-600',
+        d.status === 'degraded' && 'text-yellow-600',
+        d.status === 'down' && 'text-red-600',
+        d.status === 'unknown' && 'text-slate-400',
+      )}>
+        {statusLabel}
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!bg-slate-300" />
+    </div>
+  )
+}
+
+const nodeTypes = { serviceMapNode: ServiceMapNode }
+
+/* ─── Edge style helper ────────────────────────────────────────────── */
+
+function edgeStyle(status: string) {
+  if (status === 'critical' || status === 'down') return { stroke: '#ef4444', strokeWidth: 2, animated: true }
+  if (status === 'degraded') return { stroke: '#eab308', strokeWidth: 2, animated: true }
+  return { stroke: '#94a3b8', strokeWidth: 1.5 }
+}
+
+/* ─── Node Detail Panel ─────────────────────────────────────────────── */
+
+function NodeDetailPanel({ detail, onClose }: { detail: NodeDetailResponse; onClose: () => void }) {
+  const severityColor = (s: string) =>
+    s === 'critical' ? 'text-red-600 bg-red-50' :
+    s === 'warning' ? 'text-yellow-600 bg-yellow-50' :
+    'text-slate-500 bg-slate-50'
+
+  return (
+    <div className="absolute right-4 top-4 bottom-4 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-bold text-brand-navy">{detail.componentDefinitionId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Detalhes do componente</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+          <X className="w-4 h-4 text-slate-400" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Status */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Status</p>
+            <span className={cn(
+              'text-sm font-bold',
+              detail.status === 'healthy' ? 'text-green-600' :
+              detail.status === 'degraded' ? 'text-yellow-600' :
+              detail.status === 'down' ? 'text-red-600' : 'text-slate-500'
+            )}>{detail.status}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Latência</p>
+            <p className="text-sm font-bold text-brand-navy">{detail.latencyMs.toFixed(0)}ms</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Uptime</p>
+            <p className="text-sm font-bold text-green-600">{detail.uptimePercent.toFixed(1)}%</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 text-center">
+            <p className="text-xs text-slate-400 mb-1">Alertas</p>
+            <p className={cn('text-sm font-bold', detail.alertCount > 0 ? 'text-red-600' : 'text-green-600')}>{detail.alertCount}</p>
+          </div>
+        </div>
+
+        {/* Health History */}
+        {detail.healthHistory.length > 1 && (
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Histórico de Saúde</p>
+            <div className="space-y-1">
+              {detail.healthHistory.slice(-6).map((h, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs">
+                  <span className={cn(
+                    'w-2 h-2 rounded-full shrink-0',
+                    h.status === 'healthy' ? 'bg-green-500' :
+                    h.status === 'degraded' ? 'bg-yellow-500' :
+                    h.status === 'down' ? 'bg-red-500' : 'bg-slate-300'
+                  )} />
+                  <span className="text-slate-500">{new Date(h.timestamp).toLocaleString('pt-BR')}</span>
+                  <span className="text-slate-400 ml-auto">{h.latencyMs.toFixed(0)}ms</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Active Alerts */}
+        {detail.alerts.length > 0 && (
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+              Alertas Ativos ({detail.alerts.length})
+            </p>
+            <div className="space-y-2">
+              {detail.alerts.map((a) => (
+                <div key={a.id} className={cn('p-2.5 rounded-xl text-xs', severityColor(a.severity))}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <AlertCircle className="w-3 h-3" />
+                    <span className="font-bold uppercase">{a.severity}</span>
+                  </div>
+                  <p className="text-slate-600">{a.message}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{new Date(a.createdAt).toLocaleString('pt-BR')}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {detail.alerts.length === 0 && (
+          <div className="p-4 rounded-xl bg-green-50 text-center">
+            <p className="text-xs font-medium text-green-600">Nenhum alerta ativo</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Main Component ───────────────────────────────────────────────── */
+
+export function ServiceMapView() {
+  const [data, setData] = useState<ServiceMapResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [canvasId, setCanvasId] = useState<string>('')
+  const [canvasList, setCanvasList] = useState<{ id: string; name: string; status?: string; serviceCount?: number; activeAlerts?: number }[]>([])
+  const [showCanvasPicker, setShowCanvasPicker] = useState(false)
+  const [selectedNode, setSelectedNode] = useState<NodeDetailResponse | null>(null)
+  const [loadingNode, setLoadingNode] = useState(false)
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+
+  const fetchServiceMap = useCallback(async (id: string) => {
+    setLoading(true)
+    setError(null)
+    setSelectedNode(null)
+    try {
+      const res = await api.get<ServiceMapResponse>(`/service-map/${id}`)
+      setData(res)
+
+      const flowNodes: Node[] = res.nodes.map((n, i) => ({
+        id: n.nodeId,
+        type: 'serviceMapNode',
+        position: { x: n.positionX || (i % 4) * 250, y: n.positionY || Math.floor(i / 4) * 180 },
+        data: {
+          label: n.componentDefinitionId.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+          status: n.status,
+          latencyMs: n.latencyMs,
+          uptimePercent: n.uptimePercent,
+          alertCount: n.alertCount,
+          hasCriticalAlert: n.hasCriticalAlert,
+          nodeId: n.nodeId,
+        },
+      }))
+
+      const flowEdges: Edge[] = res.edges.map((e) => ({
+        id: e.edgeId,
+        source: e.sourceNodeId,
+        target: e.targetNodeId,
+        type: 'smoothstep',
+        markerEnd: { type: MarkerType.ArrowClosed, color: edgeStyle(res.overallStatus).stroke },
+        style: edgeStyle(res.overallStatus),
+      }))
+
+      setNodes(flowNodes)
+      setEdges(flowEdges)
+    } catch (err) {
+      setError('Não foi possível carregar o service map. API indisponível.')
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [setNodes, setEdges])
+
+  const handleNodeClick = useCallback(async (nodeId: string) => {
+    if (!canvasId) return
+    setLoadingNode(true)
+    try {
+      const detail = await api.get<NodeDetailResponse>(`/service-map/${canvasId}/nodes/${nodeId}`)
+      setSelectedNode(detail)
+    } catch {
+      setSelectedNode(null)
+    } finally {
+      setLoadingNode(false)
+    }
+  }, [canvasId])
+
+  // Fetch canvas list for picker
+  useEffect(() => {
+    api.get<any[]>('/service-map')
+      .then((list) => setCanvasList(list || []))
+      .catch(() => {})
+  }, [])
+
+  // Auto-select first canvas
+  useEffect(() => {
+    if (!canvasId && canvasList.length > 0) {
+      setCanvasId(canvasList[0].id)
+    }
+  }, [canvasList, canvasId])
+
+  useEffect(() => {
+    if (canvasId) {
+      fetchServiceMap(canvasId)
+    }
+  }, [canvasId, fetchServiceMap])
+
+  const handleRefresh = () => {
+    if (canvasId) fetchServiceMap(canvasId)
+  }
+
+  const overallBadge = useMemo(() => {
+    if (!data) return null
+    const { overallStatus } = data
+    const variant = overallStatus === 'healthy' ? 'default' as const
+      : overallStatus === 'degraded' ? 'secondary' as const
+      : 'destructive' as const
+    const label = {
+      healthy: 'Saudável',
+      degraded: 'Degradado',
+      critical: 'Crítico',
+      unknown: 'Desconhecido',
+    }[overallStatus] || overallStatus
+    return <Badge variant={variant} className="gap-1.5 px-3 py-1 text-xs font-semibold">{label}</Badge>
+  }, [data])
+
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center h-full py-16">
+        <Loader2 className="w-6 h-6 animate-spin text-brand-navy" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <button
+            onClick={() => setShowCanvasPicker(!showCanvasPicker)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-brand-navy hover:bg-slate-50 transition-all"
+          >
+            <Server className="w-4 h-4 text-slate-400" />
+            {data?.canvasName || 'Selecionar Canvas'}
+          </button>
+          {showCanvasPicker && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowCanvasPicker(false)} />
+              <div className="absolute left-0 top-full mt-1 w-56 bg-white rounded-xl border border-slate-200 shadow-lg z-50 py-1 max-h-48 overflow-y-auto">
+                {canvasList.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setCanvasId(c.id); setShowCanvasPicker(false) }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 text-xs transition-all text-left',
+                      c.id === canvasId ? 'bg-brand-navy/5 text-brand-navy font-bold' : 'text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <span>{c.name}</span>
+                      {c.status && (
+                        <span className={cn(
+                          'w-1.5 h-1.5 rounded-full',
+                          c.status === 'healthy' ? 'bg-green-500' : c.status === 'critical' ? 'bg-red-500' : 'bg-slate-300'
+                        )} />
+                      )}
+                    </div>
+                    {c.activeAlerts !== undefined && c.activeAlerts > 0 && (
+                      <span className="text-[10px] text-red-500 font-bold">{c.activeAlerts}</span>
+                    )}
+                  </button>
+                ))}
+                {canvasList.length === 0 && (
+                  <p className="px-3 py-2 text-xs text-slate-400">Nenhum canvas encontrado</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        {overallBadge}
+        <button
+          onClick={handleRefresh}
+          className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-brand-navy hover:bg-slate-100 transition-all"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Atualizar
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-700">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Canvas */}
+      {data && nodes.length > 0 ? (
+        <div className="bg-white rounded-3xl card-shadow border border-slate-100 overflow-hidden relative" style={{ height: 520 }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            fitView
+            attributionPosition="bottom-left"
+            minZoom={0.3}
+            maxZoom={2}
+            onNodeClick={(_event, node) => handleNodeClick(node.id)}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
+            <Controls showInteractive={false} className="!rounded-xl !border !border-slate-200 !shadow-sm" />
+            <MiniMap
+              nodeStrokeColor="#0a1128"
+              nodeColor={(n) => {
+                const s = (n.data as CanvasNodeData)?.status
+                if (s === 'healthy') return '#22c55e'
+                if (s === 'degraded') return '#eab308'
+                if (s === 'down' || s === 'critical') return '#ef4444'
+                return '#94a3b8'
+              }}
+              className="!rounded-xl !border !border-slate-200 !shadow-sm"
+            />
+          </ReactFlow>
+
+          {/* Node Detail Panel */}
+          {loadingNode && (
+            <div className="absolute right-4 top-4 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-8 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-brand-navy" />
+            </div>
+          )}
+          {selectedNode && !loadingNode && (
+            <NodeDetailPanel detail={selectedNode} onClose={() => setSelectedNode(null)} />
+          )}
+        </div>
+      ) : data && nodes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-[300px] bg-white rounded-3xl card-shadow border border-slate-100">
+          <Server className="w-12 h-12 text-slate-200 mb-3" />
+          <p className="text-sm text-slate-400">Canvas vazio — adicione componentes ao design para ver o service map</p>
+        </div>
+      ) : null}
+    </div>
+  )
+}

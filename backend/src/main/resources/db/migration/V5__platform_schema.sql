@@ -5,7 +5,7 @@
 -- CATALOG_ITEMS TABLE
 -- ============================================================================
 CREATE TABLE catalog_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     type VARCHAR(100) NOT NULL,
     description TEXT,

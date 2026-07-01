@@ -5,7 +5,7 @@
 -- AUDIT_EVENTS TABLE
 -- ============================================================================
 CREATE TABLE audit_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     tenant_id VARCHAR(255) NOT NULL,
     user_id VARCHAR(255) NOT NULL,
     action VARCHAR(100) NOT NULL,

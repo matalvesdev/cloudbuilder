@@ -65,6 +65,6 @@ export function listVersions(canvasId: string): Promise<unknown[]> {
   return api.get(`${BASE}/${canvasId}/versions`)
 }
 
-export function createVersion(canvasId: string): Promise<unknown> {
-  return api.post(`${BASE}/${canvasId}/versions`)
+export function createVersion(canvasId: string, changeDescription: string = 'Nova versão', createdBy: string = 'system'): Promise<unknown> {
+  return api.post(`${BASE}/${canvasId}/versions`, { changeDescription, createdBy })
 }

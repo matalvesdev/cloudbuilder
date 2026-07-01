@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { DocTreeItem, DocContent, StaleDoc, DocLink } from '@/modules/docs/docsStore'
+import type { DocTreeItem, DocContent, StaleDoc, DocLink } from '@/modules/settings/docsStore'
 
 const BASE = '/docs'
 
@@ -37,8 +37,8 @@ export function fetchDocLinks(path: string): Promise<DocLink[]> {
   return api.get(`${BASE}/links?path=${encodeURIComponent(path)}`)
 }
 
-export function createDocLink(docPath: string, entityType: string, entityId: string, tenantId?: string): Promise<DocLink> {
-  return api.post(`${BASE}/links`, { docPath, entityType, entityId, tenantId })
+export function createDocLink(sourcePath: string, linkedPath: string, relationship: string = 'references', tenantId?: string): Promise<DocLink> {
+  return api.post(`${BASE}/links`, { sourcePath, linkedPath, relationship, tenantId })
 }
 
 export function deleteDocLink(id: string): Promise<void> {

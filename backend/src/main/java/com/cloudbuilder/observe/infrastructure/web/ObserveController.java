@@ -6,12 +6,14 @@ import com.cloudbuilder.observe.application.dto.ServiceHealthDTO;
 import com.cloudbuilder.observe.domain.model.ServiceHealth;
 import com.cloudbuilder.observe.domain.service.HealthCheckService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/v1/observe")
+@PreAuthorize("isAuthenticated()")
 public class ObserveController {
 
     private final HealthCheckService healthCheckService;
@@ -39,6 +41,7 @@ public class ObserveController {
     }
 
     @PostMapping("/health")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ServiceHealthDTO> recordHealth(@RequestBody RecordHealthRequest req) {
         var h = healthCheckService.recordHealth(
                 req.serviceName(), req.environmentId(), req.status(),
@@ -53,6 +56,7 @@ public class ObserveController {
     }
 
     @PostMapping("/alerts/{alertId}/resolve")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AlertDTO> resolveAlert(@PathVariable String alertId) {
         var alert = healthCheckService.resolveAlert(alertId);
         return ResponseEntity.ok(AlertDTO.from(alert));

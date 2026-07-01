@@ -1,6 +1,8 @@
 spring:
   application:
     name: cloudbuilder
+  main:
+    allow-bean-definition-overriding: true
 
   datasource:
     url: jdbc:postgresql://localhost:5432/cloudbuilder
@@ -16,6 +18,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
     show-sql: false
     properties:
       hibernate:
@@ -117,6 +121,41 @@ resilience4j:
         baseConfig: default
 
 cloudbuilder:
+  kafka:
+    enabled: ${KAFKA_ENABLED:true}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: cloudbuilder-backend
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.cloudbuilder.*"
+    topics:
+      canvas: canvas.events
+      deployment: deployment.events
+      observability: observability.events
+      ai: ai.events
+      provisioning: provisioning.events
+      security: security.events
+      identity: identity.events
+      audit: audit.events
+      cost: cost.events
+      policy: policy.events
+      notification: notification.events
+      system: system.events
+
+    # Apicurio Schema Registry for contract evolution (ADR-038)
+    schema-registry:
+      enabled: ${SCHEMA_REGISTRY_ENABLED:false}
+      url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+
   sso:
     enabled: false  # SSO desabilitado por padrão (ADR-025)
 
@@ -126,6 +165,9 @@ cloudbuilder:
     refresh-token-expiration: 604800000
     cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
     h2-console-enabled: false
+    # Encryption key for SecretEncryptionConverter (AES-256-GCM via PBKDF2)
+    # Falls back to CLOUDBUILDER_ENCRYPTION_KEY env var if set, then to dev fallback
+    encryption-key: "${CLOUDBUILDER_ENCRYPTION_KEY:}"
 
   ai:
     llm:

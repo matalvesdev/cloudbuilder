@@ -28,6 +28,7 @@ Ver docs/architecture/ para decisoes arquiteturais completas.
 - ADR-030: Production Readiness & Stabilization (Proposto)
 - ADR-031: Production Deployment Architecture (Proposto)
 - ADR-032: Public Beta Feature Flags (Proposto)
+- ADR-033: Go Engine DAG Pipeline Architecture (Proposto)
 
 ## Stack Decisions
 | Decisao | Escolha | Razao |
@@ -48,7 +49,10 @@ Ver docs/architecture/ para decisoes arquiteturais completas.
 6. Multi-Tenancy: Isolamento por tenantId + TenantFilter + @PreAuthorize
 7. API First: /api/v1/ prefix, REST conventions
 
-## Known Gaps (2026-06-23)
+## Research References
+- `docs/architecture/cloud-infrastructure-patterns-compare.md` — Análise competitiva de 7 plataformas (Datadog, Grafana, Dynatrace, New Relic, HCP Terraform, Pulumi, Crossplane). Base para ADRs futuros de pipeline DAG, provider plugin SDK, e auto-discovery.
+
+## Known Gaps (2026-06-24)
 - gRPC bridge nao implementado: Go engine tem servidor gRPC mas backend Java nao tem cliente
 - Flyway migrations (V1-V12) usam id UUID, mas entidades JPA usam String -- V13 corrigiu para VARCHAR(36)
 - ADR-020 OPA: Marcado Nao-Implementado mas container OPA ja existe no docker-compose.yml
@@ -56,7 +60,20 @@ Ver docs/architecture/ para decisoes arquiteturais completas.
 - JWT nao propagado para Go engine (gRPC nao implementado)
 - ADR-022/023/026/027/028/029: Propostos mas nao implementados
 - 6 pre-existing test failures nao corrigidos
+- Backend Maven compile nao verificado (sem mvn neste ambiente)
+- **(RESOLVIDO)** 5 ADR bugs (H1, C9, M2, M6, M7) — verificados como já resolvidos no código Phase 6B-9 em 2026-06-24
 
-## ADRs 031-032 (2026-06-23)
-- ADR-031: Production Deployment -- EC2 + RDS + S3/CloudFront + Elastic Beanstalk
-- ADR-032: Feature Flags -- JPA FeatureFlag entity + uiStore.isEnabled()
+## ADRs 031-033 (2026-06-23/24)
+- ADR-031: Production Deployment -- EC2 + RDS + S3/CloudFront + Elastic Beanstalk (Proposto)
+- ADR-032: Feature Flags -- JPA FeatureFlag entity + uiStore.isEnabled() (Proposto)
+- ADR-033: Go Engine DAG Pipeline Architecture -- 8-stage component pipeline, inspirado em Grafana Alloy + Crossplane Functions (Proposto)
+
+## Cross-Cutting Modules (2026-06-24, Phase 6B-9 FAANg)
+- **shared/api**: ApiVersion enum + interceptor + resolver + advice (header-based versioning)
+- **shared/monitoring**: MetricsConfig + ControllerMicrometerAspect + MdcFilter + CustomHealthIndicator
+- **shared/security**: JwksVerifier (JWKS signature), SecretEncryptionConverter (AES-256)
+- **shared/web**: WebConfig (CORS)
+- **Flyway V9-V13**: 5 migrations covering observability, analytics, docs, brin indexes, credentials/env/approvals/deployments
+- **infra/**: Prometheus alerts (alerts.yml), Grafana golden signals (cloudbuilder-golden-signals.json), k6 load tests
+- **opa/**: 4 Rego policies (cost, custom, governance, security)
+- **11 Playwright E2E specs**: covering all modules across frontend

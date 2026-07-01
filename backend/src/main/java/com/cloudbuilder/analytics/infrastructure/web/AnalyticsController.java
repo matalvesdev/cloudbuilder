@@ -3,6 +3,7 @@ package com.cloudbuilder.analytics.infrastructure.web;
 import com.cloudbuilder.analytics.domain.model.AnalyticsEvent;
 import com.cloudbuilder.analytics.domain.service.AnalyticsService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
+@PreAuthorize("hasRole('ADMIN')")
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;

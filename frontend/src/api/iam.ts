@@ -185,39 +185,39 @@ class IamApiService {
   // ── MFA ──
 
   async getMfaConfig(userId: string): Promise<MfaConfig> {
-    return api.get<MfaConfig>(`/iam/users/${userId}/mfa`)
+    return api.get<MfaConfig>(`/iam/mfa/status/${userId}`)
   }
 
   async setupMfa(userId: string): Promise<MfaSetupResponse> {
-    return api.post<MfaSetupResponse>(`/iam/users/${userId}/mfa/setup`)
+    return api.post<MfaSetupResponse>(`/iam/mfa/setup/${userId}`)
   }
 
   async verifyMfa(userId: string, code: string): Promise<MfaConfig> {
-    return api.post<MfaConfig>(`/iam/users/${userId}/mfa/verify`, { code })
+    return api.post<MfaConfig>(`/iam/mfa/verify/${userId}`, { code })
   }
 
   async disableMfa(userId: string): Promise<void> {
-    return api.post(`/iam/users/${userId}/mfa/disable`)
+    return api.post(`/iam/mfa/disable/${userId}`)
   }
 
   // ── Sessions ──
 
   async listSessions(userId: string): Promise<UserSession[]> {
-    return api.get<UserSession[]>(`/iam/users/${userId}/sessions`)
+    return api.get<UserSession[]>(`/iam/sessions/user/${userId}`)
   }
 
   async revokeSession(userId: string, sessionId: string): Promise<void> {
-    return api.post(`/iam/users/${userId}/sessions/${sessionId}/revoke`)
+    return api.post(`/iam/sessions/${sessionId}/terminate`)
   }
 
   async revokeAllSessions(userId: string): Promise<void> {
-    return api.post(`/iam/users/${userId}/sessions/revoke-all`)
+    return api.post(`/iam/sessions/user/${userId}/terminate-all`)
   }
 
-  // ── Permission Matrix ──
+  // ── Permission Matrix (admin-only: use /iam/roles/{roleId}/permissions) ──
 
   async getPermissionMatrix(tenantId: string): Promise<PermissionMatrixEntry[]> {
-    return api.get<PermissionMatrixEntry[]>(`/iam/tenants/${tenantId}/permission-matrix`)
+    return api.get<PermissionMatrixEntry[]>(`/iam/tenants/${tenantId}/roles`)
   }
 
   // ── Validation ──

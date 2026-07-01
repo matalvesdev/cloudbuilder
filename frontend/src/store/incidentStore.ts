@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { aiopsApi } from '@/api/aiops'
+import { eventBus } from '@/shared/event-bus'
 
 export interface ResourceModification {
   nodeId: string
@@ -46,6 +47,7 @@ interface IncidentState {
   toggleAutoFix: () => void
   clearHistory: () => void
   fetchIncidents: (environmentId: string) => Promise<void>
+  addIncidentReactive: (incident: { id: string; severity: string; title: string }) => void
   analyzeIncident: (incidentId: string) => Promise<any | null>
   resolveIncident: (incidentId: string) => Promise<any | null>
 }
@@ -113,6 +115,25 @@ export const useIncidentStore = create<IncidentState>()(
       }
     },
 
+    addIncidentReactive: (incident) => {
+      // Triggered by SSE events from useEventStream
+      set((state) => {
+        if (state.incidents.some((i) => i.id === incident.id)) return state
+        return {
+          incidents: [
+            {
+              id: incident.id,
+              title: incident.title,
+              severity: incident.severity,
+              status: 'open',
+              detectedAt: new Date().toISOString(),
+            },
+            ...state.incidents,
+          ],
+        }
+      })
+    },
+
     analyzeIncident: async (incidentId: string) => {
       try {
         return await aiopsApi.analyzeIncident(incidentId)
@@ -130,3 +151,13 @@ export const useIncidentStore = create<IncidentState>()(
     },
   })
 )
+
+// ─── EventBus subscriptions (architectural consistency) ─────────────
+// SSE events flow through EventBus → stores react here
+eventBus.subscribe('incident:created', (payload) => {
+  useIncidentStore.getState().addIncidentReactive({
+    id: payload.incidentId,
+    severity: payload.severity,
+    title: payload.title,
+  })
+})

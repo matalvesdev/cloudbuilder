@@ -10,6 +10,9 @@ service ProvisionService {
   rpc GetState(StateRequest) returns (StateResponse);
   rpc DetectDrift(DriftRequest) returns (DriftResponse);
   rpc Destroy(DestroyRequest) returns (stream DestroyEvent);
+  // WatchEvents streams all engine events (deployment, drift, lifecycle)
+  // to the backend for cross-module event-driven processing.
+  rpc WatchEvents(WatchEventsRequest) returns (stream EngineEvent);
 }
 
 message GenerateCodeRequest {
@@ -106,4 +109,20 @@ message DestroyEvent {
   string deployment_id = 1;
   string event_type = 2;
   string message = 3;
+}
+
+message WatchEventsRequest {
+  string tenant_id = 1;
+  // Optional filter: only receive events matching these types (empty = all)
+  repeated string event_types = 2;
+}
+
+message EngineEvent {
+  string deployment_id = 1;
+  string event_type = 2;    // "deployment.started", "drift.detected", etc.
+  string status = 3;
+  string message = 4;
+  int32 progress = 5;
+  string tenant_id = 6;
+  string timestamp = 7;     // ISO 8601
 }

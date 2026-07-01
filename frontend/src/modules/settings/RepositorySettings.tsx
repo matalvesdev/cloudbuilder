@@ -23,7 +23,7 @@ import {
   type RepoProvider,
   type RepoScanResult,
 } from '@/types/repo.types'
-import { CiCdPipeline } from '@/modules/provision/CiCdPipeline'
+import { CiCdPipeline } from '@/modules/deployment/CiCdPipeline'
 
 function ProviderIcon({ provider, className }: { provider: RepoProvider; className?: string }) {
   const icons: Record<RepoProvider, typeof GitBranch> = {

@@ -5,7 +5,7 @@
 -- INCIDENTS TABLE
 -- ============================================================================
 CREATE TABLE incidents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     environment_id VARCHAR(255) NOT NULL,
     title VARCHAR(500) NOT NULL,
     description TEXT,

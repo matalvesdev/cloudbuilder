@@ -25,8 +25,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final List<String> SKIP_PATHS = List.of(
             "/api/auth/**",
-            "/api/v1/auth/**",
             // "/api/v1/import/**",  // Removido: import requer autenticação via @PreAuthorize
+            "/api/v1/events/stream",  // SSE valida token via query param (EventSource não envia headers)
             "/actuator/health",
             "/actuator/info",
             // Swagger removido — implementação nativa, sem springdoc

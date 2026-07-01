@@ -2,129 +2,115 @@ package messaging
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 )
 
-func TestEventPublisher_Publish(t *testing.T) {
-	var mu sync.Mutex
-	var receivedEvents []DeploymentEvent
-
-	publisher := &EventPublisher{
-		onEvent: func(e DeploymentEvent) {
-			mu.Lock()
-			receivedEvents = append(receivedEvents, e)
-			mu.Unlock()
-		},
+func TestKafkaProducer_DisabledByDefault(t *testing.T) {
+	config := DefaultKafkaConfig()
+	if config.Enabled {
+		t.Fatal("expected Enabled to be false by default")
 	}
 
-	ctx := context.Background()
-	err := publisher.Publish(ctx, DeploymentEvent{
-		DeploymentID: "dep-123",
+	kp := NewKafkaProducer(config)
+	if kp.IsEnabled() {
+		t.Fatal("expected KafkaProducer to be disabled")
+	}
+
+	// Produce should succeed silently (no-op)
+	err := kp.Produce(context.Background(), DeploymentEvent{
+		DeploymentID: "test-123",
 		EventType:    EventDeploymentStarted,
 		Status:       "started",
-		Message:      "Deployment started",
 	})
-
 	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	mu.Lock()
-	if len(receivedEvents) != 1 {
-		t.Fatalf("expected 1 event, got %d", len(receivedEvents))
-	}
-	if receivedEvents[0].DeploymentID != "dep-123" {
-		t.Errorf("expected deployment ID 'dep-123', got '%s'", receivedEvents[0].DeploymentID)
-	}
-	if receivedEvents[0].EventType != EventDeploymentStarted {
-		t.Errorf("expected event type '%s', got '%s'", EventDeploymentStarted, receivedEvents[0].EventType)
-	}
-	if receivedEvents[0].Timestamp.IsZero() {
-		t.Error("expected timestamp to be set")
-	}
-	mu.Unlock()
-}
-
-func TestEventPublisher_PublishProgress(t *testing.T) {
-	var lastProgress DeploymentEvent
-
-	publisher := &EventPublisher{
-		onEvent: func(e DeploymentEvent) {
-			lastProgress = e
-		},
-	}
-
-	ctx := context.Background()
-	err := publisher.PublishProgress(ctx, "dep-456", "applying", 50, "Applying infrastructure...")
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	if lastProgress.DeploymentID != "dep-456" {
-		t.Errorf("expected deployment ID 'dep-456', got '%s'", lastProgress.DeploymentID)
-	}
-	if lastProgress.Progress != 50 {
-		t.Errorf("expected progress 50, got %d", lastProgress.Progress)
-	}
-	if lastProgress.Message != "Applying infrastructure..." {
-		t.Errorf("expected message 'Applying infrastructure...', got '%s'", lastProgress.Message)
+		t.Fatalf("expected no error when disabled, got: %v", err)
 	}
 }
 
-func TestNewEventPublisher_DefaultLogger(t *testing.T) {
-	// Default publisher should not panic
-	publisher := NewEventPublisher()
-	ctx := context.Background()
-
-	err := publisher.Publish(ctx, DeploymentEvent{
-		DeploymentID: "test",
-		EventType:    EventDeploymentComplete,
-		Status:       "done",
-	})
-
+func TestKafkaProducer_CloseWhenDisabled(t *testing.T) {
+	kp := NewKafkaProducer(DefaultKafkaConfig())
+	err := kp.Close()
 	if err != nil {
-		t.Errorf("expected no error, got: %v", err)
+		t.Fatalf("expected no error closing disabled producer, got: %v", err)
 	}
 }
 
-func TestEventPublisher_EventTypes(t *testing.T) {
+func TestKafkaProducer_TopicCount(t *testing.T) {
+	kp := NewKafkaProducer(DefaultKafkaConfig())
+	if kp.TopicCount() != 0 {
+		t.Fatalf("expected 0 topics when disabled, got %d", kp.TopicCount())
+	}
+}
+
+func TestKafkaProducer_RouteEvent(t *testing.T) {
 	tests := []struct {
 		eventType EventType
 		expected  string
 	}{
-		{EventDeploymentStarted, "deployment.started"},
-		{EventDeploying, "deploying"},
-		{EventDeploymentComplete, "deployment.complete"},
-		{EventDeploymentFailed, "deployment.failed"},
-		{EventDriftDetected, "drift.detected"},
-		{EventDriftResolved, "drift.resolved"},
+		{EventDeploymentStarted, "deployment.events"},
+		{EventDeploying, "deployment.events"},
+		{EventDeploymentComplete, "deployment.events"},
+		{EventDeploymentFailed, "deployment.events"},
+		{EventDriftDetected, "observability.events"},
+		{EventDriftResolved, "observability.events"},
 	}
 
 	for _, tt := range tests {
-		if string(tt.eventType) != tt.expected {
-			t.Errorf("expected '%s', got '%s'", tt.expected, string(tt.eventType))
+		topic := routeEvent(tt.eventType)
+		if topic != tt.expected {
+			t.Errorf("event %s: expected topic %s, got %s", tt.eventType, tt.expected, topic)
 		}
 	}
 }
 
-func TestEventPublisher_Timestamp(t *testing.T) {
-	var event DeploymentEvent
-	publisher := &EventPublisher{
-		onEvent: func(e DeploymentEvent) {
-			event = e
-		},
+func TestEventPublisher_WithKafkaProducer(t *testing.T) {
+	// Disabled Kafka — events still go to local subscribers
+	config := DefaultKafkaConfig()
+	kp := NewKafkaProducer(config)
+
+	publisher := NewEventPublisherWithKafka(kp)
+	ctx := context.Background()
+
+	sub := publisher.Subscribe("kafka-test")
+	defer publisher.Unsubscribe("kafka-test")
+
+	err := publisher.Publish(ctx, DeploymentEvent{
+		DeploymentID: "kafka-1",
+		EventType:    EventDeploymentStarted,
+		Status:       "started",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	before := time.Now()
-	publisher.Publish(context.Background(), DeploymentEvent{
-		DeploymentID: "ts-test",
-		EventType:    EventDriftDetected,
-	})
-	after := time.Now()
+	select {
+	case evt := <-sub.Events:
+		if evt.DeploymentID != "kafka-1" {
+			t.Errorf("expected deployment ID 'kafka-1', got '%s'", evt.DeploymentID)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timeout waiting for event")
+	}
+}
 
-	if event.Timestamp.Before(before) || event.Timestamp.After(after) {
-		t.Error("timestamp should be between before and after the publish call")
+func TestEventPublisher_SetKafka(t *testing.T) {
+	publisher := NewEventPublisher()
+
+	if publisher.kafka != nil {
+		t.Fatal("expected nil kafka producer initially")
+	}
+
+	kp := NewKafkaProducer(DefaultKafkaConfig())
+	publisher.SetKafka(kp)
+
+	if publisher.kafka == nil {
+		t.Fatal("expected kafka producer to be set")
+	}
+
+	// Detach
+	publisher.SetKafka(nil)
+	if publisher.kafka != nil {
+		t.Fatal("expected kafka producer to be nil after detach")
 	}
 }

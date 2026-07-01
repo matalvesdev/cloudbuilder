@@ -77,7 +77,7 @@ public class CanvasController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     public ResponseEntity<CanvasNode> addNode(@PathVariable String id, @Valid @RequestBody AddNodeRequest request) {
         CanvasNode node = canvasService.addNode(
-                id, request.componentDefinitionId(), request.positionX(), request.positionY(), request.properties());
+                id, request.componentDefinitionId(), request.positionX(), request.positionY(), request.properties(), request.id());
         customMetrics.recordNodeAdded();
         return ResponseEntity.status(HttpStatus.CREATED).body(node);
     }
@@ -134,7 +134,8 @@ public class CanvasController {
             @NotBlank String componentDefinitionId,
             double positionX,
             double positionY,
-            String properties) {}
+            String properties,
+            String id) {}
 
     public record UpdateNodeRequest(
             String properties) {}

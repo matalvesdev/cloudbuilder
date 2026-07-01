@@ -2,6 +2,7 @@ package com.cloudbuilder.shared.security;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
@@ -48,6 +49,7 @@ public class DevAuthController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MeResponse> me() {
         return ResponseEntity.ok(new MeResponse("dev-user", "Desenvolvedor",
                 "dev@cloudbuilder.com", Set.of("ADMIN", "USER")));

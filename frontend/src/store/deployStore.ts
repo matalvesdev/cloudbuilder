@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AppDeployment, AppDeployStatus, CiProvider, DeployTargetType } from '@/types/deploy.types'
 import { api } from '@/api/client'
+import { eventBus } from '@/shared/event-bus'
 
 // ─── API DTOs ─────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ interface DeployState {
   getAppDeploymentsByEnv: (envId: string) => AppDeployment[]
   getAppDeploymentsByRepo: (repoId: string) => AppDeployment[]
   setDeployStatus: (id: string, status: AppDeployStatus, url?: string | null) => void
+  handleDeploymentEvent: (event: { type: string; payload?: { deploymentId: string; status: string; environmentId: string } }) => void
 }
 
 export const useDeployStore = create<DeployState>()(
@@ -137,6 +139,17 @@ export const useDeployStore = create<DeployState>()(
         }
       },
 
+      // ─── Reactive event handling (SSE from useEventStream) ──
+
+      handleDeploymentEvent: (event) => {
+        const payload = event.payload
+        if (!payload?.deploymentId) return
+        const status = payload.status?.toLowerCase() as AppDeployStatus | undefined
+        if (status && ['pending', 'running', 'success', 'failed'].includes(status)) {
+          get().setDeployStatus(payload.deploymentId, status)
+        }
+      },
+
       // ─── Local actions (kept for backward compatibility) ──
 
       addAppDeployment: (dep) => {
@@ -200,3 +213,21 @@ export const useDeployStore = create<DeployState>()(
       },
     })
 )
+
+// ─── EventBus subscriptions (architectural consistency) ─────────────
+// SSE events flow through EventBus → stores react here
+eventBus.subscribe('deployment:started', (payload) => {
+  if (payload.deploymentId) {
+    useDeployStore.getState().setDeployStatus(payload.deploymentId, 'running')
+  }
+})
+eventBus.subscribe('deployment:succeeded', (payload) => {
+  if (payload.deploymentId) {
+    useDeployStore.getState().setDeployStatus(payload.deploymentId, 'success')
+  }
+})
+eventBus.subscribe('deployment:failed', (payload) => {
+  if (payload.deploymentId) {
+    useDeployStore.getState().setDeployStatus(payload.deploymentId, 'failed')
+  }
+})

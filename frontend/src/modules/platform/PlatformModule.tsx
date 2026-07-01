@@ -178,7 +178,7 @@ const FALLBACK_TEMPLATES: TemplateDefinition[] = [
     icon: '☸️',
     nodes: [
       { logicalId: 'vpc', provider: 'aws', resourceType: 'vpc', label: 'VPC', row: 0, col: 0, properties: { cidr: '10.2.0.0/16', enableDnsHostnames: true, enableDnsSupport: true } },
-      { logicalId: 'eks', provider: 'k8s', resourceType: 'eks_cluster', label: 'EKS Cluster', row: 0, col: 1, properties: { name: 'k8s-cluster', version: '1.30', endpointPrivate: false, logging: ['api', 'audit', 'authenticator'] } },
+      { logicalId: 'eks', provider: 'k8s', resourceType: 'eks_cluster', label: 'EKS Cluster', row: 0, col: 1, properties: { name: 'k8s-cluster', version: '1.30', endpointPrivate: false, logging: ['api', 'security', 'authenticator'] } },
       { logicalId: 'node-group', provider: 'k8s', resourceType: 'node_group', label: 'Node Group', row: 1, col: 0, properties: { name: 'workers', instanceType: 't3.medium', desiredSize: 3, minSize: 2, maxSize: 10, diskSize: 100 } },
       { logicalId: 'ingress', provider: 'k8s', resourceType: 'alb_ingress', label: 'ALB Ingress', row: 1, col: 1, properties: { name: 'k8s-ingress', scheme: 'internet-facing', sslPolicy: 'ELBSecurityPolicy-TLS-1-2' } },
       { logicalId: 'rds', provider: 'aws', resourceType: 'rds_instance', label: 'RDS PostgreSQL', row: 2, col: 0, properties: { engine: 'postgres', engineVersion: '16', instanceClass: 'db.t3.small', storage: 50, storageType: 'gp3', backupRetentionDays: 7 } },
@@ -408,7 +408,7 @@ export function PlatformModule() {
     loadCanvas(design)
     setConfirmTemplate(null)
     setSelectedTemplate(null)
-    setActiveModule('design')
+    setActiveModule('canvas')
   }
 
   function handleCheckPolicies() {
@@ -458,7 +458,7 @@ export function PlatformModule() {
 
   function handleNavigateToResource(resourceId: string) {
     setSelectedNode(resourceId)
-    setActiveModule('design')
+    setActiveModule('canvas')
   }
 
   function handleVerifyCompliance() {
@@ -1370,7 +1370,7 @@ function MarketplaceListingsView({
   const handleUseListing = async (listing: MarketplaceListing) => {
     // Navigate to design module with this listing as context
     const { useUiStore } = await import('@/store/uiStore')
-    useUiStore.getState().setActiveModule('design')
+    useUiStore.getState().setActiveModule('canvas')
   }
 
   if (filtered.length === 0) {

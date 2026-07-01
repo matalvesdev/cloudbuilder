@@ -123,6 +123,21 @@ type DestroyEvent struct {
 	Message      string
 }
 
+type WatchEventsRequest struct {
+	TenantId   string
+	EventTypes []string
+}
+
+type EngineEvent struct {
+	DeploymentId string
+	EventType    string
+	Status       string
+	Message      string
+	Progress     int32
+	TenantId     string
+	Timestamp    string
+}
+
 type ProvisionServiceServer interface {
 	GenerateCode(context.Context, *GenerateCodeRequest) (*GenerateCodeResponse, error)
 	Deploy(*DeployRequest, ProvisionService_DeployServer) error
@@ -131,6 +146,7 @@ type ProvisionServiceServer interface {
 	GetState(context.Context, *StateRequest) (*StateResponse, error)
 	DetectDrift(context.Context, *DriftRequest) (*DriftResponse, error)
 	Destroy(*DestroyRequest, ProvisionService_DestroyServer) error
+	WatchEvents(*WatchEventsRequest, ProvisionService_WatchEventsServer) error
 }
 
 type UnimplementedProvisionServiceServer struct{}
@@ -156,6 +172,9 @@ func (UnimplementedProvisionServiceServer) DetectDrift(context.Context, *DriftRe
 func (UnimplementedProvisionServiceServer) Destroy(*DestroyRequest, ProvisionService_DestroyServer) error {
 	return status.Error(codes.Unimplemented, "unimplemented")
 }
+func (UnimplementedProvisionServiceServer) WatchEvents(*WatchEventsRequest, ProvisionService_WatchEventsServer) error {
+	return status.Error(codes.Unimplemented, "unimplemented")
+}
 
 type ProvisionService_DeployServer interface {
 	Send(*DeployEvent) error
@@ -164,6 +183,11 @@ type ProvisionService_DeployServer interface {
 
 type ProvisionService_DestroyServer interface {
 	Send(*DestroyEvent) error
+	grpc.ServerStream
+}
+
+type ProvisionService_WatchEventsServer interface {
+	Send(*EngineEvent) error
 	grpc.ServerStream
 }
 
@@ -184,6 +208,7 @@ var ProvisionService_ServiceDesc = grpc.ServiceDesc{
 	Streams: []grpc.StreamDesc{
 		{StreamName: "Deploy", Handler: _ProvisionService_Deploy_Handler, ServerStreams: true},
 		{StreamName: "Destroy", Handler: _ProvisionService_Destroy_Handler, ServerStreams: true},
+		{StreamName: "WatchEvents", Handler: _ProvisionService_WatchEvents_Handler, ServerStreams: true},
 	},
 	Metadata: "provision.proto",
 }
@@ -306,6 +331,18 @@ func (x *provisionServiceDestroyServer) Send(m *DestroyEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func init() {
-	_ = fmt.Sprintf
+func _ProvisionService_WatchEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ProvisionServiceServer).WatchEvents(m, &provisionServiceWatchEventsServer{stream})
 }
+
+type provisionServiceWatchEventsServer struct{ grpc.ServerStream }
+
+func (x *provisionServiceWatchEventsServer) Send(m *EngineEvent) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _init_imports() { _ = fmt.Sprintf }

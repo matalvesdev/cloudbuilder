@@ -5,7 +5,7 @@
 -- ENVIRONMENTS TABLE
 -- ============================================================================
 CREATE TABLE environments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     tenant_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -27,8 +27,8 @@ CREATE UNIQUE INDEX uk_environments_tenant_name ON environments(tenant_id, name)
 -- MANAGED_RESOURCES TABLE
 -- ============================================================================
 CREATE TABLE managed_resources (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    environment_id UUID NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+    id VARCHAR(36) PRIMARY KEY,
+    environment_id VARCHAR(36) NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
     terraform_address VARCHAR(500) NOT NULL,
     resource_type VARCHAR(255) NOT NULL,
     resource_name VARCHAR(255) NOT NULL,
@@ -51,7 +51,7 @@ CREATE UNIQUE INDEX uk_managed_resources_env_address ON managed_resources(enviro
 -- TERRAFORM_TEMPLATES TABLE
 -- ============================================================================
 CREATE TABLE terraform_templates (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     resource_type VARCHAR(255) NOT NULL UNIQUE,
     provider VARCHAR(100) NOT NULL,
     template_content TEXT NOT NULL,
@@ -70,8 +70,8 @@ CREATE INDEX idx_terraform_templates_active ON terraform_templates(is_active);
 -- DRIFT_REPORTS TABLE
 -- ============================================================================
 CREATE TABLE drift_reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    environment_id UUID NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+    id VARCHAR(36) PRIMARY KEY,
+    environment_id VARCHAR(36) NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
     drift_data JSONB NOT NULL,
     has_drift BOOLEAN NOT NULL DEFAULT FALSE,
     resource_count INTEGER NOT NULL DEFAULT 0,

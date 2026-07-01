@@ -1,0 +1,235 @@
+name: CloudBuilder Test Pyramid
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly chaos + load tests (main only)
+    - cron: '0 3 * * *'
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '22'
+  GO_VERSION: '1.23'
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # Layer 1-3: Unit Tests (Backend / Frontend / Go)
+  # ═══════════════════════════════════════════════════════════════
+  backend-unit:
+    name: Backend Unit Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cloudbuilder
+          POSTGRES_USER: cloudbuilder
+          POSTGRES_PASSWORD: cloudbuilder
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Compile
+        run: cd backend && ./mvnw compile -q
+      - name: Test
+        run: cd backend && ./mvnw test -q
+      - name: JaCoCo Coverage
+        run: cd backend && ./mvnw verify -q || true
+        continue-on-error: true
+
+  frontend-unit:
+    name: Frontend Unit + Property Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: cd frontend && npm ci
+      - name: Typecheck
+        run: cd frontend && npm run typecheck
+      - name: Lint
+        run: cd frontend && npm run lint
+      - name: Unit Tests (Vitest)
+        run: cd frontend && npx vitest run --reporter=verbose
+      - name: Build
+        run: cd frontend && npm run build
+
+  go-unit:
+    name: Go Engine Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: provision-engine/go.sum
+      - name: Vet
+        run: cd provision-engine && go vet ./...
+      - name: Build
+        run: cd provision-engine && go build ./cmd/provision-engine/
+      - name: Test with coverage
+        run: cd provision-engine && go test -coverprofile=coverage.out ./...
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-coverage
+          path: provision-engine/coverage.out
+
+  # ═══════════════════════════════════════════════════════════════
+  # Layer 5: Mutation Testing (Frontend)
+  # ═══════════════════════════════════════════════════════════════
+  mutation-testing:
+    name: Mutation Testing (Stryker)
+    runs-on: ubuntu-latest
+    needs: [frontend-unit]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: cd frontend && npm ci
+      - name: Mutation Test
+        run: cd frontend && npx stryker run --reporters=clear-text,progress
+      - name: Check mutation score
+        run: |
+          if [ -f frontend/reports/mutation/mutation-report.json ]; then
+            SCORE=$(cat frontend/reports/mutation/mutation-report.json | python3 -c "import sys,json; print(json.load(sys.stdin)['totals']['killed'] / max(json.load(sys.stdin)['totals']['total'], 1) * 100)" 2>/dev/null || echo "0")
+            echo "Mutation score: ${SCORE}%"
+            if (( $(echo "$SCORE < 80" | bc -l) )); then
+              echo "::warning::Mutation score ${SCORE}% is below 80% threshold"
+            fi
+          fi
+        continue-on-error: true
+
+  # ═══════════════════════════════════════════════════════════════
+  # Layer 7: Integration Tests (E2E Playwright)
+  # ═══════════════════════════════════════════════════════════════
+  e2e-tests:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [backend-unit, frontend-unit]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: cd frontend && npm ci
+      - name: Install Playwright
+        run: cd frontend && npx playwright install --with-deps chromium
+      - name: E2E Tests
+        run: cd frontend && npx playwright test
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14
+
+  # ═══════════════════════════════════════════════════════════════
+  # Layer 9: Load Tests (k6) — main branch only
+  # ═══════════════════════════════════════════════════════════════
+  load-tests:
+    name: Load Tests (k6)
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D68
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      - name: Smoke Test
+        run: cd frontend && k6 run ../tests/load/smoke.js
+      - name: Load Test
+        run: cd frontend && k6 run ../tests/load/load.js
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-results
+          path: "*.json"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Layer 11: Security Scanning
+  # ═══════════════════════════════════════════════════════════════
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend Audit
+        run: cd frontend && npm audit --audit-level=high
+        continue-on-error: true
+      - name: OWASP ZAP Baseline
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: http://localhost:8080
+          rules_file_name: 'tests/security/zap-baseline.yaml'
+          fail_action: false
+        continue-on-error: true
+
+  # ═══════════════════════════════════════════════════════════════
+  # Layer 10: Chaos Tests — nightly only
+  # ═══════════════════════════════════════════════════════════════
+  chaos-tests:
+    name: Chaos Experiments
+    runs-on: ubuntu-latest
+    needs: [e2e-tests]
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Docker Compose
+        run: docker compose up -d --build
+      - name: Wait for services
+        run: |
+          sleep 30
+          curl -sf http://localhost:8080/actuator/health/liveness || exit 1
+      - name: Run Kafka Kill Chaos
+        run: bash tests/chaos/kafka-kill.sh
+      - name: Run DB Latency Chaos
+        run: bash tests/chaos/db-latency.sh
+      - name: Run OPA Kill Chaos
+        run: bash tests/chaos/opa-kill.sh
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

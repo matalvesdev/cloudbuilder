@@ -141,13 +141,9 @@ resource "aws_s3_bucket_versioning" "%s_versioning" {
 }`, node.ID, bucketName, bucketName, node.ID, node.ID, versioningStr), nil
 }
 
-// GetTemplate returns the appropriate template function for a given resource type.
-func GetTemplate(provider model.ProviderType, resourceType string) (ResourceTemplate, bool) {
-	if provider != model.ProviderAWS {
-		return nil, false
-	}
-
-	templates := map[string]ResourceTemplate{
+// awsTemplates returns the AWS resource template map.
+func awsTemplates() map[string]ResourceTemplate {
+	return map[string]ResourceTemplate{
 		"aws_vpc":              awsVpcTemplate,
 		"aws_subnet":           awsSubnetTemplate,
 		"aws_security_group":   awsSecurityGroupTemplate,
@@ -161,9 +157,6 @@ func GetTemplate(provider model.ProviderType, resourceType string) (ResourceTemp
 		"s3_bucket":            awsS3BucketTemplate,
 		"s3":                   awsS3BucketTemplate,
 	}
-
-	tmpl, ok := templates[resourceType]
-	return tmpl, ok
 }
 
 // --- helpers ---

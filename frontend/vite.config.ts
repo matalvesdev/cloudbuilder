@@ -2,9 +2,18 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import path from "path"
+import { visualizer } from "rollup-plugin-visualizer"
+import compress from "vite-plugin-compression"
+
+const isAnalyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
-  plugins: [react()],
+  base: process.env.CDN_BASE || "/",
+  plugins: [
+    react(),
+    compress({ algorithm: "brotliCompress", ext: ".br", deleteOriginFile: false }),
+    ...(isAnalyze ? [visualizer({ open: true, filename: "dist/stats.html" })] : []),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -23,9 +32,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          "vendor-react": ["react", "react-dom"],
           "vendor-reactflow": ["@xyflow/react"],
           "vendor-recharts": ["recharts"],
-          "vendor-yjs": ["yjs", "y-websocket"],
+          "vendor-lucide": ["lucide-react"],
           "vendor-radix": [
             "@radix-ui/react-collapsible",
             "@radix-ui/react-context-menu",
@@ -47,6 +57,8 @@ export default defineConfig({
       },
     },
     chunkSizeWarningLimit: 600,
+    sourcemap: false,
+    minify: "esbuild",
   },
   test: {
     globals: true,

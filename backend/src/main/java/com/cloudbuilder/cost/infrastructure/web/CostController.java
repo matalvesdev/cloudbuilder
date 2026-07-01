@@ -13,6 +13,7 @@ import com.cloudbuilder.cost.domain.service.CostScenarioService;
 import com.cloudbuilder.cost.domain.service.CostService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/cost")
+@PreAuthorize("isAuthenticated()")
 public class CostController {
 
     private final CostService costService;
@@ -70,6 +72,7 @@ public class CostController {
     }
 
     @PostMapping("/records")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CostRecord> importRecord(@RequestBody CostRecord record) {
         return ResponseEntity.ok(costService.importCostRecord(record));
     }
@@ -80,6 +83,7 @@ public class CostController {
     }
 
     @PostMapping("/budgets")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Budget> createBudget(@RequestBody Budget budget) {
         return ResponseEntity.ok(costService.createBudget(budget));
     }
@@ -120,6 +124,7 @@ public class CostController {
     /* ─── What-if Scenarios ───────────────────────────────────────── */
 
     @PostMapping("/scenarios")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CostScenario> createScenario(@RequestBody CostScenario scenario) {
         return ResponseEntity.ok(costScenarioService.create(scenario));
     }
@@ -142,6 +147,7 @@ public class CostController {
     }
 
     @DeleteMapping("/scenarios/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteScenario(@PathVariable String id) {
         costScenarioService.delete(id);
         return ResponseEntity.noContent().build();

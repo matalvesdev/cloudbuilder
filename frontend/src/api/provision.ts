@@ -17,8 +17,8 @@ export function listResources(environmentId: string): Promise<ManagedResourceDTO
   return api.get(`${BASE}/${environmentId}/resources`)
 }
 
-// Sync — backend expects StateSyncRequest body
-export function syncEnvironment(environmentId: string, stateJson?: string): Promise<{ status: string; timestamp: string }> {
+// Sync — backend expects StateSyncRequest body, returns List<ManagedResource>
+export function syncEnvironment(environmentId: string, stateJson?: string): Promise<ManagedResourceDTO[]> {
   return api.post(`${BASE}/${environmentId}/sync`, { stateJson })
 }
 
@@ -27,6 +27,6 @@ export function getDriftReport(environmentId: string): Promise<DriftReportDTO> {
   return api.get(`${BASE}/${environmentId}/drift`)
 }
 
-export function resolveDrift(environmentId: string, reportId: string, resolvedBy?: string): Promise<{ status: string; resolvedCount: number }> {
+export function resolveDrift(environmentId: string, reportId: string, resolvedBy?: string): Promise<DriftReportDTO> {
   return api.post(`${BASE}/${environmentId}/drift/resolve/${reportId}`, { resolvedBy })
 }

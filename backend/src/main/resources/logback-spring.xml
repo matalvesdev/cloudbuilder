@@ -25,31 +25,42 @@
         </encoder>
     </appender>
 
-    <!-- JSON file appender (production only) -->
-    <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/${APP_NAME}.json</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/${APP_NAME}.%d{yyyy-MM-dd}.%i.json.gz</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>3GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <!-- Include MDC fields -->
-            <includeMdc>true</includeMdc>
-            <!-- Exclude noisy fields -->
-            <fieldNames>
-                <timestamp>@timestamp</timestamp>
-                <version>[ignore]</version>
-                <levelValue>[ignore]</levelValue>
-            </fieldNames>
-            <!-- Custom MDC field mappings -->
-            <mdcKeyFieldName>traceId</mdcKeyFieldName>
-            <mdcKeyFieldName>tenantId</mdcKeyFieldName>
-            <mdcKeyFieldName>userId</mdcKeyFieldName>
-            <mdcKeyFieldName>requestId</mdcKeyFieldName>
-        </encoder>
-    </appender>
+    <!-- ── Profile: prod ── -->
+    <!-- JSON file appender using LogstashEncoder (requires logstash-logback-encoder on classpath) -->
+    <springProfile name="prod">
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/${APP_NAME}.json</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/${APP_NAME}.%d{yyyy-MM-dd}.%i.json.gz</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Include MDC fields -->
+                <includeMdc>true</includeMdc>
+                <!-- Exclude noisy fields -->
+                <fieldNames>
+                    <timestamp>@timestamp</timestamp>
+                    <version>[ignore]</version>
+                    <levelValue>[ignore]</levelValue>
+                </fieldNames>
+                <!-- Custom MDC field mappings -->
+                <mdcKeyFieldName>traceId</mdcKeyFieldName>
+                <mdcKeyFieldName>tenantId</mdcKeyFieldName>
+                <mdcKeyFieldName>userId</mdcKeyFieldName>
+                <mdcKeyFieldName>requestId</mdcKeyFieldName>
+            </encoder>
+        </appender>
+
+        <!-- Async appender for JSON to avoid blocking on I/O -->
+        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+            <appender-ref ref="JSON_FILE"/>
+        </appender>
+    </springProfile>
 
     <!-- Human-readable file appender for debugging (all profiles) -->
     <appender name="TEXT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">

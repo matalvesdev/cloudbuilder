@@ -5,7 +5,7 @@
 -- SERVICE_HEALTH TABLE
 -- ============================================================================
 CREATE TABLE service_health (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     service_name VARCHAR(255) NOT NULL,
     environment_id VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL,
@@ -25,7 +25,7 @@ CREATE INDEX idx_service_health_env_status ON service_health(environment_id, sta
 -- ALERTS TABLE
 -- ============================================================================
 CREATE TABLE alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     environment_id VARCHAR(255) NOT NULL,
     severity VARCHAR(20) NOT NULL,
     message VARCHAR(1000) NOT NULL,

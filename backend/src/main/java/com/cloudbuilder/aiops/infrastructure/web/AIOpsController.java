@@ -1,5 +1,6 @@
 package com.cloudbuilder.aiops.infrastructure.web;
 
+import com.cloudbuilder.aiops.application.dto.DesignTemplateDTO;
 import com.cloudbuilder.aiops.domain.model.Incident;
 import com.cloudbuilder.aiops.domain.model.PostMortem;
 import com.cloudbuilder.aiops.domain.model.RemediationAction;
@@ -34,6 +35,20 @@ public class AIOpsController {
         this.remediationService = remediationService;
         this.runbookService = runbookService;
         this.postMortemService = postMortemService;
+    }
+
+    /**
+     * Returns pre-defined design templates for AI-suggested infrastructure patterns.
+     * Used by the AIOps module to generate canvas designs from natural language prompts.
+     */
+    @GetMapping("/templates")
+    public ResponseEntity<List<DesignTemplateDTO>> getTemplates() {
+        var templates = List.of(
+            DesignTemplateDTO.vpcEcsRds(),
+            DesignTemplateDTO.kubernetesCluster(),
+            DesignTemplateDTO.serverlessApi()
+        );
+        return ResponseEntity.ok(templates);
     }
 
     @GetMapping("/incidents/{environmentId}")

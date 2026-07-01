@@ -49,9 +49,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
-                auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
+                auth.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
                 // Swagger removido — implementação nativa, sem springdoc
                 auth.requestMatchers("/api/v1/auth/**", "/api/auth/**").permitAll();
+                auth.requestMatchers("/api/v1/events/stream").permitAll();
                 auth.requestMatchers("/error").permitAll();
                 // H2 console only when explicitly enabled (dev profile)
                 if (h2ConsoleEnabled) {

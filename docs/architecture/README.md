@@ -730,7 +730,626 @@ gantt
 
 ---
 
-## 15. Glossário
+## 15. Arquitetura EDA — Diagramas
+
+CloudBuilder adota uma arquitetura orientada a eventos (Event-Driven Architecture) baseada em Apache Kafka. Esta seção apresenta os 10 diagramas Mermaid que documentam a arquitetura EDA completa. Para documentação detalhada, consulte [EDA README](./eda/README.md) e [ADR-035](./adr-035-production-event-driven-architecture.md).
+
+### 15.1 External Systems → Kafka
+
+```mermaid
+flowchart TB
+    subgraph ExternalSystems["☁️ External Systems"]
+        direction TB
+        Cloud["☁️ Cloud Providers\nAWS\nAzure\nGCP"]
+        Git["Git Providers\nGitHub\nGitLab\nBitbucket"]
+        Registry["Container Registry\nDocker Hub\nECR\nGCR\nACR"]
+        Identity["Identity Providers\nKeycloak\nAuth0\nOkta\nAzure AD"]
+        Payments["Payment Gateway"]
+        Notification["Email / SMS Provider"]
+        Monitoring["External Monitoring"]
+    end
+
+    Cloud --> Kafka
+    Git --> Kafka
+    Registry --> Kafka
+    Identity --> Kafka
+    Payments --> Kafka
+    Notification --> Kafka
+    Monitoring --> Kafka
+```
+
+### 15.2 Internal Producers → Kafka
+
+```mermaid
+flowchart LR
+    subgraph Producers["Event Producers"]
+        direction LR
+        Canvas["Canvas\nService"]
+        AIArchitect["AI Architect\nService"]
+        TerraformGenerator["Terraform\nGenerator"]
+        Provisioning["Provisioning\nEngine"]
+        Deployment["Deployment\nEngine"]
+        GitOps["GitOps\nService"]
+        Observability["Observability\nService"]
+        FinOps["FinOps\nService"]
+        Security["Security\nService"]
+        Identity["Identity\nService"]
+        Workspace["Workspace\nService"]
+        Projects["Projects\nService"]
+        Environment["Environment\nService"]
+        Billing["Billing\nService"]
+        Notification["Notification\nService"]
+    end
+
+    Canvas --> Kafka
+    AIArchitect --> Kafka
+    TerraformGenerator --> Kafka
+    Provisioning --> Kafka
+    Deployment --> Kafka
+    GitOps --> Kafka
+    Observability --> Kafka
+    FinOps --> Kafka
+    Security --> Kafka
+    Identity --> Kafka
+    Workspace --> Kafka
+    Projects --> Kafka
+    Environment --> Kafka
+    Billing --> Kafka
+    Notification --> Kafka
+```
+
+### 15.3 Kafka Cluster Internals
+
+```mermaid
+flowchart TB
+    Producer["Producer"]
+
+    Producer --> Kafka
+
+    subgraph KafkaCluster["Kafka Cluster"]
+        direction TB
+        Broker1["Broker 1"]
+        Broker2["Broker 2"]
+        Broker3["Broker 3"]
+        Topic1["Topic 1"]
+        Topic2["Topic 2"]
+        Topic3["Topic 3"]
+        Partition1["Partition 1"]
+        Partition2["Partition 2"]
+        Partition3["Partition 3"]
+        Replication["Replication\nFactor: 3"]
+    end
+
+    Kafka --> Consumer
+
+    Broker1 --> Topic1
+    Broker2 --> Topic2
+    Broker3 --> Topic3
+
+    Topic1 --> Partition1
+    Topic2 --> Partition2
+    Topic3 --> Partition3
+
+    Replication --> Broker1
+    Replication --> Broker2
+    Replication --> Broker3
+```
+
+### 15.4 Event Topics Catalog (20 Topics)
+
+```mermaid
+flowchart TB
+    Kafka["Apache Kafka\nEvent Bus"]
+
+    Kafka --> canvas_events["canvas.events"]
+    Kafka --> architecture_events["architecture.events"]
+    Kafka --> terraform_events["terraform.events"]
+    Kafka --> provisioning_events["provisioning.events"]
+    Kafka --> deployment_events["deployment.events"]
+    Kafka --> gitops_events["gitops.events"]
+    Kafka --> kubernetes_events["kubernetes.events"]
+    Kafka --> resource_events["resource.events"]
+    Kafka --> observability_events["observability.events"]
+    Kafka --> finops_events["finops.events"]
+    Kafka --> billing_events["billing.events"]
+    Kafka --> security_events["security.events"]
+    Kafka --> identity_events["identity.events"]
+    Kafka --> notification_events["notification.events"]
+    Kafka --> audit_events["audit.events"]
+    Kafka --> ai_events["ai.events"]
+    Kafka --> policy_events["policy.events"]
+    Kafka --> inventory_events["inventory.events"]
+    Kafka --> system_events["system.events"]
+    Kafka --> cost_events["cost.events"]
+```
+
+### 15.5 Consumer Services
+
+```mermaid
+flowchart LR
+    Kafka["Apache Kafka"]
+
+    Kafka --> ProjectionService["Projection\nService"]
+    Kafka --> NotificationService["Notification\nService"]
+    Kafka --> AuditService["Audit\nService"]
+    Kafka --> PolicyService["Policy\nEnforcement"]
+    Kafka --> AIAdvisor["AI Advisor\nService"]
+    Kafka --> CostAnalyzer["Cost Analyzer\nService"]
+    Kafka --> SearchService["Search\nService"]
+    Kafka --> ReadModelUpdater["Read Model\nUpdater"]
+    Kafka --> BillingProcessor["Billing\nProcessor"]
+    Kafka --> InventoryProjection["Inventory\nProjection"]
+```
+
+### 15.6 Projection Storage (Read Models)
+
+```mermaid
+flowchart LR
+    ProjectionService["Projection\nService"]
+
+    ProjectionService --> PostgreSQL["PostgreSQL\nTransactional Data"]
+    ProjectionService --> ClickHouse["ClickHouse\nAnalytics OLAP"]
+    ProjectionService --> Elasticsearch["Elasticsearch\nFull-Text Search"]
+    ProjectionService --> Redis["Redis\nCache & Sessions"]
+    ProjectionService --> TimescaleDB["TimescaleDB\nTime-Series Metrics"]
+    ProjectionService --> S3["S3 / Object Store\nFiles & Artifacts"]
+```
+
+### 15.7 Reliability Patterns (Outbox → Inbox → Saga → DLQ)
+
+```mermaid
+flowchart TB
+    Application["Application\nService"]
+
+    Application --> Outbox["Outbox\nPattern"]
+    Outbox --> Kafka["Apache Kafka"]
+    Kafka --> Inbox["Inbox\nPattern"]
+    Inbox --> Consumer["Consumer\nService"]
+    Consumer --> Saga["Saga\nPattern"]
+    Saga --> Compensation["Compensating\nActions"]
+    Consumer --> Retry["Retry\nPolicy"]
+    Retry --> DLQ["Dead Letter\nQueue"]
+```
+
+### 15.8 Cross-cutting Concerns
+
+```mermaid
+flowchart LR
+    Monitoring["Monitoring\nPlatform"]
+
+    Monitoring --> Tracing["Distributed\nTracing"]
+    Tracing --> Logging["Structured\nLogging"]
+    Logging --> Metrics["Micrometer\nMetrics"]
+    Metrics --> Alerting["Alert\nEngine"]
+
+    Secrets["Secrets\nManagement"]
+    Secrets --> Configuration["Configuration\nService"]
+    Configuration --> FeatureFlags["Feature\nFlags"]
+
+    SchemaRegistry["Schema\nRegistry"]
+    SchemaRegistry --> Kafka["Apache Kafka"]
+
+    EventCatalog["Event\nCatalog"]
+    EventCatalog --> Kafka
+
+    VersionControl["Schema\nVersion Control"]
+    VersionControl --> SchemaRegistry
+
+    DLQ["Dead Letter\nQueue"]
+    DLQ --> Kafka
+```
+
+### 15.9 Event Flow Sequence
+
+```mermaid
+sequenceDiagram
+    participant Producer as Producer Service
+    participant Kafka as Apache Kafka
+    participant Consumer as Consumer Service
+    participant ReadModel as Read Model Store
+    participant User as End User
+
+    Producer->>Kafka: Publish Event
+    Kafka-->>Consumer: Consume Event
+    Consumer->>Consumer: Business Logic
+    Consumer->>ReadModel: Update Projection
+    ReadModel-->>User: Updated Eventually
+```
+
+### 15.10 High-Level Architecture Overview
+
+```mermaid
+flowchart LR
+    User["👤 User"]
+
+    User --> Producers["Event\nProducers"]
+    Producers --> Kafka["Apache\nKafka"]
+    Kafka --> Consumers["Event\nConsumers"]
+    Consumers --> ReadModels["Read\nModels"]
+    ReadModels --> UI["🖥️ UI\nDashboard"]
+
+    Consumers --> Notification["📧 Notification\nService"]
+    Consumers --> Audit["📋 Audit\nService"]
+    Consumers --> AI["🤖 AI\nAdvisor"]
+    Consumers --> Cost["💰 Cost\nAnalyzer"]
+    Consumers --> Search["🔍 Search\nService"]
+```
+
+---
+
+## 16. Configurações da Plataforma — Diagramas
+
+Diagramas de configuração do sistema e do usuário, documentando a hierarquia de settings, RBAC, contas cloud e integrações. Para documentação detalhada, consulte [Platform Settings DIAGRAMS](./platform-settings/DIAGRAMS.md).
+
+### 16.1 Platform Administration
+
+```mermaid
+flowchart TB
+    subgraph PlatformAdministration["⚙️ Platform Administration"]
+        direction TB
+        Settings["System Settings"]
+        FeatureFlags["Feature Flags"]
+        Identity["Identity Providers"]
+        CloudProviders["Cloud Providers"]
+        Billing["Billing"]
+        Notifications["Notifications"]
+        Security["Security Policies"]
+        Audit["Audit Settings"]
+        Observability["Observability"]
+        AI["AI Configuration"]
+        Integrations["Integrations"]
+    end
+
+    Admin["Platform Administrator"]
+
+    Admin --> Settings
+
+    Settings --> FeatureFlags
+    Settings --> Identity
+    Settings --> CloudProviders
+    Settings --> Billing
+    Settings --> Notifications
+    Settings --> Security
+    Settings --> Audit
+    Settings --> Observability
+    Settings --> AI
+    Settings --> Integrations
+```
+
+### 16.2 Platform Modules Overview
+
+```mermaid
+flowchart LR
+    Platform["CloudBuilder\nPlatform"]
+
+    Platform --> Authentication["Authentication"]
+    Platform --> Authorization["Authorization"]
+    Platform --> Cloud["Cloud\nProviders"]
+    Platform --> Events["Event\nBus"]
+    Platform --> Observability["Observability"]
+    Platform --> AI["AI\nEngine"]
+    Platform --> Billing["Billing"]
+    Platform --> Security["Security"]
+    Platform --> Notifications["Notifications"]
+    Platform --> Marketplace["Marketplace"]
+    Platform --> Integrations["Integrations"]
+```
+
+### 16.3 User Settings
+
+```mermaid
+flowchart TB
+    User["👤 User"]
+
+    subgraph UserSettings["⚙️ User Settings"]
+        direction TB
+        Profile["Profile"]
+        Preferences["Preferences"]
+        Notifications["Notifications"]
+        APIKeys["API Keys"]
+        Tokens["Tokens"]
+        SSHKeys["SSH Keys"]
+        MFA["MFA"]
+        Sessions["Sessions"]
+        PersonalAccessTokens["Personal Access Tokens"]
+        Theme["Theme"]
+        Language["Language"]
+    end
+
+    User --> Profile
+    User --> Preferences
+    User --> Notifications
+    User --> APIKeys
+    User --> Tokens
+    User --> SSHKeys
+    User --> MFA
+    User --> Sessions
+    User --> PersonalAccessTokens
+    User --> Theme
+    User --> Language
+```
+
+### 16.4 Organization Settings
+
+```mermaid
+flowchart TB
+    Organization["🏢 Organization"]
+
+    Organization --> General["General"]
+    Organization --> Members["Members"]
+    Organization --> Teams["Teams"]
+    Organization --> Roles["Roles"]
+    Organization --> Permissions["Permissions"]
+    Organization --> Projects["Projects"]
+    Organization --> Environments["Environments"]
+    Organization --> CloudAccounts["Cloud Accounts"]
+    Organization --> Billing["Billing"]
+    Organization --> Audit["Audit"]
+    Organization --> Policies["Policies"]
+```
+
+### 16.5 Organization Teams
+
+```mermaid
+flowchart LR
+    Organization["🏢 Organization"]
+
+    Organization --> Team["Team"]
+
+    Team --> Developers["Developers"]
+    Team --> DevOps["DevOps"]
+    Team --> Architects["Architects"]
+    Team --> QA["QA"]
+    Team --> Viewers["Viewers"]
+
+    Developers --> Projects["Projects"]
+    DevOps --> Environments["Environments"]
+    Architects --> Canvas["Canvas"]
+    QA --> Deployments["Deployments"]
+    Viewers --> Dashboards["Dashboards"]
+```
+
+### 16.6 RBAC Roles
+
+```mermaid
+flowchart TB
+    RBAC["🔐 RBAC"]
+
+    RBAC --> Owner["Owner"]
+    RBAC --> Admin["Admin"]
+    RBAC --> PlatformAdmin["Platform Admin"]
+    RBAC --> BillingAdmin["Billing Admin"]
+    RBAC --> SecurityAdmin["Security Admin"]
+    RBAC --> Developer["Developer"]
+    RBAC --> DevOps["DevOps"]
+    RBAC --> QA["QA"]
+    RBAC --> Viewer["Viewer"]
+```
+
+### 16.7 Cloud Accounts
+
+```mermaid
+flowchart TB
+    CloudAccounts["☁️ Cloud Accounts"]
+
+    CloudAccounts --> AWS["AWS"]
+    CloudAccounts --> Azure["Azure"]
+    CloudAccounts --> GCP["GCP"]
+
+    AWS --> IAMRole["IAM Role"]
+    AWS --> OIDC["OIDC"]
+    AWS --> AccessKey["Access Key"]
+
+    Azure --> ServicePrincipal["Service Principal"]
+
+    GCP --> ServiceAccount["Service Account"]
+
+    IAMRole --> SecretsManager["Secrets Manager"]
+    OIDC --> SecretsManager
+    AccessKey --> SecretsManager
+    ServicePrincipal --> SecretsManager
+    ServiceAccount --> SecretsManager
+```
+
+### 16.8 Integrations
+
+```mermaid
+flowchart LR
+    Integrations["🔗 Integrations"]
+
+    Integrations --> GitHub["GitHub"]
+    Integrations --> GitLab["GitLab"]
+    Integrations --> Bitbucket["Bitbucket"]
+    Integrations --> DockerHub["Docker Hub"]
+    Integrations --> ECR["AWS ECR"]
+    Integrations --> GCR["Google GCR"]
+    Integrations --> ACR["Azure ACR"]
+    Integrations --> Slack["Slack"]
+    Integrations --> MicrosoftTeams["Microsoft Teams"]
+    Integrations --> Discord["Discord"]
+    Integrations --> Jira["Jira"]
+    Integrations --> AzureDevOps["Azure DevOps"]
+```
+
+### 16.9 User Journey Flow
+
+```mermaid
+flowchart TB
+    User["👤 User"]
+
+    User --> Login["Login"]
+    Login --> Organization["🏢 Organization"]
+    Organization --> Team["👥 Team"]
+    Team --> Permissions["🔐 Permissions"]
+    Permissions --> Project["📁 Project"]
+    Project --> Environment["🌍 Environment"]
+    Environment --> CloudAccount["☁️ Cloud Account"]
+    CloudAccount --> Secrets["🔑 Secrets"]
+    Secrets --> Provisioning["⚙️ Provisioning"]
+    Provisioning --> Deployment["🚀 Deployment"]
+    Deployment --> Observability["📊 Observability"]
+    Observability --> FinOps["💰 FinOps"]
+    FinOps --> AIAdvisor["🤖 AI Advisor"]
+```
+
+### 16.10 Platform Foundation Overview
+
+```mermaid
+flowchart TB
+    subgraph PlatformFoundation["🏗️ Platform Foundation"]
+        direction TB
+        subgraph Identity["Identity"]
+            Authentication["Authentication"]
+            Authorization["Authorization"]
+            MFA["MFA"]
+            Sessions["Sessions"]
+            APITokens["API Tokens"]
+        end
+
+        subgraph UserModule["User"]
+            Profile["Profile"]
+            Preferences["Preferences"]
+            UserNotifications["Notifications"]
+            SSHKeys["SSH Keys"]
+            UserAPIKeys["API Keys"]
+        end
+
+        subgraph OrganizationModule["Organization"]
+            Tenant["Tenant"]
+            Members["Members"]
+            OrgTeams["Teams"]
+            OrgRoles["Roles"]
+            Policies["Policies"]
+            OrgBilling["Billing"]
+        end
+
+        subgraph PlatformSettings["Platform Settings"]
+            PlatformFeatureFlags["Feature Flags"]
+            AIConfig["AI"]
+            SecurityConfig["Security"]
+            PlatformCloudProviders["Cloud Providers"]
+            PlatformIntegrations["Integrations"]
+            PlatformNotifications["Notifications"]
+            AuditConfig["Audit"]
+            ObservabilityConfig["Observability"]
+        end
+
+        subgraph CloudAccountsModule["Cloud Accounts"]
+            PlatformAWS["AWS"]
+            PlatformAzure["Azure"]
+            PlatformGCP["GCP"]
+            Credentials["Credentials"]
+            SecretsModule["Secrets"]
+        end
+    end
+```
+
+---
+
+## 18. Frontend Architecture — Diagrams
+
+Diagramas detalhados da arquitetura frontend: módulos, componentes, navegação, RBAC e fluxos. Para documentação completa, consulte [Frontend DIAGRAMS](./frontend/DIAGRAMS.md).
+
+### 18.1 High-Level Architecture
+
+```mermaid
+flowchart TB
+    User["👤 User"]
+
+    subgraph CloudBuilderFrontend["CloudBuilder Frontend"]
+        direction TB
+        Authentication["Authentication"]
+        Onboarding["Onboarding"]
+        Dashboard["Dashboard"]
+        Workspace["Workspace"]
+        Projects["Projects"]
+        Canvas["Canvas"]
+        AI["AI"]
+        Environments["Environments"]
+        Deployments["Deployments"]
+        GitOps["GitOps"]
+        Observability["Observability"]
+        FinOps["FinOps"]
+        Security["Security"]
+        Notifications["Notifications"]
+        Settings["Settings"]
+        Administration["Administration"]
+    end
+
+    User --> Authentication
+    Authentication --> Dashboard
+    Dashboard --> Workspace
+    Workspace --> Projects
+    Projects --> Canvas
+    Projects --> AI
+    Projects --> Environments
+    Projects --> Deployments
+    Projects --> GitOps
+    Projects --> Observability
+    Projects --> FinOps
+    Projects --> Security
+    Projects --> Notifications
+    Projects --> Settings
+    Settings --> Administration
+```
+
+### 18.2 User Journey
+
+```mermaid
+journey
+    title CloudBuilder User Journey
+    section Authentication
+        Login: 5: User
+        MFA: 5: User
+    section Workspace
+        Choose Workspace: 5: User
+        Create Project: 5: User
+    section Architecture
+        Open Canvas: 5: User
+        Generate Architecture: 5: AI
+        Validate: 5: AI
+        Generate Terraform: 5: AI
+    section Provisioning
+        Provision: 5: Engine
+    section Deployment
+        Deploy: 5: Engine
+    section Operations
+        Observe: 5: User
+        Optimize Cost: 5: AI
+```
+
+### 18.3 Directory Structure
+
+```
+src/
+├── app/
+├── shared/
+├── core/
+├── features/
+│   ├── authentication/     ├── onboarding/
+│   ├── dashboard/          ├── workspace/
+│   ├── organizations/      ├── teams/
+│   ├── projects/           ├── architecture/
+│   ├── canvas/             ├── ai/
+│   ├── terraform/          ├── environments/
+│   ├── provisioning/       ├── deployments/
+│   ├── gitops/             ├── observability/
+│   ├── finops/             ├── security/
+│   ├── notifications/      ├── billing/
+│   ├── audit/              ├── settings/
+│   └── administration/
+├── widgets/
+├── design-system/
+├── hooks/
+├── services/
+├── store/
+├── router/
+└── layouts/
+```
+
+---
+
+## 19. Glossário
 
 | Termo | Definição |
 |-------|-----------|

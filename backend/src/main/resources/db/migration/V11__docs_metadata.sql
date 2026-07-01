@@ -7,7 +7,7 @@
 -- ── 1. Document Metadata ────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS doc_metadata (
-    id               UUID DEFAULT gen_random_uuid(),
+    id               VARCHAR(36) NOT NULL,
     tenant_id        VARCHAR(64) NOT NULL,
     path             VARCHAR(1024) NOT NULL,
     title            VARCHAR(512),
@@ -21,10 +21,6 @@ CREATE TABLE IF NOT EXISTS doc_metadata (
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (created_at, id)
 ) PARTITION BY RANGE (created_at);
-
--- Default partition to catch all rows (ensures INSERTs always work)
-CREATE TABLE IF NOT EXISTS doc_metadata_default PARTITION OF doc_metadata
-    FOR VALUES FROM ('1970-01-01') TO ('9999-12-31');
 
 -- Monthly partitions for 2026 (current year)
 CREATE TABLE IF NOT EXISTS doc_metadata_2026_01 PARTITION OF doc_metadata
@@ -52,6 +48,9 @@ CREATE TABLE IF NOT EXISTS doc_metadata_2026_11 PARTITION OF doc_metadata
 CREATE TABLE IF NOT EXISTS doc_metadata_2026_12 PARTITION OF doc_metadata
     FOR VALUES FROM ('2026-12-01') TO ('2027-01-01');
 
+-- Default partition catches all rows not matched by specific partitions
+CREATE TABLE IF NOT EXISTS doc_metadata_default PARTITION OF doc_metadata DEFAULT;
+
 -- Unique constraint on (tenant_id, path) for upsert semantics
 CREATE UNIQUE INDEX IF NOT EXISTS idx_doc_metadata_tenant_path
     ON doc_metadata (tenant_id, path, created_at);
@@ -67,13 +66,12 @@ CREATE INDEX IF NOT EXISTS idx_doc_metadata_fts
 -- ── 2. Document Auto-Links ──────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS doc_auto_links (
-    id            UUID DEFAULT gen_random_uuid(),
+    id            VARCHAR(36) PRIMARY KEY,
     tenant_id     VARCHAR(64) NOT NULL,
     source_path   VARCHAR(1024) NOT NULL,
     linked_path   VARCHAR(1024) NOT NULL,
     relationship  VARCHAR(64) NOT NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (id)
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Lookup by source document

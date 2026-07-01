@@ -36,8 +36,8 @@ class CollaborationManager {
     yjsBridge.onSync((nodes, edges, meta) => {
       const store = useCanvasStore.getState()
       useCanvasStore.setState({
-        nodes: nodes as any,
-        edges: edges as any,
+        nodes,
+        edges,
         canvasName: (meta.name as string) ?? store.canvasName,
         canvasVersion: (meta.version as number) ?? store.canvasVersion,
       })
@@ -50,11 +50,11 @@ class CollaborationManager {
         // Update online status for matched members
         const existing = collab.teamMembers.find((m) => m.id === u.id)
         if (existing) {
-          collab.updateMemberStatus(u.id, u.status as any)
+          collab.updateMemberStatus(u.id, u.status)
         } else {
           // New peer not in our member list → add as temporary editor
           collab.inviteMember(u.name, `collab-${u.id}@local`, 'editor')
-          collab.updateMemberStatus(u.id, u.status as any)
+          collab.updateMemberStatus(u.id, u.status)
         }
       }
     })
@@ -64,7 +64,7 @@ class CollaborationManager {
       if (!connected) return
       // On (re)connect, push current local state so peers get our version
       const canvas = useCanvasStore.getState()
-      yjsBridge.pushLocalState(canvas.nodes as any, canvas.edges as any, {
+      yjsBridge.pushLocalState(canvas.nodes, canvas.edges, {
         name: canvas.canvasName,
         version: canvas.canvasVersion,
       })
@@ -79,7 +79,7 @@ class CollaborationManager {
       // Microtask delay to batch multiple mutations in one tick
       queueMicrotask(() => {
         pending = false
-        yjsBridge.pushLocalState(state.nodes as any, state.edges as any, {
+        yjsBridge.pushLocalState(state.nodes, state.edges, {
           name: state.canvasName,
           version: state.canvasVersion,
         })
@@ -113,6 +113,11 @@ class CollaborationManager {
   sendCursor(cursor: { x: number; y: number } | null): void {
     if (!this.active) return
     yjsBridge.sendAwareness({ cursor, userId: this.currentUserId })
+  }
+
+  /** Expose raw WebSocket for CursorsOverlay awareness messages. */
+  getWsAccessor(): WebSocket | null {
+    return yjsBridge.wsAccessor
   }
 
   /** Get the current user's ID. */

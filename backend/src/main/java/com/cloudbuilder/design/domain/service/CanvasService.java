@@ -36,8 +36,12 @@ public class CanvasService {
     }
 
     public CanvasNode addNode(String canvasId, String componentDefinitionId, double positionX, double positionY, String properties) {
+        return addNode(canvasId, componentDefinitionId, positionX, positionY, properties, null);
+    }
+
+    public CanvasNode addNode(String canvasId, String componentDefinitionId, double positionX, double positionY, String properties, String nodeId) {
         Canvas canvas = getCanvas(canvasId);
-        CanvasNode node = new CanvasNode(canvas, componentDefinitionId, positionX, positionY, properties);
+        CanvasNode node = new CanvasNode(canvas, componentDefinitionId, positionX, positionY, properties, nodeId);
         canvas.addNode(node);
         canvas.incrementVersion();
         canvasRepository.save(canvas);

@@ -15,30 +15,35 @@ public class CanvasNode {
     @JoinColumn(name = "canvas_id", nullable = false)
     private Canvas canvas;
 
-    @Column(nullable = false)
+    @Column(name = "component_definition_id", nullable = false)
     private String componentDefinitionId;
 
-    @Column(nullable = false)
+    @Column(name = "position_x", nullable = false)
     private double positionX;
 
-    @Column(nullable = false)
+    @Column(name = "position_y", nullable = false)
     private double positionY;
 
     @Column(columnDefinition = "TEXT")
     private String properties;
 
+    @Column(name = "validation_status")
     private String validationStatus;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "validation_details", columnDefinition = "TEXT")
     private String validationDetails;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     protected CanvasNode() {}
 
     public CanvasNode(Canvas canvas, String componentDefinitionId, double positionX, double positionY, String properties) {
-        this.id = UUID.randomUUID().toString();
+        this(canvas, componentDefinitionId, positionX, positionY, properties, null);
+    }
+
+    public CanvasNode(Canvas canvas, String componentDefinitionId, double positionX, double positionY, String properties, String id) {
+        this.id = id != null ? id : UUID.randomUUID().toString();
         this.canvas = canvas;
         this.componentDefinitionId = componentDefinitionId;
         this.positionX = positionX;

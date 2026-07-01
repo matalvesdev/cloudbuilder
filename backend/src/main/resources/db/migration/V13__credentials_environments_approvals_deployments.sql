@@ -107,12 +107,19 @@ CREATE INDEX IF NOT EXISTS idx_deployments_tenant_id ON deployments(tenant_id);
 -- ============================================================================
 -- Apply updated_at triggers
 -- ============================================================================
-CREATE TRIGGER IF NOT EXISTS update_credentials_updated_at
-    BEFORE UPDATE ON credentials
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER IF NOT EXISTS update_managed_environments_updated_at
-    BEFORE UPDATE ON managed_environments
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_credentials_updated_at') THEN
+        CREATE TRIGGER update_credentials_updated_at
+            BEFORE UPDATE ON credentials
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_managed_environments_updated_at') THEN
+        CREATE TRIGGER update_managed_environments_updated_at
+            BEFORE UPDATE ON managed_environments
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END
+$$;

@@ -25,6 +25,9 @@ public class Environment {
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
 
+    @Column(name = "project_id")
+    private String projectId;
+
     @Column(nullable = false)
     private String name;
 
@@ -86,6 +89,8 @@ public class Environment {
     public void setId(String id) { this.id = id; }
     public String getTenantId() { return tenantId; }
     public void setTenantId(String tenantId) { this.tenantId = tenantId; }
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getCanvasId() { return canvasId; }

@@ -3,12 +3,14 @@ package com.cloudbuilder.search.infrastructure.web;
 import com.cloudbuilder.search.domain.model.SearchResult;
 import com.cloudbuilder.search.domain.service.GlobalSearchService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/search")
+@PreAuthorize("isAuthenticated()")
 public class SearchController {
 
     private final GlobalSearchService globalSearchService;

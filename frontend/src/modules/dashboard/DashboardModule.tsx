@@ -26,11 +26,11 @@ import { SetupWizard } from './SetupWizard'
 import { DashboardCharts } from './DashboardCharts'
 import { cn } from '@/lib/utils'
 
-type ModuleId = 'design' | 'provision' | 'observe' | 'cost' | 'platform' | 'aiops' | 'audit' | 'iam' | 'docs' | 'dashboard' | 'settings'
+type ModuleId = 'canvas' | 'provisioning' | 'observability' | 'finops' | 'platform' | 'ai' | 'security' | 'security' | 'docs' | 'dashboard' | 'settings'
 
 const NAV_MODULES: Record<string, ModuleId> = {
-  design: 'design', provision: 'provision', observe: 'observe',
-  cost: 'cost', platform: 'platform', aiops: 'aiops',
+  design: 'canvas', provision: 'provisioning', observe: 'observability',
+  cost: 'finops', platform: 'platform', aiops: 'ai',
   settings: 'settings', dashboard: 'dashboard', docs: 'docs',
 }
 
@@ -241,10 +241,10 @@ export function DashboardModule() {
   const { isFullyConfigured } = useOnboardingStore()
   const allEvents = useActivityStore((s) => s.events)
   const activityEvents = useMemo(() => allEvents.slice(0, 10), [allEvents])
-  const { setActiveModule } = useUiStore()
+  const { setActiveModule, setSettingsTab } = useUiStore()
 
   /* ─── Quick Action Modals ─── */
-  const [quickModal, setQuickModal] = useState<'design' | 'deploy' | 'aiops' | 'cost' | 'observe' | null>(null)
+  const [quickModal, setQuickModal] = useState<'canvas' | 'deploy' | 'ai' | 'finops' | 'observability' | null>(null)
 
   const needsSetup = credentials.length === 0
   const hasEnvSetup = environments.length > 0
@@ -326,7 +326,7 @@ export function DashboardModule() {
         label: 'Criar um ambiente',
         description: 'Credenciais OK, mas você precisa de ao menos um ambiente para fazer deploy.',
         icon: Server,
-        action: () => setActiveModule('settings'),
+        action: () => { setActiveModule('settings'); setSettingsTab('environments'); },
         actionLabel: 'Criar',
         priority: 'high',
       })
@@ -338,7 +338,7 @@ export function DashboardModule() {
         label: 'Adicionar recursos ao canvas',
         description: 'Seu canvas está vazio. Adicione componentes de infraestrutura para começar.',
         icon: Palette,
-        action: () => setActiveModule('design'),
+        action: () => setActiveModule('canvas'),
         actionLabel: 'Design',
         priority: 'medium',
       })
@@ -350,7 +350,7 @@ export function DashboardModule() {
         label: 'Fazer deploy da infraestrutura',
         description: `${totalResources} recurso(s) pronto(s) no canvas e ${environments.length} ambiente(s) configurado(s).`,
         icon: Rocket,
-        action: () => setActiveModule('provision'),
+        action: () => setActiveModule('provisioning'),
         actionLabel: 'Deploy',
         priority: 'medium',
       })
@@ -362,7 +362,7 @@ export function DashboardModule() {
         label: 'Corrigir drift detectado',
         description: `${driftEvents.length} drift(s) — infraestrutura real divergiu do estado desejado.`,
         icon: GitCompare,
-        action: () => setActiveModule('observe'),
+        action: () => setActiveModule('observability'),
         actionLabel: 'Revisar',
         priority: 'high',
       })
@@ -374,7 +374,7 @@ export function DashboardModule() {
         label: 'Oportunidades de economia',
         description: `${costEvents.length} recomendação(ões) de otimização de custos disponível(is).`,
         icon: DollarSign,
-        action: () => setActiveModule('cost'),
+        action: () => setActiveModule('finops'),
         actionLabel: 'Ver',
         priority: 'medium',
       })
@@ -398,7 +398,7 @@ export function DashboardModule() {
         label: 'Aprovações pendentes',
         description: `${approvalEvents.length} solicitação(ões) de deploy aguardando aprovação.`,
         icon: UserCheck,
-        action: () => setActiveModule('provision'),
+        action: () => setActiveModule('provisioning'),
         actionLabel: 'Aprovar',
         priority: 'high',
       })
@@ -410,7 +410,7 @@ export function DashboardModule() {
         label: 'Deploy com falha',
         description: 'Um ou mais deploys falharam. Verifique os logs para diagnóstico.',
         icon: AlertTriangle,
-        action: () => setActiveModule('provision'),
+        action: () => setActiveModule('provisioning'),
         actionLabel: 'Ver',
         priority: 'high',
       })
@@ -429,14 +429,14 @@ export function DashboardModule() {
     })
   }, [])
 
-  const handleNewDesign = useCallback(() => setActiveModule('design'), [setActiveModule])
+  const handleNewDesign = useCallback(() => setActiveModule('canvas'), [setActiveModule])
   const handleDeploy = useCallback(() => {
     if (!hasEnvSetup && !needsSetup) {
-      setActiveModule('settings')
+      setActiveModule('settings'); setSettingsTab('environments')
     } else {
-      setActiveModule('provision')
+      setActiveModule('provisioning')
     }
-  }, [hasEnvSetup, needsSetup, setActiveModule])
+  }, [hasEnvSetup, needsSetup, setActiveModule, setSettingsTab])
 
   /* ─── Unified Dashboard Body ─── */
   function UnifiedBody() {
@@ -519,7 +519,7 @@ export function DashboardModule() {
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-slate-400">{formatRelativeTime(event.timestamp)}</span>
                           {event.link && (
-                            <button onClick={() => setActiveModule(NAV_MODULES[event.link!.module] || 'design')}
+                            <button onClick={() => setActiveModule(NAV_MODULES[event.link!.module] || 'canvas')}
                               className="text-[10px] font-semibold text-brand-navy hover:text-brand-lime transition-colors">
                               {event.link.label}
                             </button>
@@ -542,7 +542,7 @@ export function DashboardModule() {
                 title="Pipeline de Deploy"
                 badge={environments.length}
                 action={
-                  <button onClick={() => setActiveModule('provision')}
+                  <button onClick={() => setActiveModule('provisioning')}
                     className="text-xs font-semibold text-brand-navy hover:text-brand-lime transition-colors">
                     Ver todos →
                   </button>
@@ -554,7 +554,7 @@ export function DashboardModule() {
                     <Rocket className="w-5 h-5 text-slate-400" />
                   </div>
                   <p className="text-sm font-medium text-slate-500">Nenhum ambiente configurado</p>
-                  <button onClick={() => setActiveModule('settings')}
+                  <button onClick={() => { setActiveModule('settings'); setSettingsTab('environments'); }}
                     className="mt-2 text-xs font-semibold text-brand-navy underline underline-offset-2">
                     Criar ambiente
                   </button>
@@ -594,7 +594,7 @@ export function DashboardModule() {
                               : 'Nenhum deploy realizado'}
                           </p>
                         </div>
-                        <button onClick={() => setActiveModule('provision')}
+                        <button onClick={() => setActiveModule('provisioning')}
                           className="shrink-0 inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all">
                           Ir <ArrowRight className="w-3 h-3" />
                         </button>
@@ -640,7 +640,7 @@ export function DashboardModule() {
                 title="Prévia do Canvas"
                 badge={totalResources > 0 ? totalResources : undefined}
                 action={
-                  <button onClick={() => setActiveModule('design')}
+                  <button onClick={() => setActiveModule('canvas')}
                     className="text-xs font-semibold text-brand-navy hover:text-brand-lime transition-colors">
                     Abrir canvas →
                   </button>
@@ -652,7 +652,7 @@ export function DashboardModule() {
                     <Palette className="w-5 h-5 text-slate-400" />
                   </div>
                   <p className="text-sm font-medium text-slate-500">Canvas vazio</p>
-                  <button onClick={() => setActiveModule('design')}
+                  <button onClick={() => setActiveModule('canvas')}
                     className="mt-2 inline-flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all shadow-sm">
                     <Plus className="w-3.5 h-3.5" /> Novo Design
                   </button>
@@ -709,7 +709,7 @@ export function DashboardModule() {
                   icon={Sparkles} color="blue"
                   title="Comece criando um design"
                   description="Adicione componentes de infraestrutura no canvas para começar a visualizar sua arquitetura."
-                  link={{ label: 'Ir para Design', module: 'design' }}
+                  link={{ label: 'Ir para Design', module: 'canvas' }}
                   onNavigate={setActiveModule}
                 />
               ) : (
@@ -821,7 +821,7 @@ export function DashboardModule() {
             {/* Right: Quick Action Buttons → open modals */}
             <div className="flex items-center gap-1.5 shrink-0">
               <button
-                onClick={() => setQuickModal('design')}
+                onClick={() => setQuickModal('canvas')}
                 className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all shadow-sm"
                 title="Criar um novo design de infraestrutura"
               >
@@ -837,7 +837,7 @@ export function DashboardModule() {
                 <span className="hidden sm:inline">Deploy</span>
               </button>
               <button
-                onClick={() => setQuickModal('aiops')}
+                onClick={() => setQuickModal('ai')}
                 className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all"
                 title="Assistente AIOps para diagnóstico e runbooks"
               >
@@ -845,7 +845,7 @@ export function DashboardModule() {
                 <span className="hidden sm:inline">Runbook</span>
               </button>
               <button
-                onClick={() => setQuickModal('cost')}
+                onClick={() => setQuickModal('finops')}
                 className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium text-slate-500 hover:text-brand-navy hover:bg-slate-100 transition-all"
                 title="Ver relatório de custos"
               >
@@ -853,7 +853,7 @@ export function DashboardModule() {
                 <span className="hidden sm:inline">Custos</span>
               </button>
               <button
-                onClick={() => setQuickModal('observe')}
+                onClick={() => setQuickModal('observability')}
                 className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium text-slate-500 hover:text-brand-navy hover:bg-slate-100 transition-all"
                 title="Abrir painel de observabilidade"
               >
@@ -903,7 +903,7 @@ export function DashboardModule() {
                   <p className="text-xs text-amber-600 mt-0.5">Crie um ambiente para poder fazer deploy da sua infraestrutura.</p>
                 </div>
               </div>
-              <button onClick={() => setActiveModule('settings')}
+              <button onClick={() => { setActiveModule('settings'); setSettingsTab('environments'); }}
                 className="inline-flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-all shrink-0">
                 <Box className="w-3.5 h-3.5" /> Configurar Ambiente
               </button>
@@ -919,14 +919,14 @@ export function DashboardModule() {
       {/* ═══ QUICK ACTION MODALS ═══ */}
 
       {/* Novo Design Modal */}
-      <Dialog open={quickModal === 'design'} onOpenChange={() => setQuickModal(null)}>
+      <Dialog open={quickModal === 'canvas'} onOpenChange={() => setQuickModal(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Novo Design</DialogTitle>
             <DialogDescription>Criar um novo design de infraestrutura</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <button onClick={() => { setQuickModal(null); setActiveModule('design') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('canvas') }}
               className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-navy hover:shadow-sm transition-all text-left group">
               <div className="w-10 h-10 rounded-xl bg-brand-navy/5 flex items-center justify-center group-hover:bg-brand-lime/15 transition-colors">
                 <Palette className="w-5 h-5 text-brand-navy" />
@@ -946,7 +946,7 @@ export function DashboardModule() {
                 <p className="text-xs text-slate-400 mt-0.5">Arquiteturas pré-prontas do catálogo</p>
               </div>
             </button>
-            <button onClick={() => { localStorage.setItem('cloudbuilder-import-mode', 'true'); setQuickModal(null); setActiveModule('provision') }}
+            <button onClick={() => { localStorage.setItem('cloudbuilder-import-mode', 'true'); setQuickModal(null); setActiveModule('provisioning') }}
               className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-sm transition-all text-left group">
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
                 <Box className="w-5 h-5 text-amber-600" />
@@ -974,7 +974,7 @@ export function DashboardModule() {
                   <Server className="w-5 h-5 text-slate-400" />
                 </div>
                 <p className="text-sm font-medium text-slate-500">Nenhum ambiente configurado</p>
-                <button onClick={() => { setQuickModal(null); setActiveModule('settings') }}
+                <button onClick={() => { setQuickModal(null); setActiveModule('settings'); setSettingsTab('environments'); }}
                   className="mt-3 inline-flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all">
                   <Box className="w-3.5 h-3.5" /> Criar Ambiente
                 </button>
@@ -982,7 +982,7 @@ export function DashboardModule() {
             ) : (
               environments.slice(0, 4).map((env) => (
                 <button key={env.id}
-                  onClick={() => { setQuickModal(null); setActiveModule('provision') }}
+                  onClick={() => { setQuickModal(null); setActiveModule('provisioning') }}
                   className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 hover:border-brand-navy hover:shadow-sm transition-all">
                   <div className="flex items-center gap-3">
                     <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center',
@@ -1001,7 +1001,7 @@ export function DashboardModule() {
               ))
             )}
             {environments.length > 4 && (
-              <button onClick={() => { setQuickModal(null); setActiveModule('provision') }}
+              <button onClick={() => { setQuickModal(null); setActiveModule('provisioning') }}
                 className="w-full text-center text-xs font-semibold text-brand-navy hover:text-brand-lime transition-colors py-1">
                 Ver todos os {environments.length} ambientes →
               </button>
@@ -1011,14 +1011,14 @@ export function DashboardModule() {
       </Dialog>
 
       {/* AIOps Modal */}
-      <Dialog open={quickModal === 'aiops'} onOpenChange={() => setQuickModal(null)}>
+      <Dialog open={quickModal === 'ai'} onOpenChange={() => setQuickModal(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Assistente AIOps</DialogTitle>
             <DialogDescription>Diagnóstico inteligente e runbooks automatizados</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <button onClick={() => { setQuickModal(null); setActiveModule('aiops') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('ai') }}
               className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-brand-navy hover:shadow-sm transition-all text-left group">
               <div className="w-10 h-10 rounded-xl bg-brand-navy/5 flex items-center justify-center group-hover:bg-brand-lime/15 transition-colors">
                 <BrainCircuit className="w-5 h-5 text-brand-navy" />
@@ -1028,7 +1028,7 @@ export function DashboardModule() {
                 <p className="text-xs text-slate-400 mt-0.5">Diagnosticar incidentes e obter recomendações</p>
               </div>
             </button>
-            <button onClick={() => { setQuickModal(null); setActiveModule('aiops') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('ai') }}
               className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-sm transition-all text-left group">
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -1043,7 +1043,7 @@ export function DashboardModule() {
       </Dialog>
 
       {/* Cost Modal */}
-      <Dialog open={quickModal === 'cost'} onOpenChange={() => setQuickModal(null)}>
+      <Dialog open={quickModal === 'finops'} onOpenChange={() => setQuickModal(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Resumo de Custos</DialogTitle>
@@ -1070,7 +1070,7 @@ export function DashboardModule() {
                 </div>
               </div>
             )}
-            <button onClick={() => { setQuickModal(null); setActiveModule('cost') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('finops') }}
               className="w-full inline-flex items-center justify-center gap-1.5 px-4 h-9 rounded-lg text-xs font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all">
               <BarChart3 className="w-4 h-4" /> Ver Dashboard de Custos
             </button>
@@ -1079,14 +1079,14 @@ export function DashboardModule() {
       </Dialog>
 
       {/* Observe Modal */}
-      <Dialog open={quickModal === 'observe'} onOpenChange={() => setQuickModal(null)}>
+      <Dialog open={quickModal === 'observability'} onOpenChange={() => setQuickModal(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Observabilidade</DialogTitle>
             <DialogDescription>Métricas, alertas e monitoramento da infraestrutura</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 py-2">
-            <button onClick={() => { setQuickModal(null); setActiveModule('observe') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('observability') }}
               className="flex flex-col items-center text-center gap-2 p-4 rounded-xl border border-slate-200 hover:border-green-400 hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
                 <Heart className="w-5 h-5 text-green-600" />
@@ -1096,7 +1096,7 @@ export function DashboardModule() {
                 <p className="text-[10px] text-slate-400 mt-0.5">Status dos serviços</p>
               </div>
             </button>
-            <button onClick={() => { setQuickModal(null); setActiveModule('observe') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('observability') }}
               className="flex flex-col items-center text-center gap-2 p-4 rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -1106,7 +1106,7 @@ export function DashboardModule() {
                 <p className="text-[10px] text-slate-400 mt-0.5">Notificações ativas</p>
               </div>
             </button>
-            <button onClick={() => { setQuickModal(null); setActiveModule('observe') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('observability') }}
               className="flex flex-col items-center text-center gap-2 p-4 rounded-xl border border-slate-200 hover:border-brand-navy hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-xl bg-brand-navy/5 flex items-center justify-center group-hover:bg-brand-lime/15 transition-colors">
                 <Activity className="w-5 h-5 text-brand-navy" />
@@ -1116,7 +1116,7 @@ export function DashboardModule() {
                 <p className="text-[10px] text-slate-400 mt-0.5">Performance e uso</p>
               </div>
             </button>
-            <button onClick={() => { setQuickModal(null); setActiveModule('observe') }}
+            <button onClick={() => { setQuickModal(null); setActiveModule('observability') }}
               className="flex flex-col items-center text-center gap-2 p-4 rounded-xl border border-slate-200 hover:border-purple-400 hover:shadow-sm transition-all group">
               <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
                 <GitCompareArrows className="w-5 h-5 text-purple-600" />

@@ -6,7 +6,7 @@
 -- ── 1. Metrics Time-Series ─────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS metrics_ts (
-    id          UUID DEFAULT gen_random_uuid(),
+    id          VARCHAR(36) NOT NULL,
     tenant_id   VARCHAR(64) NOT NULL,
     metric_name VARCHAR(128) NOT NULL,
     tags        JSONB DEFAULT '{}',
@@ -21,7 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_metrics_tags ON metrics_ts USING GIN (tags);
 -- ── 2. Traces & Spans ──────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS traces (
-    id           UUID DEFAULT gen_random_uuid(),
+    id           VARCHAR(36) NOT NULL,
     trace_id     VARCHAR(32) NOT NULL,
     tenant_id    VARCHAR(64) NOT NULL,
     service_name VARCHAR(128) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS traces (
 ) PARTITION BY RANGE (start_time);
 
 CREATE TABLE IF NOT EXISTS spans (
-    id              UUID DEFAULT gen_random_uuid(),
+    id              VARCHAR(36) NOT NULL,
     trace_id        VARCHAR(32) NOT NULL,
     span_id         VARCHAR(16) NOT NULL,
     parent_span_id  VARCHAR(16),
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans (trace_id);
 -- ── 3. Logs ────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS logs (
-    id           UUID DEFAULT gen_random_uuid(),
+    id           VARCHAR(36) NOT NULL,
     tenant_id    VARCHAR(64) NOT NULL,
     timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     level        VARCHAR(16) NOT NULL,
@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_logs_fts ON logs USING GIN (to_tsvector('portugue
 -- ── 4. Alert Rules & Incidents ─────────────────────────────
 
 CREATE TABLE IF NOT EXISTS alert_rules (
-    id              UUID DEFAULT gen_random_uuid(),
+    id              VARCHAR(36) PRIMARY KEY,
     tenant_id       VARCHAR(64) NOT NULL,
     name            VARCHAR(128) NOT NULL,
     description     TEXT,
@@ -95,8 +95,8 @@ CREATE TABLE IF NOT EXISTS alert_rules (
 );
 
 CREATE TABLE IF NOT EXISTS alert_rule_evaluations (
-    id              UUID DEFAULT gen_random_uuid(),
-    alert_rule_id   UUID NOT NULL REFERENCES alert_rules(id),
+    id              VARCHAR(36) NOT NULL,
+    alert_rule_id   VARCHAR(36) NOT NULL REFERENCES alert_rules(id),
     tenant_id       VARCHAR(64) NOT NULL,
     evaluated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     current_value   DOUBLE PRECISION,
@@ -106,8 +106,8 @@ CREATE TABLE IF NOT EXISTS alert_rule_evaluations (
 ) PARTITION BY RANGE (evaluated_at);
 
 CREATE TABLE IF NOT EXISTS incidents (
-    id              UUID DEFAULT gen_random_uuid(),
-    alert_rule_id   UUID REFERENCES alert_rules(id),
+    id              VARCHAR(36) PRIMARY KEY,
+    alert_rule_id   VARCHAR(36) REFERENCES alert_rules(id),
     tenant_id       VARCHAR(64) NOT NULL,
     title           VARCHAR(256) NOT NULL,
     description     TEXT,
@@ -118,12 +118,12 @@ CREATE TABLE IF NOT EXISTS incidents (
     started_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     acknowledged_at TIMESTAMPTZ,
     resolved_at     TIMESTAMPTZ,
-    UNIQUE (alert_rule_id, status) WHERE status = 'OPEN'
+    UNIQUE (alert_rule_id, status)
 );
 
 CREATE TABLE IF NOT EXISTS incident_timeline (
-    id          UUID DEFAULT gen_random_uuid(),
-    incident_id UUID NOT NULL REFERENCES incidents(id),
+    id          VARCHAR(36) PRIMARY KEY,
+    incident_id VARCHAR(36) NOT NULL REFERENCES incidents(id),
     event_type  VARCHAR(32) NOT NULL,
     description TEXT,
     created_by  VARCHAR(128),
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS incident_timeline (
 -- ── 5. Notification Channels ───────────────────────────────
 
 CREATE TABLE IF NOT EXISTS notification_channels (
-    id        UUID DEFAULT gen_random_uuid(),
+    id        VARCHAR(36) PRIMARY KEY,
     tenant_id VARCHAR(64) NOT NULL,
     name      VARCHAR(128) NOT NULL,
     type      VARCHAR(32) NOT NULL,
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS notification_channels (
 -- ── 6. SLO Definitions ─────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS slo_definitions (
-    id              UUID DEFAULT gen_random_uuid(),
+    id              VARCHAR(36) PRIMARY KEY,
     tenant_id       VARCHAR(64) NOT NULL,
     name            VARCHAR(128) NOT NULL,
     description     TEXT,
@@ -158,8 +158,8 @@ CREATE TABLE IF NOT EXISTS slo_definitions (
 );
 
 CREATE TABLE IF NOT EXISTS sli_snapshots (
-    id              UUID DEFAULT gen_random_uuid(),
-    slo_id          UUID NOT NULL REFERENCES slo_definitions(id),
+    id              VARCHAR(36) PRIMARY KEY,
+    slo_id          VARCHAR(36) NOT NULL REFERENCES slo_definitions(id),
     tenant_id       VARCHAR(64) NOT NULL,
     window_start    TIMESTAMPTZ NOT NULL,
     window_end      TIMESTAMPTZ NOT NULL,
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS sli_snapshots (
 -- ── 7. Dashboard Definitions ───────────────────────────────
 
 CREATE TABLE IF NOT EXISTS dashboards (
-    id          UUID DEFAULT gen_random_uuid(),
+    id          VARCHAR(36) PRIMARY KEY,
     tenant_id   VARCHAR(64) NOT NULL,
     name        VARCHAR(128) NOT NULL,
     description TEXT,

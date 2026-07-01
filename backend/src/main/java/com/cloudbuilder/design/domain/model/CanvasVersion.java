@@ -20,11 +20,13 @@ public class CanvasVersion {
     @Column(columnDefinition = "TEXT")
     private String snapshot;
 
+    @Column(name = "change_description")
     private String changeDescription;
 
+    @Column(name = "created_by")
     private String createdBy;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)

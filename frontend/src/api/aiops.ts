@@ -1,6 +1,6 @@
 import { api } from './client'
 
-// ─── Types ────────────────────────────────────────────────────
+// ─── Design Template Types ──────────────────────────────────
 
 export interface DesignTemplateResource {
   id: string

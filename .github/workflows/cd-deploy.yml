@@ -1,0 +1,140 @@
+name: CloudBuilder CD — Deploy to Staging
+
+on:
+  workflow_run:
+    workflows: ['CloudBuilder Docker Publish']
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      ref:
+        description: 'Docker image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/cloudbuilder-backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/cloudbuilder-frontend
+  PROVISION_ENGINE_IMAGE: ghcr.io/${{ github.repository_owner }}/cloudbuilder-provision-engine
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure environment
+        id: config
+        run: |
+          TAG="${{ inputs.ref || 'latest' }}"
+          ENV="${{ inputs.environment || 'staging' }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "env=$ENV" >> "$GITHUB_OUTPUT"
+          echo "stack=cloudbuilder-$ENV" >> "$GITHUB_OUTPUT"
+
+      - name: Render docker-compose with production images
+        run: |
+          TAG="${{ steps.config.outputs.tag }}"
+          cat > docker-compose.deploy.yml << 'EOF'
+          services:
+            postgres:
+              image: postgres:16-alpine
+              container_name: cloudbuilder-postgres
+              environment:
+                POSTGRES_DB: cloudbuilder
+                POSTGRES_USER: cloudbuilder
+                POSTGRES_PASSWORD: ${DB_PASSWORD}
+              volumes:
+                - pgdata:/var/lib/postgresql/data
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U cloudbuilder"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+                start_period: 30s
+              networks: [db-net]
+
+            backend:
+              image: ${{ env.BACKEND_IMAGE }}:$TAG
+              container_name: cloudbuilder-backend
+              environment:
+                SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+                SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cloudbuilder
+                SPRING_DATASOURCE_USERNAME: cloudbuilder
+                SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+                JWT_SECRET: ${JWT_SECRET}
+                CLOUDBUILDER_ENCRYPTION_KEY: ${CLOUDBUILDER_ENCRYPTION_KEY}
+              ports: ["8080:8080"]
+              depends_on:
+                postgres:
+                  condition: service_healthy
+              healthcheck:
+                test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/liveness || exit 1"]
+                interval: 15s
+                timeout: 5s
+                retries: 3
+                start_period: 60s
+              networks: [frontend-net, db-net]
+
+            frontend:
+              image: ${{ env.FRONTEND_IMAGE }}:$TAG
+              container_name: cloudbuilder-frontend
+              ports: ["80:80"]
+              depends_on:
+                backend:
+                  condition: service_healthy
+              networks: [frontend-net]
+
+            provision-engine:
+              image: ${{ env.PROVISION_ENGINE_IMAGE }}:$TAG
+              container_name: cloudbuilder-provision-engine
+              ports: ["50051:50051"]
+              depends_on:
+                backend:
+                  condition: service_healthy
+              networks: [frontend-net]
+
+          volumes:
+            pgdata:
+              name: cloudbuilder_pgdata
+
+          networks:
+            frontend-net:
+              driver: bridge
+              name: cloudbuilder_frontend
+            db-net:
+              driver: bridge
+              name: cloudbuilder_db
+          EOF
+
+      - name: Deploy via docker-compose
+        run: |
+          docker compose -f docker-compose.deploy.yml pull
+          docker compose -f docker-compose.deploy.yml up -d --remove-orphans
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for services to be healthy..."
+          sleep 30
+          docker compose -f docker-compose.deploy.yml ps
+
+      - name: Health check
+        run: |
+          curl -sf http://localhost:8080/actuator/health || { echo "Backend health check failed"; exit 1; }
+          curl -sf http://localhost/ || { echo "Frontend health check failed"; exit 1; }
+          echo "All services healthy!"

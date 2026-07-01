@@ -7,7 +7,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -16,12 +18,15 @@ import (
 	grpcserver "github.com/cloudbuilder/provision-engine/internal/api/grpc"
 	pb "github.com/cloudbuilder/provision-engine/internal/api/grpc/proto"
 	"github.com/cloudbuilder/provision-engine/internal/collaboration"
+	"github.com/cloudbuilder/provision-engine/internal/messaging"
 )
 
 var (
 	grpcPort        = "50051"
 	collabPort      = "8765"
 	logLevel        = "info"
+	kafkaEnabled    = false
+	kafkaBrokers    = "localhost:9092"
 )
 
 var rootCmd = &cobra.Command{
@@ -45,6 +50,8 @@ var collabCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().StringVarP(&grpcPort, "port", "p", "50051", "gRPC server port")
 	rootCmd.Flags().StringVarP(&logLevel, "log-level", "l", "info", "Log level (debug, info, warn, error)")
+	rootCmd.Flags().BoolVar(&kafkaEnabled, "kafka", false, "Enable Kafka event egress to Java backend")
+	rootCmd.Flags().StringVar(&kafkaBrokers, "kafka-brokers", "localhost:9092", "Comma-separated Kafka broker addresses")
 	collabCmd.Flags().StringVarP(&collabPort, "port", "p", "8765", "WebSocket server port")
 	rootCmd.AddCommand(collabCmd)
 }
@@ -55,14 +62,25 @@ func startServer() {
 		log.Fatalf("Failed to listen on port %s: %v", grpcPort, err)
 	}
 
+	// Build Kafka producer (no-op when --kafka=false)
+	brokers := strings.Split(kafkaBrokers, ",")
+	kp := messaging.NewKafkaProducer(messaging.KafkaConfig{
+		Brokers:      brokers,
+		Enabled:      kafkaEnabled,
+		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  10 * time.Second,
+		BatchSize:    100,
+		BatchTimeout: time.Second,
+	})
+
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(loggingInterceptor),
 	)
-	pb.RegisterProvisionServiceServer(grpcServer, grpcserver.NewProvisionServer())
+	pb.RegisterProvisionServiceServer(grpcServer, grpcserver.NewProvisionServerWithKafka(kp))
 	reflection.Register(grpcServer)
 
 	go func() {
-		log.Printf("Provision Engine gRPC server listening on :%s", grpcPort)
+		log.Printf("Provision Engine gRPC server listening on :%s (kafka=%v)", grpcPort, kafkaEnabled)
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("Failed to serve gRPC: %v", err)
 		}
@@ -73,6 +91,7 @@ func startServer() {
 	<-quit
 	log.Println("Shutting down server...")
 	grpcServer.GracefulStop()
+	kp.Close()
 }
 
 func startCollabServer() {

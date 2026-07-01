@@ -9,4 +9,5 @@ public interface CredentialRepository extends JpaRepository<Credential, String> 
     List<Credential> findByTenantId(String tenantId);
     List<Credential> findByProvider(String provider);
     List<Credential> findByTenantIdAndProvider(String tenantId, String provider);
+    List<Credential> findByOrganizationId(String organizationId);
 }

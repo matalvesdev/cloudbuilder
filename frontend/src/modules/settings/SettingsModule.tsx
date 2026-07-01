@@ -34,6 +34,7 @@ import { useRepoStore } from '@/store/repoStore'
 import { useAuthStore } from '@/store/authStore'
 import { useSystemSettingsStore } from '@/store/systemSettingsStore'
 import { usePermission } from '@/hooks/usePermission'
+import { useUiStore, type SettingsTab } from '@/store/uiStore'
 import { updateProfile } from '@/api/auth'
 import { showSuccess, showApiError } from '@/lib/toast'
 import type { ThemeMode, AppLanguage } from '@/store/systemSettingsStore'
@@ -48,7 +49,6 @@ import {
 import { RepositorySettings } from './RepositorySettings'
 import { MultiTenantSettings } from './MultiTenantSettings'
 
-type SettingsTab = 'credentials' | 'environments' | 'repositories' | 'multitenant' | 'profile' | 'system'
 
 interface CredentialForm {
   name: string
@@ -319,7 +319,7 @@ function EnvironmentFormModal({
               {(Object.entries(ENVIRONMENT_TYPE_LABELS) as [string, string][]).map(([key, label]) => (
                 <button
                   key={key}
-                  onClick={() => setForm({ ...form, type: key as any })}
+                  onClick={() => setForm({ ...form, type: key as EnvironmentForm['type'] })}
                   className={cn(
                     'p-3 rounded-xl border-2 transition-all text-xs font-medium',
                     form.type === key
@@ -383,7 +383,7 @@ function EnvironmentFormModal({
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">State Backend</label>
             <select
               value={form.stateBackendType}
-              onChange={(e) => setForm({ ...form, stateBackendType: e.target.value as any })}
+              onChange={(e) => setForm({ ...form, stateBackendType: e.target.value as EnvironmentForm['stateBackendType'] })}
               className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm bg-white transition-all"
             >
               <option value="local">Local</option>
@@ -425,7 +425,8 @@ export function SettingsModule() {
   const publicTabs: SettingsTab[] = useMemo(() => ['profile', 'system'], [])
   const allTabs: SettingsTab[] = useMemo(() => isAdmin ? [...adminTabs, ...publicTabs] : publicTabs, [isAdmin, adminTabs, publicTabs])
 
-  const [tab, setTab] = useState<SettingsTab>(isAdmin ? 'credentials' : 'profile')
+  const tab = useUiStore((s) => s.settingsTab)
+  const setTab = useUiStore((s) => s.setSettingsTab)
   const [showCredForm, setShowCredForm] = useState(false)
   const [editCredId, setEditCredId] = useState<string | null>(null)
   const [showEnvForm, setShowEnvForm] = useState(false)

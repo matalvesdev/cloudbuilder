@@ -15,19 +15,19 @@ public class CanvasEdge {
     @JoinColumn(name = "canvas_id", nullable = false)
     private Canvas canvas;
 
-    @Column(nullable = false)
+    @Column(name = "source_node_id", nullable = false)
     private String sourceNodeId;
 
-    @Column(nullable = false)
+    @Column(name = "target_node_id", nullable = false)
     private String targetNodeId;
 
-    @Column(nullable = false)
+    @Column(name = "edge_type", nullable = false)
     private String edgeType;
 
     @Column(columnDefinition = "TEXT")
     private String properties;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     protected CanvasEdge() {}

@@ -87,6 +87,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Prometheus — Actuator metrics export -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- Cache local (Caffeine substitui Redis) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -105,7 +111,25 @@
             <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
         </dependency>
 
+        <!-- Kafka — Event Bus (ADR-035 Production EDA) -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- Apicurio Schema Registry — Contract Evolution (ADR-038) -->
+        <dependency>
+            <groupId>io.apicurio</groupId>
+            <artifactId>apicurio-registry-serdes-jsonschema</artifactId>
+            <version>2.6.2</version>
+        </dependency>
+
         <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

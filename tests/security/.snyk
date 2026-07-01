@@ -1,0 +1,25 @@
+# Snyk Policy File — CloudBuilder
+# https://docs.snyk.io/manage-risk/policy-file
+
+version: v1.25.0
+rules:
+  # Monitor high-severity vulns but don't block CI
+  - id: high-severity-rule
+    severity: high
+    ghas: false
+    license: false
+
+  # Block critical vulns
+  - id: critical-vuln-rule
+    severity: critical
+    ghas: true
+
+patch: {}
+
+ignore:
+  # Known false positives or accepted risks
+  # Uncomment and add IDs as they're discovered:
+  # SNYK-JS-SOMEPACKAGE-12345:
+  #   - CloudBuilder > frontend
+  #   reason: "No exploit path in our usage"
+  #   expires: '2026-12-31'

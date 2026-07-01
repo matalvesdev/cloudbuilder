@@ -41,6 +41,10 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Nginx logs to stdout/stderr (already default for Docker)
+# Ensure nginx cache/log/run dirs exist and are writable by nginx user
+RUN mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/log/nginx /run \
+    && chown -R nginx:nginx /var/cache/nginx /var/log/nginx /run
+
 # Switch user for security context
 USER nginx
 

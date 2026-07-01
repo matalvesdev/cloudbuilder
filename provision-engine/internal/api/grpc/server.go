@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/cloudbuilder/provision-engine/internal/drift"
 	pb "github.com/cloudbuilder/provision-engine/internal/api/grpc/proto"
@@ -22,6 +23,13 @@ type ProvisionServer struct {
 func NewProvisionServer() *ProvisionServer {
 	return &ProvisionServer{
 		eventPublisher: messaging.NewEventPublisher(),
+	}
+}
+
+// NewProvisionServerWithKafka creates a ProvisionServer with Kafka event egress.
+func NewProvisionServerWithKafka(kp *messaging.KafkaProducer) *ProvisionServer {
+	return &ProvisionServer{
+		eventPublisher: messaging.NewEventPublisherWithKafka(kp),
 	}
 }
 
@@ -296,6 +304,18 @@ func (s *ProvisionServer) DetectDrift(ctx context.Context, req *pb.DriftRequest)
 		return &pb.DriftResponse{Error: fmt.Sprintf("drift detection failed: %v", err)}, nil
 	}
 
+	// Publish drift event for cross-module consumption
+	eventType := messaging.EventDriftDetected
+	if !report.HasDrift {
+		eventType = messaging.EventDriftResolved
+	}
+	s.eventPublisher.Publish(ctx, messaging.DeploymentEvent{
+		DeploymentID: "",
+		EventType:    eventType,
+		Status:       fmt.Sprintf("drift_%t", report.HasDrift),
+		Message:      fmt.Sprintf("Drift detection: %d resources drifted", len(report.Resources)),
+	})
+
 	resources := make([]*pb.DriftResource, len(report.Resources))
 	for i, r := range report.Resources {
 		resources[i] = &pb.DriftResource{
@@ -310,4 +330,45 @@ func (s *ProvisionServer) DetectDrift(ctx context.Context, req *pb.DriftRequest)
 		HasDrift:         report.HasDrift,
 		DriftedResources: resources,
 	}, nil
+}
+
+func (s *ProvisionServer) WatchEvents(req *pb.WatchEventsRequest, stream pb.ProvisionService_WatchEventsServer) error {
+	ctx := stream.Context()
+	subID := fmt.Sprintf("watch-%s", req.TenantId)
+
+	// Subscribe to all engine events via the EventPublisher
+	eventCh := s.eventPublisher.SubscribeToEvents(ctx, subID)
+	defer s.eventPublisher.Unsubscribe(subID)
+
+	// Build filter set if event_types specified
+	filter := make(map[string]bool, len(req.EventTypes))
+	for _, et := range req.EventTypes {
+		filter[et] = true
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case evt, ok := <-eventCh:
+			if !ok {
+				return nil
+			}
+			// Apply optional event type filter
+			if len(filter) > 0 && !filter[evt.EventType] {
+				continue
+			}
+			if err := stream.Send(&pb.EngineEvent{
+				DeploymentId: evt.DeploymentID,
+				EventType:    evt.EventType,
+				Status:       evt.Status,
+				Message:      evt.Message,
+				Progress:     evt.Progress,
+				TenantId:     req.TenantId,
+				Timestamp:    evt.Timestamp.Format(time.RFC3339),
+			}); err != nil {
+				return err
+			}
+		}
+	}
 }

@@ -5,7 +5,7 @@
 -- COST_RECORDS TABLE
 -- ============================================================================
 CREATE TABLE cost_records (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     environment_id VARCHAR(255) NOT NULL,
     provider VARCHAR(100) NOT NULL,
     service_name VARCHAR(255) NOT NULL,
@@ -29,7 +29,7 @@ CREATE INDEX idx_cost_records_env_provider ON cost_records(environment_id, provi
 -- BUDGETS TABLE
 -- ============================================================================
 CREATE TABLE budgets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     environment_id VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     limit_amount DOUBLE PRECISION NOT NULL,

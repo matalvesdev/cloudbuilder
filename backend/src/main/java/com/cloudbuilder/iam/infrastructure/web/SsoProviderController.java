@@ -4,6 +4,7 @@ import com.cloudbuilder.iam.domain.model.SsoProviderConfig;
 import com.cloudbuilder.iam.domain.service.SsoProviderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/sso")
+@PreAuthorize("isAuthenticated()")
 public class SsoProviderController {
 
     private final SsoProviderService ssoProviderService;
@@ -20,6 +22,7 @@ public class SsoProviderController {
     }
 
     @PostMapping("/providers")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SsoProviderConfig> createProvider(@RequestBody Map<String, String> body) {
         SsoProviderConfig config = ssoProviderService.createConfig(
                 body.get("providerType"),
@@ -49,6 +52,7 @@ public class SsoProviderController {
     }
 
     @PutMapping("/providers/{id}/toggle")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SsoProviderConfig> toggleProvider(@PathVariable String id, @RequestBody Map<String, Boolean> body) {
         return ssoProviderService.toggleEnabled(id, body.getOrDefault("enabled", true))
                 .map(ResponseEntity::ok)
@@ -56,6 +60,7 @@ public class SsoProviderController {
     }
 
     @PutMapping("/providers/{id}/credentials")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SsoProviderConfig> updateCredentials(@PathVariable String id, @RequestBody Map<String, String> body) {
         return ssoProviderService.updateCredentials(id, body.get("clientId"), body.get("clientSecret"))
                 .map(ResponseEntity::ok)
@@ -63,6 +68,7 @@ public class SsoProviderController {
     }
 
     @DeleteMapping("/providers/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteProvider(@PathVariable String id) {
         ssoProviderService.deleteConfig(id);
         return ResponseEntity.noContent().build();

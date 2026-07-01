@@ -11,6 +11,8 @@ import {
   type XYPosition,
 } from '@xyflow/react'
 import type { CanvasNodeData, CanvasDesign, CanvasNodeProperties } from '@/types/canvas.types'
+import * as designApi from '@/api/design'
+import type { CanvasDTO, CanvasNodeDTO, CanvasEdgeDTO } from '@/api/types'
 
 // ─── Performance: rAF batching for bulk position updates ──────────────
 // Accumulates position changes and flushes them in the next rAF frame,
@@ -116,7 +118,7 @@ let layoutWorker: Worker | null = null
 function getLayoutWorker(): Worker {
   if (!layoutWorker && typeof Worker !== 'undefined') {
     layoutWorker = new Worker(
-      new URL('../modules/design/workers/autoLayout.worker.ts', import.meta.url),
+      new URL('../modules/canvas/workers/autoLayout.worker.ts', import.meta.url),
       { type: 'module' }
     )
   }
@@ -188,6 +190,9 @@ interface CanvasState {
   highlightedIncidentNodes: string[]
   setHighlightedIncidentNodes: (nodeIds: string[]) => void
   clearHighlightedIncidentNodes: () => void
+
+  loadFromBackend: (canvasId: string) => Promise<void>
+  saveToBackend: (tenantId: string, userId: string) => Promise<string | null>
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
@@ -679,5 +684,117 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
   clearHighlightedIncidentNodes: () => {
     set({ highlightedIncidentNodes: [] })
+  },
+
+  loadFromBackend: async (canvasId: string) => {
+    try {
+      const canvas = await designApi.getCanvas(canvasId)
+      const nodes: Node<CanvasNodeData>[] = (canvas.canvasNodes || []).map((nodeDto: CanvasNodeDTO) => {
+        const props = nodeDto.properties ? JSON.parse(nodeDto.properties) : {}
+        return {
+          id: nodeDto.id,
+          type: props.provider || 'aws',
+          position: { x: nodeDto.positionX, y: nodeDto.positionY },
+          width: 224,
+          height: 120,
+          data: {
+            label: props.label || 'Resource',
+            componentDefinitionId: nodeDto.componentDefinitionId,
+            provider: props.provider || 'aws',
+            resourceType: props.resourceType || 'unknown',
+            properties: props.properties || {},
+            validationStatus: (nodeDto.validationStatus as CanvasNodeData['validationStatus']) || 'PENDING',
+          },
+        } as Node<CanvasNodeData>
+      })
+      const edges: Edge[] = (canvas.canvasEdges || []).map((edgeDto: CanvasEdgeDTO) => ({
+        id: edgeDto.id,
+        source: edgeDto.sourceNodeId,
+        target: edgeDto.targetNodeId,
+        type: 'connection',
+        data: edgeDto.properties ? JSON.parse(edgeDto.properties) : { edgeType: edgeDto.edgeType },
+      }))
+      set({
+        nodes,
+        edges,
+        canvasId: canvas.id,
+        canvasName: canvas.name,
+        canvasVersion: canvas.designVersion,
+        undoStack: [],
+        redoStack: [],
+        generatedCode: [],
+      })
+    } catch (err) {
+      console.error('Falha ao carregar design do backend:', err)
+      throw err
+    }
+  },
+
+  saveToBackend: async (tenantId: string, userId: string) => {
+    const { nodes, edges, canvasName } = get()
+
+    // 1. Create or update canvas metadata
+    let currentCanvasId = get().canvasId
+    if (!currentCanvasId) {
+      const created = await designApi.createCanvas({
+        tenantId,
+        name: canvasName || 'Design sem título',
+        userId,
+      })
+      currentCanvasId = created.id
+      set({ canvasId: currentCanvasId, canvasVersion: created.designVersion })
+    } else {
+      await designApi.updateCanvas(currentCanvasId, {
+        name: canvasName || 'Design sem título',
+        metadata: JSON.stringify({ lastSavedAt: new Date().toISOString() }),
+      })
+    }
+
+    // 2. Delete all existing server nodes (edges cascade with them)
+    try {
+      const existing = await designApi.getCanvas(currentCanvasId)
+      for (const n of existing.canvasNodes || []) {
+        await designApi.removeNode(currentCanvasId, n.id).catch(() => {})
+      }
+    } catch { /* new canvas — no existing nodes */ }
+
+    // 3. Add all current nodes with client IDs preserved
+    for (const node of nodes) {
+      const storeProps = node.data.properties || {}
+      const properties = JSON.stringify({
+        label: node.data.label,
+        provider: node.data.provider,
+        resourceType: node.data.resourceType,
+        properties: storeProps,
+      })
+      await designApi.addNode(currentCanvasId, {
+        id: node.id,
+        componentDefinitionId: node.data.componentDefinitionId,
+        positionX: node.position.x,
+        positionY: node.position.y,
+        properties,
+      })
+    }
+
+    // 4. Delete all existing server edges
+    try {
+      const existing = await designApi.getCanvas(currentCanvasId)
+      for (const e of existing.canvasEdges || []) {
+        await designApi.removeEdge(currentCanvasId, e.id).catch(() => {})
+      }
+    } catch { /* no edges */ }
+
+    // 5. Add all current edges
+    for (const edge of edges) {
+      const edgeData = edge.data as { edgeType?: string } | undefined
+      await designApi.addEdge(currentCanvasId, {
+        sourceNodeId: edge.source,
+        targetNodeId: edge.target,
+        edgeType: edgeData?.edgeType || 'connection',
+        properties: JSON.stringify(edge.data || {}),
+      })
+    }
+
+    return currentCanvasId
   },
 }))

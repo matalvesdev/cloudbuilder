@@ -76,6 +76,7 @@ export interface AddNodeRequest {
   positionX: number
   positionY: number
   properties?: string
+  id?: string
 }
 
 export interface AddEdgeRequest {

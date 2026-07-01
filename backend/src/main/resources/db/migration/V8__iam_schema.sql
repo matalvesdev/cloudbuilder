@@ -5,7 +5,7 @@
 -- IAM_ROLES TABLE
 -- ============================================================================
 CREATE TABLE iam_roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     tenant_id VARCHAR(255) NOT NULL,
     permissions TEXT,

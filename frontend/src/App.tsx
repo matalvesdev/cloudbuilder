@@ -21,21 +21,27 @@ import {
   X,
   ArrowRight,
   BarChart3,
+  Flag,
+  Users,
+  FolderKanban,
+  Bell,
+  CreditCard,
 } from 'lucide-react'
 import { useUiStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
+import { useEventStream } from '@/hooks/useEventStream'
 import { useTenantStore } from '@/store/tenantStore'
 import { useOnboardingStore } from '@/store/onboardingStore'
 import { useCredentialStore } from '@/store/credentialStore'
 import { useRepoStore } from '@/store/repoStore'
 import { setToken } from '@/api/client'
-import { LoginPage } from '@/modules/auth/LoginPage'
-import { RegisterPage } from '@/modules/auth/RegisterPage'
-import { ForgotPasswordPage } from '@/modules/auth/ForgotPasswordPage'
-import { ResetPasswordPage } from '@/modules/auth/ResetPasswordPage'
-import { OnboardingWelcome } from '@/modules/onboarding/OnboardingWelcome'
-import { OnboardingTour } from '@/modules/onboarding/OnboardingTour'
-import { GatewaySetup } from '@/modules/onboarding/GatewaySetup'
+import { LoginPage } from '@/shared/auth/LoginPage'
+import { RegisterPage } from '@/shared/auth/RegisterPage'
+import { ForgotPasswordPage } from '@/shared/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/shared/auth/ResetPasswordPage'
+import { OnboardingWelcome } from '@/app/onboarding/OnboardingWelcome'
+import { OnboardingTour } from '@/app/onboarding/OnboardingTour'
+import { GatewaySetup } from '@/app/onboarding/GatewaySetup'
 import { ToastProvider } from '@/lib/toast'
 import { TenantSelector } from '@/components/TenantSelector'
 import { ProtectedContent } from '@/components/ProtectedContent'
@@ -56,17 +62,19 @@ function lazyImport<T extends Record<string, ComponentType<any>>, K extends keyo
 
 // Lazy-loaded modules (code-split into separate chunks)
 const DashboardModule = lazyImport(() => import('@/modules/dashboard/DashboardModule'), 'DashboardModule')
-const DesignModule = lazyImport(() => import('@/modules/design/DesignModule'), 'DesignModule')
-const ProvisionModule = lazyImport(() => import('@/modules/provision/ProvisionModule'), 'ProvisionModule')
-const ObserveModule = lazyImport(() => import('@/modules/observe/ObserveModule'), 'ObserveModule')
-const CostModule = lazyImport(() => import('@/modules/cost/CostModule'), 'CostModule')
+const CanvasModule = lazyImport(() => import('@/modules/canvas/DesignModule'), 'DesignModule')
+const ProvisioningModule = lazyImport(() => import('@/modules/provisioning/ProvisionModule'), 'ProvisionModule')
+const ObservabilityModule = lazyImport(() => import('@/modules/observability/ObserveModule'), 'ObserveModule')
+const FinOpsModule = lazyImport(() => import('@/modules/finops/CostModule'), 'CostModule')
 const PlatformModule = lazyImport(() => import('@/modules/platform/PlatformModule'), 'PlatformModule')
-const AIOpsModule = lazyImport(() => import('@/modules/aiops/AIOpsModule'), 'AIOpsModule')
-const AuditModule = lazyImport(() => import('@/modules/audit/AuditModule'), 'AuditModule')
-const IAMModule = lazyImport(() => import('@/modules/iam/IAMModule'), 'IAMModule')
+const AIModule = lazyImport(() => import('@/modules/ai/AIOpsModule'), 'AIOpsModule')
+const SecurityModule = lazyImport(() => import('@/modules/security/AuditModule'), 'AuditModule')
 const SettingsModule = lazyImport(() => import('@/modules/settings/SettingsModule'), 'SettingsModule')
-const DocsModule = lazyImport(() => import('@/modules/docs/DocsModule'), 'DocsModule')
-const AnalyticsModule = lazyImport(() => import('@/modules/analytics/AnalyticsModule'), 'AnalyticsModule')
+const DocsModule = lazyImport(() => import('@/modules/settings/DocsModule'), 'DocsModule')
+const WorkspaceModule = lazyImport(() => import('@/modules/workspace/WorkspaceModule'), 'WorkspaceModule')
+const ProjectsModule = lazyImport(() => import('@/modules/projects/ProjectsModule'), 'ProjectsModule')
+const NotificationsModule = lazyImport(() => import('@/modules/notifications/NotificationsModule'), 'NotificationsModule')
+const BillingModule = lazyImport(() => import('@/modules/billing/BillingModule'), 'BillingModule')
 
 function ModuleFallback() {
   return (
@@ -94,6 +102,11 @@ const moduleHierarchy: Record<string, { section: string; path: string[] }> = {
   settings: { section: 'Sistema', path: ['Sistema', 'Configurações'] },
   docs: { section: 'Sistema', path: ['Sistema', 'Documentação'] },
   analytics: { section: 'Visão Geral', path: ['Visão Geral', 'Análises'] },
+  flags: { section: 'Governança', path: ['Governança', 'Feature Flags'] },
+  workspace: { section: 'Organização', path: ['Organização', 'Workspace'] },
+  projects: { section: 'Organização', path: ['Organização', 'Projetos'] },
+  notifications: { section: 'Organização', path: ['Organização', 'Notificações'] },
+  billing: { section: 'Organização', path: ['Organização', 'Billing'] },
 }
 
 const navGroups = [
@@ -101,22 +114,22 @@ const navGroups = [
     label: 'Visão Geral',
     items: [
       { id: 'dashboard' as const, label: 'Dashboard', icon: Activity },
-      { id: 'analytics' as const, label: 'Análises', icon: BarChart3 },
+      { id: 'dashboard' as const, label: 'Análises', icon: BarChart3 },
     ],
   },
   {
     label: 'Infraestrutura',
     items: [
-      { id: 'design' as const, label: 'Design', icon: LayoutDashboard },
-      { id: 'provision' as const, label: 'Provisionar', icon: Box },
+      { id: 'canvas' as const, label: 'Design', icon: LayoutDashboard },
+      { id: 'provisioning' as const, label: 'Provisionar', icon: Box },
     ],
   },
   {
     label: 'Operações',
     items: [
-      { id: 'observe' as const, label: 'Observar', icon: Eye },
-      { id: 'cost' as const, label: 'Custos', icon: DollarSign },
-      { id: 'aiops' as const, label: 'AIOps', icon: BrainCircuit },
+      { id: 'observability' as const, label: 'Observar', icon: Eye },
+      { id: 'finops' as const, label: 'Custos', icon: DollarSign },
+      { id: 'ai' as const, label: 'AIOps', icon: BrainCircuit },
     ],
   },
   {
@@ -128,8 +141,9 @@ const navGroups = [
   {
     label: 'Governança',
     items: [
-      { id: 'audit' as const, label: 'Auditoria', icon: ScrollText },
-      { id: 'iam' as const, label: 'IAM', icon: Shield },
+      { id: 'security' as const, label: 'Auditoria', icon: ScrollText },
+      { id: 'security' as const, label: 'IAM', icon: Shield },
+      { id: 'settings' as const, label: 'Flags', icon: Flag },
     ],
   },
   {
@@ -139,47 +153,58 @@ const navGroups = [
       { id: 'settings' as const, label: 'Config', icon: Settings },
     ],
   },
+  {
+    label: 'Organização',
+    items: [
+      { id: 'workspace' as const, label: 'Workspace', icon: Users },
+      { id: 'projects' as const, label: 'Projetos', icon: FolderKanban },
+      { id: 'notifications' as const, label: 'Notificações', icon: Bell },
+      { id: 'billing' as const, label: 'Billing', icon: CreditCard },
+    ],
+  },
 ]
 
 const moduleLabels: Record<string, string> = {
   dashboard: 'Dashboard',
-  design: 'Design',
-  provision: 'Provisionamento',
-  observe: 'Observabilidade',
-  cost: 'Custos',
+  canvas: 'Canvas',
+  provisioning: 'Provisionamento',
+  observability: 'Observabilidade',
+  finops: 'Custos',
   platform: 'Plataforma',
-  aiops: 'AIOps',
-  audit: 'Auditoria',
-  iam: 'IAM',
+  ai: 'AI',
+  security: 'Segurança',
   settings: 'Configurações',
   docs: 'Documentação',
-  analytics: 'Análises',
 }
 
 const moduleRoles: Record<string, string[]> = {
-  iam: ['admin'],
-  audit: ['admin'],
+  security: ['admin'],
   settings: undefined as unknown as string[],
 }
 
 const moduleComponents: Record<string, React.ReactNode> = {
   dashboard: <ErrorBoundary moduleName="Dashboard"><Suspense fallback={<ModuleFallback />}><DashboardModule /></Suspense></ErrorBoundary>,
-  design: <ErrorBoundary moduleName="Design"><Suspense fallback={<ModuleFallback />}><DesignModule /></Suspense></ErrorBoundary>,
-  provision: <ErrorBoundary moduleName="Provisionamento"><Suspense fallback={<ModuleFallback />}><ProvisionModule /></Suspense></ErrorBoundary>,
-  observe: <ErrorBoundary moduleName="Observabilidade"><Suspense fallback={<ModuleFallback />}><ObserveModule /></Suspense></ErrorBoundary>,
-  cost: <ErrorBoundary moduleName="Custos"><Suspense fallback={<ModuleFallback />}><CostModule /></Suspense></ErrorBoundary>,
+  canvas: <ErrorBoundary moduleName="Canvas"><Suspense fallback={<ModuleFallback />}><CanvasModule /></Suspense></ErrorBoundary>,
+  provisioning: <ErrorBoundary moduleName="Provisionamento"><Suspense fallback={<ModuleFallback />}><ProvisioningModule /></Suspense></ErrorBoundary>,
+  observability: <ErrorBoundary moduleName="Observabilidade"><Suspense fallback={<ModuleFallback />}><ObservabilityModule /></Suspense></ErrorBoundary>,
+  finops: <ErrorBoundary moduleName="Custos"><Suspense fallback={<ModuleFallback />}><FinOpsModule /></Suspense></ErrorBoundary>,
   platform: <ErrorBoundary moduleName="Plataforma"><Suspense fallback={<ModuleFallback />}><PlatformModule /></Suspense></ErrorBoundary>,
-  aiops: <ErrorBoundary moduleName="AIOps"><Suspense fallback={<ModuleFallback />}><AIOpsModule /></Suspense></ErrorBoundary>,
-  audit: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="Auditoria"><Suspense fallback={<ModuleFallback />}><AuditModule /></Suspense></ErrorBoundary></ProtectedContent>,
-  iam: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="IAM"><Suspense fallback={<ModuleFallback />}><IAMModule /></Suspense></ErrorBoundary></ProtectedContent>,
+  ai: <ErrorBoundary moduleName="AI"><Suspense fallback={<ModuleFallback />}><AIModule /></Suspense></ErrorBoundary>,
+  security: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="Segurança"><Suspense fallback={<ModuleFallback />}><SecurityModule /></Suspense></ErrorBoundary></ProtectedContent>,
   docs: <ErrorBoundary moduleName="Documentação"><Suspense fallback={<ModuleFallback />}><DocsModule /></Suspense></ErrorBoundary>,
-  analytics: <ErrorBoundary moduleName="Análises"><Suspense fallback={<ModuleFallback />}><AnalyticsModule /></Suspense></ErrorBoundary>,
   settings: <ErrorBoundary moduleName="Configurações"><Suspense fallback={<ModuleFallback />}><SettingsModule /></Suspense></ErrorBoundary>,
+  workspace: <ErrorBoundary moduleName="Workspace"><Suspense fallback={<ModuleFallback />}><WorkspaceModule /></Suspense></ErrorBoundary>,
+  projects: <ErrorBoundary moduleName="Projetos"><Suspense fallback={<ModuleFallback />}><ProjectsModule /></Suspense></ErrorBoundary>,
+  notifications: <ErrorBoundary moduleName="Notificações"><Suspense fallback={<ModuleFallback />}><NotificationsModule /></Suspense></ErrorBoundary>,
+  billing: <ErrorBoundary moduleName="Billing"><Suspense fallback={<ModuleFallback />}><BillingModule /></Suspense></ErrorBoundary>,
 }
 
 function App() {
-  const { activeModule, setActiveModule, toggleSearch } = useUiStore()
+  const { activeModule, setActiveModule, toggleSearch, fetchFlags, isEnabled } = useUiStore()
   const { isAuthenticated, isLoading, checkAuth, logout, user } = useAuthStore()
+  // Connect to SSE event stream for real-time cross-module updates
+  useEventStream()
+
   const { projects, activeProjectId, switchProject, getActiveProject } = useTenantStore()
   const { progress, hasSeenWelcome, setStage, skipOnboarding, markTourCompleted, resetToWelcome } = useOnboardingStore()
   const { credentials, environments } = useCredentialStore()
@@ -246,6 +271,13 @@ function App() {
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
+
+  // Fetch feature flags after authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFlags()
+    }
+  }, [isAuthenticated, fetchFlags])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -395,8 +427,16 @@ function App() {
         <nav className="flex items-center gap-0.5 shrink-0">
           {navGroups.map((group) => {
             const visibleItems = group.items.filter((item) => {
+              // RBAC check
               const reqRoles = moduleRoles[item.id]
-              return !reqRoles || !user?.roles || reqRoles.some((r) => user.roles.includes(r))
+              const hasRole = !reqRoles || !user?.roles || reqRoles.some((r) => user.roles.includes(r))
+              if (!hasRole) return false
+              // Feature flag check (AND com RBAC per ADR-032)
+              if (item.id === 'finops') return isEnabled('module.cost')
+              if (item.id === 'platform') return isEnabled('module.platform')
+              if (item.id === 'ai') return isEnabled('module.aiops')
+              if (item.id === 'security') return isEnabled('module.audit')
+              return true
             })
             if (visibleItems.length === 0) return null
 
@@ -496,7 +536,7 @@ function App() {
                 searchResults.map((r) => (
                   <button
                     key={r.id}
-                    onClick={() => { setActiveModule(r.id as 'design' | 'provision' | 'observe' | 'cost' | 'platform' | 'aiops' | 'audit' | 'iam' | 'dashboard' | 'docs' | 'settings' | 'analytics'); setQuery(''); setShowSearch(false) }}
+                    onClick={() => { setActiveModule(r.id as 'canvas' | 'provisioning' | 'observability' | 'finops' | 'platform' | 'ai' | 'security' | 'security' | 'dashboard' | 'docs' | 'settings' | 'dashboard'); setQuery(''); setShowSearch(false) }}
                     className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-left hover:bg-slate-50 transition-colors"
                   >
                     <r.icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />

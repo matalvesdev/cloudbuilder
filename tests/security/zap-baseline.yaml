@@ -1,0 +1,84 @@
+---
+# OWASP ZAP Baseline Scan Configuration for CloudBuilder
+# Usage: docker run -v $(pwd)/tests/security:/zap/wrk/:rw ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://host.docker.internal:8080 -c zap-baseline.yaml
+
+env:
+  CONTEXT:
+    name: CloudBuilder
+    urls:
+      - http://localhost:8080
+    includePaths:
+      - http://localhost:8080/api/v1/.*
+    excludePaths:
+      - http://localhost:8080/actuator/.*
+      - http://localhost:8080/api/v1/auth/login
+    authentication:
+      method: form
+      parameters:
+        username: admin@cloudbuilder.dev
+        password: admin123
+      verification:
+        method: response
+        loggedInRegex: \\Qtoken\\E
+
+  parameters:
+    failOnError: true
+    progressWarnings: true
+
+  rules:
+    # SQL Injection
+    - id: 40018
+      strength: MEDIUM
+      threshold: LOW
+    # Cross-Site Scripting (Reflected)
+    - id: 40012
+      strength: MEDIUM
+      threshold: LOW
+    # Cross-Site Scripting (DOM)
+    - id: 40024
+      strength: MEDIUM
+      threshold: LOW
+    # Path Traversal
+    - id: 6
+      strength: MEDIUM
+      threshold: LOW
+    # Remote Code Execution - Shell Shock
+    - id: 90020
+      strength: HIGH
+      threshold: LOW
+    # Server Side Code Injection
+    - id: 90021
+      strength: HIGH
+      threshold: LOW
+    # Cross-Domain Misconfiguration
+    - id: 10098
+      strength: MEDIUM
+      threshold: LOW
+    # Content Security Policy Header Not Set
+    - id: 10038
+      strength: LOW
+      threshold: MEDIUM
+    # X-Content-Type-Options Header Missing
+    - id: 10021
+      strength: LOW
+      threshold: MEDIUM
+    # X-Frame-Options Header Not Set
+    - id: 10020
+      strength: LOW
+      threshold: MEDIUM
+    # Weak Authentication Method
+    - id: 10024
+      strength: MEDIUM
+      threshold: LOW
+    # Absence of Anti-CSRF Tokens
+    - id: 40014
+      strength: LOW
+      threshold: MEDIUM
+    # JWT vulnerabilities
+    - id: 40051
+      strength: MEDIUM
+      threshold: LOW
+    # Insecure HTTP Methods
+    - id: 90022
+      strength: MEDIUM
+      threshold: LOW

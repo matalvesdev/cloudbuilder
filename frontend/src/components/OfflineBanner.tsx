@@ -35,12 +35,12 @@ export function OfflineBanner() {
     if (dismissed || checking) return
     setChecking(true)
     try {
-      // Quick health check — auth endpoints are lightweight
+      // Health check via actuator endpoint (público, sem auth)
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 5000)
 
       // Use fetch directly to avoid HttpClient's error-throwing behavior
-      const res = await fetch(`${BASE_URL}/auth/me`, {
+      const res = await fetch(`${BASE_URL.replace('/api/v1', '')}/actuator/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,

@@ -3,12 +3,14 @@ package com.cloudbuilder.cost.infrastructure.web;
 import com.cloudbuilder.cost.domain.model.CostForecast;
 import com.cloudbuilder.cost.domain.service.CostForecastService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/cost-forecasts")
+@PreAuthorize("isAuthenticated()")
 public class CostForecastController {
 
     private final CostForecastService costForecastService;
@@ -33,6 +35,7 @@ public class CostForecastController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CostForecast> generate(
             @RequestParam String tenantId,
             @RequestParam String environmentId,

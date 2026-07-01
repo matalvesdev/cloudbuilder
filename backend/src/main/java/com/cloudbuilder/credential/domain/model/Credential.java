@@ -14,6 +14,9 @@ public class Credential {
     @Column(nullable = false)
     private String tenantId;
 
+    @Column(name = "organization_id")
+    private String organizationId;
+
     @Column(nullable = false)
     private String name;
 
@@ -51,6 +54,8 @@ public class Credential {
 
     public String getId() { return id; }
     public String getTenantId() { return tenantId; }
+    public String getOrganizationId() { return organizationId; }
+    public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
     public String getName() { return name; }
     public String getProvider() { return provider; }
     public String getAuthType() { return authType; }

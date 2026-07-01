@@ -1,7 +1,8 @@
 # ADR-020: Policy as Code with Open Policy Agent + Java Fallback
 
-**Status**: Proposed (Not Implemented)
-**Date**: 2026-06-21
+**Status**: ✅ Implemented (Phase 6B-9 FAANg Merge)
+**Date**: 2026-06-21  
+**Implemented**: 2026-06-24
 **Author**: Principal Architect Agent
 
 ## Context

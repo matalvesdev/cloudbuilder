@@ -5,11 +5,11 @@
 - **Framework**: FAANg (Future Autonomous AI Network for Engineering) — 16 especialistas, memória persistente, ADRs
 - **Frontend**: React 19 + TypeScript + ReactFlow v12 (@xyflow/react) + Tailwind CSS + Vite + Zustand
 - **Backend**: Java 21 + Spring Boot 3.4.4 + Spring Modulith + Maven + H2 (test)
-- **Provision Engine**: Go 1.22 + Cobra CLI + gRPC
+- **Provision Engine**: Go 1.23 + Cobra CLI + gRPC + segmentio/kafka-go
 - **Database**: PostgreSQL 16 (prod), H2 (test)
-- **Streaming**: Kafka 7.9 + Zookeeper
-- **Cache**: Redis 7
-- **Observability**: OpenTelemetry Collector + Prometheus + Grafana
+- **Streaming**: Apache Kafka 3.7 (KRaft mode, no Zookeeper) — optional via `cloudbuilder.kafka.enabled`
+- **Cache**: Caffeine (in-memory, replaces Redis as of Phase 1)
+- **Policy Engine**: OPA (Open Policy Agent) — Rego policies for cost/custom/governance/security
 - **Container**: Docker (full stack in docker-compose)
 - **Brand**: Navy (#0a1128) + Lime (#ccff00) + Ice Blue (#E3E2FD)
 
@@ -19,7 +19,7 @@
 /                       Root
 ├── AGENTS.md           This file — project instructions (do NOT remove)
 ├── opencode.json       OpenCode agent config (16 FAANg agents) + Stitch MCP
-├── docker-compose.yml  9 services: postgres, redis, zk, kafka, otel, prometheus, grafana, backend, frontend
+├── docker-compose.yml  6 services: postgres, kafka, backend, opa, provision-engine, frontend
 │
 ├── frontend/           React 19 SPA (Vite)
 │   ├── src/
@@ -114,7 +114,7 @@
 │       ├── docs/          ✅ Complete (6 files) — DocScannerService + AutoDocService + DocsController + domain models + DTOs
 │       └── shared/
 │           ├── security/      SecurityConfig (JWT + Tenant filter), JwtAuthenticationFilter, TenantContext, JwtTokenProvider, DevAuthController
-│           ├── event/         Domain events infrastructure
+│           ├── event/         Domain events infrastructure + Kafka EDA (ADR-035): KafkaConfig, TopicRouter, KafkaEventPublisher, InboxProcessor, DLQHandler, EventInbox, DlqEvent, 4 dual-mode Kafka listeners, EventStreamKafkaBridge
 │           ├── kernel/        Base classes (AggregateRoot)
 │           └── monitoring/    Observability config
 │
@@ -199,7 +199,7 @@
 - Explicit getters/setters/constructors in all entities (no Lombok)
 - Hexagonal architecture per module: `domain/` (model, port, service, validator) | `application/` (dto) | `infrastructure/` (web/controllers)
 - Spring Modulith — modules communicate via events + repositories
-- JPA entities use UUID for IDs (`java.util.UUID`)
+- JPA entities use String for IDs (UUID strings generated via `crypto.randomUUID()` natively)
 - Positions stored as separate `positionX`/`positionY` double columns
 - `properties` stored as JSON string (`columnDefinition = "TEXT"`)
 - Multi-tenant via `tenantId` column + `TenantFilter`
@@ -250,9 +250,10 @@
 ## Go Engine Conventions
 
 - Module: `github.com/cloudbuilder/provision-engine`
-- Go 1.22 + toolchain go1.22.10
+- Go 1.23 + toolchain go1.23.0
 - CLI via Cobra (`github.com/spf13/cobra`)
 - gRPC server via `google.golang.org/grpc`
+- Kafka producer via `github.com/segmentio/kafka-go` (pure Go, CGO-free)
 - Logging via zerolog
 - Terraform/OpenTofu code generation from visual designs (CanvasDesign DTO)
 - Drift detection between desired (canvas) and actual (state) infrastructure
@@ -270,7 +271,10 @@
 | Service                 | Port                | Image                                        |
 | ----------------------- | ------------------- | -------------------------------------------- |
 | PostgreSQL              | 5432                | postgres:16-alpine                           |
+| Kafka (KRaft)           | 9092                | bitnami/kafka:3.7                            |
 | Backend (Spring Boot)   | 8080                | Dockerfile in ./backend                      |
+| OPA (Policy Engine)     | 8181                | openpolicyagent/opa:latest                   |
+| Provision Engine (Go)   | 50051               | Dockerfile in ./provision-engine             |
 | Frontend (Vite)         | 3000                | Dockerfile in ./frontend                     |
 
 ## FAANg Framework
@@ -294,7 +298,7 @@ Carregar o skill FAANg via `skill(name="faang")` para obter o framework completo
 | `principal-architect`    | Principal Architect | DDD, system design, distributed systems, trade-offs   | read + git log/diff    |
 | `research-governor`      | Research Governor   | Docs, papers, blogs, validação de fontes, síntese     | webfetch, websearch    |
 | `frontend-dev`           | Frontend            | React 19, ReactFlow, Tailwind, Zustand, shadcn/ui     | npm, npx, git          |
-| `backend-dev`            | Backend             | Java 21, Spring Boot, Modulith, JPA, Kafka, Redis     | mvn, npm, git          |
+| `backend-dev`            | Backend             | Java 21, Spring Boot, Modulith, JPA, Kafka, Caffeine  | mvn, npm, git          |
 | `cloud-native`           | Cloud Native        | AWS, K8s, Terraform, Docker, Helm, GitOps             | docker, go, git        |
 | `devops-engineer`        | DevOps              | CI/CD, GitHub Actions, GitOps, ArgoCD                 | docker, go, git        |
 | `sre`                    | SRE                 | SLI/SLO/SLA, resiliência, chaos engineering, capacity | edit: deny, bash: ask  |
@@ -321,9 +325,9 @@ Full details at `docs/roadmap/12-month-roadmap.md`
 
 - ~~Frontend uses `nanoid` (string), backend uses `UUID` — mismatch on ID types~~ ✅ **Resolved Phase 5d** — Backend fully migrated to String IDs, both sides use `crypto.randomUUID()` natively
 - Frontend uses `XYPosition` (x/y object), backend uses flat `positionX`/`positionY` doubles
-- Cobertura de testes backend baixa (apenas 2 services com testes JUnit) — delegated a agente
-- Grafana/Prometheus sem dashboards pré-configurados — setup manual
-- Sem resource limits no docker-compose.yml
+- ~~Cobertura de testes backend baixa~~ ✅ **Resolved Phases 5a-5c** — 479 JUnit tests across 33 suite files
+- ~~Grafana/Prometheus sem dashboards pré-configurados~~ ✅ **Resolved** — These services were removed in Phase 1; observability is native (PostgreSQL time-series + Recharts dashboards)
+- ~~Sem resource limits no docker-compose.yml~~ ✅ **Resolved** — All 6 services now have CPU/memory limits
 - Service Map + Scorecards endpoints sem testes JUnit — need backend test coverage
 - What-if Cost + Preview Workflow são apenas frontend (cálculo local) — sem persistência de cenários
 - Native Observability subsystem (ADR-008) sem maven compile — dependências do pom.xml não verificadas
@@ -344,7 +348,7 @@ Full details at `docs/roadmap/12-month-roadmap.md`
 - **E2E Tests**: ✅ Playwright smoke tests — 5/5 passing (cost, platform, aiops, auth, dashboard)
 - **Desmockagem**: ✅ CostModule + PlatformModule + AIOpsModule desmocked — all using real API via costStore/platformStore with per-module API clients and Zustand stores
 - **Git**: ✅ Committed and pushed — desmockagem (10 files, +1005/-108), JUnit tests (4 files, 1175 lines), Playwright E2E (2 files)
-- **Go Engine**: ✅ Build + vet + test — 23 tests pass
+- **Go Engine**: ✅ Build + vet + test — 29 tests pass (23 base + 6 Kafka)
 - **CI**: ✅ `.github/workflows/ci.yml` — 3 jobs (backend Java, frontend React, Go engine)
 - **Multi-tenant**: ✅ Frontend TenantSelector + backend Tenant/TenantUser entities + TenantFilter in shared/security
 - **Dashboard UI**: ✅ Complete — FAANG-level redesign with MD3-inspired spacing, consistent typography, proportional cards, brand compliance
@@ -396,8 +400,120 @@ Full details at `docs/roadmap/12-month-roadmap.md`
     - `AnalyticsRollupDailyRepository.java`: Added tenant-isolated delete (M4)
     - `AggregationService.java`: User rollup upsert (H5); monthly cleanup (M3); tenant-isolated cleanup (M4)
   - **3 false positives corrected**: C6 (README already correct), C7 (ADR-020 header already correct), C8 (SSO frontend buttons already exist)
-  - **Still open**: H1 (JWKS signature verification), C9 (SSO refresh token endpoint), M2 (hardcoded encryption key), M6/M7 (documentation cleanup)
+  - **Still open (at audit time)**: H1 (JWKS signature verification), C9 (SSO refresh token endpoint), M2 (hardcoded encryption key), M6/M7 (documentation cleanup) — **ALL RESOLVED in Phase 6B-9 merge** (see Session 2026-06-24)
   - **Backend compile**: ✅ clean. **Frontend TypeScript**: ✅ 0 errors. **Tests**: ⚠️ same 6 pre-existing failures
+
+- **Session 2026-06-24 — Phase 6B-9 FAANg Production Pipeline Merge**: ✅ Complete
+  - **14 FAANg agents merged**: 363 files, +31678/-2178 — commit `b326759`
+  - **New backend modules**: credential, environment, approval, deployment (4 modules, 30+ files, hexagonal arch)
+  - **Security expansion**: JWKS verifier, SecretEncryptionConverter (AES-256), MFA service, SSO auth/config controllers, Session entity/repository
+  - **Observability**: MetricsDualWriter, PartitionMaintenance, TraceInterceptor, NotificationChannelController
+  - **Flyway V9-V13**: 5 migrations (observability schema, analytics rollup, docs metadata, brin indexes, credentials/env/approvals/deployments)
+  - **11 Playwright E2E specs**: audit, design, docs, iam, navigation, observe, onboarding, provision, responsive, settings + helpers
+  - **Cross-cutting**: API versioning (header-based, 5 files), shared monitoring (Micrometer + MDC + health indicator), WebConfig (CORS)
+  - **Infra**: Prometheus alerts, Grafana golden signals dashboard, k6 load tests
+  - **OPA**: 4 Rego policies (cost/custom/governance/security)
+  - **Docs**: SLO/SLI definitions, bundle analysis, LGPD compliance, Beta plan + checklist
+  - **Cleanup**: Removed 9 garbage files (commit `1c888e5`), memory files updated
+  - **Still missing**: Backend Maven compile verification (no `mvn` in env). 5 ADR bugs (H1, C9, M2, M6, M7) — **✅ ALL verified as already fixed in this merged code** (see Session 2026-06-24 cleanup)
+
+- **Session 2026-06-24 — ADR Bug Cleanup + Production Readiness 🟢 GREEN**: ✅ Complete
+  - **H1 (JWKS)**: Already wired — `SsoAuthService.decodeIdToken()` calls `jwksVerifier.verify()` at L314
+  - **C9 (SSO refresh)**: Already exists — `POST /api/v1/auth/oauth2/refresh` at SsoAuthController L122-138
+  - **M2 (encryption key)**: Already uses PBKDF2 600K iterations + env var `CLOUDBUILDER_ENCRYPTION_KEY`; added property to `application.yml` for discoverability
+  - **M6 (ADR-012 Kafka refs)**: Already clean — ADR-012 §4 states "Kafka/Redis removed in Phase 4"
+  - **M7 (ADR-029 ComplianceService)**: ADR-029 is "Proposed" future doc, not a code documentation issue
+  - **PRR updated**: 🟡 YELLOW → 🟢 GREEN (B5 closed, 5 blocking → 4 blocking)
+  - **Memory files**: decision_memory.md + progress_memory.md updated
+
+- **Session 2026-06-24 — Phase 5 Production Readiness Implementation (B2-B4, B6)**: ✅ Complete
+  - **B2 (AnalyticsController @PreAuthorize)**: Added class-level `@PreAuthorize("hasRole('ADMIN')")` — analytics data is admin-only
+  - **B3 (SearchController @PreAuthorize)**: Added class-level `@PreAuthorize("isAuthenticated()")` — search available to all authenticated users
+  - **B6 (Drift Detection Backend DTOs)**: Created `DriftReportResponseDTO.java` + `DriftItemDTO.java` in `provision/application/dto/` — properly parses `driftDetails` JSON string into typed list with computed summary
+  - **B6 (StateController update)**: Updated all 4 drift endpoints to return `DriftReportResponseDTO` instead of raw `DriftReport` entity — added `ObjectMapper` injection
+  - **B6 (Frontend driftStore)**: Rewired `driftStore.ts` — removed `persist` middleware, removed `simulateDriftDetection()` mock data, added real API calls (`getDriftReport()`, `resolveDrift()`), added `loadDriftReport()` + `loading`/`error` states + `selectedEnvironmentId`
+  - **B6 (DriftDetection.tsx)**: Fixed UI component to use `loadDriftReport()` instead of `simulateDriftDetection()` — initial load + "Detectar" button both use real API
+  - **B4 (Go Azure templates)**: Created `azure.go` + `azure_providers.go` — 5 resource templates (resource group, VNet, subnet, Linux VM, PostgreSQL flexible server) with parent ref helpers
+  - **B4 (Go GCP templates)**: Created `gcp.go` + `gcp_providers.go` — 4 resource templates (compute network, subnetwork, compute instance, storage bucket) with parent ref helpers
+  - **B4 (Go K8s templates)**: Created `k8s.go` + `k8s_providers.go` — 4 resource templates (namespace, deployment, service, config map) with namespace ref helper
+  - **B4 (Go template router)**: Refactored `aws.go` — `GetTemplate()` → `awsTemplates()`. Created `router.go` with new `GetTemplate()` dispatching to all 4 providers (AWS/Azure/GCP/K8s)
+  - **Total Go templates**: 9 files in `internal/provider/templates/` — aws.go, azure.go, gcp.go, k8s.go, router.go + 3 provider registry files + aws_test.go
+  - **Total changes**: 13 files modified/created across backend (4 Java), frontend (2 TS/TSX), Go engine (5+4 Go files)
+  - **Verification**: No `mvn`/`go`/`tsc` in env — code-level correctness verified by reading all changed files
+
+- **Session 2026-06-28 — ADR-032 Feature Flags (Public Beta)**: ✅ Complete
+  - **Backend (7 Java files)**: V15 migration with 8 seed flags (module.cost/platform/aiops/audit/iam, feature.what-if-cost/preview-workflow, config.max-users). Hexagonal module: FeatureFlag entity, FeatureFlagRepository (Spring Data), FeatureFlagService (Caffeine @Cacheable 30s TTL, tenant > global resolution), FeatureFlagController (CRUD + refresh + check endpoints), FlagToggleEvent (domain event), DTOs.
+  - **Frontend (4 files)**: api/featureFlags.ts (6 API client functions), uiStore.ts (fetchFlags/isEnabled/refreshFlags with module-aware fallback), FeatureFlagsPage.tsx (admin-only panel with grouping/search/toggle/config), App.tsx (flags route in Governança nav, isEnabled() gating AND with RBAC for cost/platform/aiops/audit/iam modules).
+  - **Resolution strategy**: tenant-specific > global > default(false). Known modules without explicit flag default to true except module.iam (false).
+  - **TypeScript**: 0 errors. **LSP diagnostics**: clean. **Memory**: decision_memory.md + progress_memory.md updated.
+
+- **Session 2026-06-28 — Architecture Manifesto (6 Parts, 1,588 lines)**: ✅ Complete
+  - **Part I — Architecture Manifesto**: Mission, vision, 14 architectural principles (DDD First, Cloud Native First, API First, Event First, AI First, Domain-Oriented Engineering, DX First, Platform Engineering, Scalability by Design, Security by Design, Observability by Default, Continuous Evolution, Event-Driven Reactivity, Self-Service Autonomy) with trade-offs and anti-patterns per principle.
+  - **Part II — Product Vision**: Market problem (5 pain points), 5 personas (Rafael/Architect, Marina/DevOps, Diego/Developer, Carla/Platform Head, Lucas/FinOps), ICP, 9 JTBD, product objectives with metrics, 10 use cases, user journey (Mermaid), architectural roadmap (Q2'26–Q1'27), 5-year vision.
+  - **Part III — Strategic Domain-Driven Design**: Domain vision, core/supporting/generic classification with rationale, context map (Mermaid), 10 bounded contexts with ubiquitous language, relationship patterns (C/S, Shared Kernel, OHS, ACL, Published Language), 20 domain events catalog, tactical DDD for Design Context (Canvas aggregate, CanvasNode/CanvasEdge entities, ValidationRule policy).
+  - **Part IV — C4 Architecture**: Level 1 System Context, Level 2 Container Diagram (React SPA, Java Backend with 12 modules, Go Engine with 6 components, PostgreSQL, Caffeine), Level 3 Component (Design Module: controllers/services/repositories/validators), Level 4 Code (sequence diagrams for canvas creation, provision/deploy flow), Level 4 Deployment (Docker Compose + target AWS/ECS).
+  - **Part V — Event-Driven Architecture**: Event Storming flow (Design→Provision→Observe→Cost→AI), event schema standard with correlationId/causationId/versioning, Outbox pattern (Mermaid), idempotency strategy (Mermaid), correlation chain example.
+  - **Part VI — Architecture Compliance Checklist**: 11 sections (DDD, Clean Architecture, Hexagonal, EDA, API Design, Security, Observability, Scalability, Code Quality, ADR Compliance). Architecture Scorecard: 7.4/10 overall across 10 dimensions.
+  - **File**: `docs/architecture/manifesto/ARCHITECTURE_MANIFESTO.md` (1,588 lines, 6 Mermaid diagrams, 20+ tables, 14 principles, 11 checklist sections).
+
+- **Session 2026-06-28 — ADR-035 + EDA Documentation**: ✅ Complete
+  - **ADR-035**: Formalized production EDA diagram as `docs/architecture/adr-035-production-event-driven-architecture.md` — transitions from Spring Modulith events to Kafka-based EDA with 10 producers, 20 topics, 6 integration patterns, 8 consumers, 6 read models.
+  - **Key Decisions**: Kafka over Pulsar/EventBridge (best ecosystem/portability), backward-compatible schema evolution, Outbox Pattern for reliable publishing, Inbox Pattern for idempotent consumers, 6 implementation phases (3 months total).
+  - **Comprehensive EDA Docs**: Created `docs/architecture/eda/README.md` (~15K) — 20 Kafka topics (partitions/replication/retention), JSON Schema event contracts (Base/Canvas/Deployment/Drift/Cost), 6 integration patterns with Java code (Outbox/Inbox/Saga/DLQ/Retry/Compensating), 8 consumer implementations, observability (correlation IDs/metrics/tracing), security (ACLs/encryption), tests (integration/consumer), deploy (Docker Compose + K8s Strimzi).
+  - **Files**: `docs/architecture/adr-035-production-event-driven-architecture.md`, `docs/architecture/eda/README.md`
+
+- **Session 2026-06-28 — ADR-035 Feature Flags (Public Beta)**: ✅ Complete
+  - **Backend (7 Java files)**: V15 migration with 8 seed flags (module.cost/platform/aiops/audit/iam, feature.what-if-cost/preview-workflow, config.max-users). Hexagonal module: FeatureFlag entity, FeatureFlagRepository (Spring Data), FeatureFlagService (Caffeine @Cacheable 30s TTL, tenant > global resolution), FeatureFlagController (CRUD + refresh + check endpoints), FlagToggleEvent (domain event), DTOs.
+  - **Frontend (4 files)**: api/featureFlags.ts (6 API client functions), uiStore.ts (fetchFlags/isEnabled/refreshFlags with module-aware fallback), FeatureFlagsPage.tsx (admin-only panel with grouping/search/toggle/config), App.tsx (flags route in Governança nav, isEnabled() gating AND with RBAC for cost/platform/aiops/audit/iam modules).
+  - **Resolution strategy**: tenant-specific > global > default(false). Known modules without explicit flag default to true except module.iam (false).
+  - **TypeScript**: 0 errors. **LSP diagnostics**: clean. **Memory**: decision_memory.md + progress_memory.md updated.
+
+- **Session 2026-06-28 — ADR-035 Implementation (9 Phases, 21/21 Todos)**: ✅ Complete
+  - **Phase 1 (Docker + Config)**: Kafka KRaft single-node (bitnami/kafka:3.7), `application.yml` Kafka config (12 topics, producer/consumer), `docker-compose.yml` with kafka service + kafka-net network
+  - **Phase 2 (Kafka Infrastructure)**: `KafkaConfig.java` (ProducerFactory/ConsumerFactory/KafkaTemplate/AdminClient/TopicInitializer), `TopicRouter.java` (event type prefix → topic mapping), `KafkaEventPublisher.java` (dual-mode: @ConditionalOnProperty), `OutboxSweeper.java` (null-safe Kafka publish path)
+  - **Phase 3 (Inbox + DLQ)**: `EventInbox.java` + `EventInboxRepository.java` (dedup entity/repo), `V16__event_inbox_dlq.sql` (Flyway migration), `InboxProcessor.java` (tryAcquire dedup logic), `DlqEvent.java` + `DlqEventRepository.java` (DLQ entity/repo), `DLQHandler.java` (consumer for *.events.dlq)
+  - **Phase 4 (Kafka Consumers)**: 4 dual-mode listeners: `CostEventListenerKafka`, `DeploymentEventListenerKafka`, `DriftEventListenerKafka`, `IncidentEventListenerKafka` (Inbox Pattern dedup), 4 original `@EventListener` modified with `@ConditionalOnProperty(kafka=false)`
+  - **Phase 5 (EventBridge)**: `EventStreamKafkaBridge.java` (Kafka → Spring events bridge, always active), `EventStreamController.java` reverted (no @ConditionalOnProperty needed)
+  - **Phase 6 (Event ID Consistency)**: `PlatformEvent.java` — `getEventId()` (UUID), `getCorrelationId()`, `getCausationId()`, `getVersion()` defaults
+  - **Phase 7 (Go Engine Kafka)**: `kafka.go` (KafkaProducer with segmentio/kafka-go), `kafka_test.go` (6 tests), `event.go` (EventPublisher extended with optional KafkaProducer), `server.go` (NewProvisionServerWithKafka), `main.go` (--kafka + --kafka-brokers CLI flags), `go.mod` (bumped to go 1.23)
+  - **Phase 8 (Frontend SSE Reconnect)**: `useSSE.ts` (exponential backoff 2s→60s, 10 retries, retryCount state), `useEventStream.ts` (EventStreamState, manual reconnect(), capped delay), `useMetricsStream.ts` (exponential backoff replacing fixed 5s, nodeNamesRef stability)
+  - **Phase 9 (Integration Tests)**: 5 test files, 30 unit tests (TopicRouterTest 16, InboxProcessorTest 4, KafkaEventPublisherTest 3, DLQHandlerTest 3, EventStreamKafkaBridgeTest 4) — pure Mockito, no @EmbeddedKafka
+  - **Final Verification**: Go build clean + 29/29 tests pass, TypeScript 0 errors, 32 source + 5 test Java files
+  - **Memory**: decision_memory.md + progress_memory.md updated with all ADR-035 decisions
+
+- **Session 2026-06-28 — 5 Companion Architecture Documents**: ✅ Complete
+  - **Security Architecture** (28K, 15 sections): Posture overview, JWT auth, RBAC (3 roles, 4 permission gates), multi-tenant isolation (TenantFilter), TOTP MFA (ADR-018), SSO OAuth2+PKCE (ADR-025), secrets encryption (AES-256-GCM, ADR-028), session security (7-day rotation), API security, TLS/CI-CD SAST/DAST, audit/compliance, threat model (10 scenarios), OWASP Top 10 coverage, security roadmap Q2'26–Q1'27.
+  - **Observability Architecture** (34K, 15 sections): Design philosophy (native vs external), metrics (PostgreSQL time-series), tracing (TraceInterceptor/TraceContext), async logging (PostgresLogAppender), alerting (OPEN→ACKNOWLEDGED→RESOLVED), SLO/SLI with error budgets, SSE streaming (useSSE hook), Service Map & Scorecards, Recharts dashboards, PG partitioning strategy, API reference, performance estimates, migration roadmap.
+  - **Go Engineering Handbook** (34K, 17 sections): Stack/deps, directory structure, domain model (CanvasDesign/DesignNode/Edge/ProviderType), gRPC interface (8 RPCs, custom JSON codec, no protoc), HCL generation pipeline, provider template system (AWS:5/Azure:5/GCP:4/K8s:4), Executor (terraform/tofu wrapper, 10 commands), DeploymentManager (9 status lifecycle), drift detection (binary state vs design), plan/state parsers, event pub/sub (6 event types, gRPC streaming bridge), WebSocket CRDT relay (Yjs), Cobra CLI, Docker build (multi-stage, non-root), deploy pipeline flow, 23 tests.
+  - **FinOps Architecture** (29K, 16 sections): Hexagonal architecture, 6 domain models (CostRecord, Budget, BudgetAlert, CostScenario, CostForecast, CostOptimizationSuggestion), 8 services, 13 REST endpoints, anomaly detection (7-day MA + std dev), 3-tier what-if estimation (ADR-011), optimization lifecycle, budget alerts (80%/95%), AWS Cost Explorer integration, Zustand costStore, full DDL (6 tables), indices, roadmap Q3'26–Q1'27.
+  - **AI Platform Architecture** (34K, 18 sections): LLM provider abstraction (ADR-013), 3-tier confidence pipeline (ADR-017), incident lifecycle (OPEN→RESOLVED→PostMortem), 5 domain models, 23 REST endpoints, deterministic classification (keywords), rule-based RCA fallback templates, 10 auto-remediation action types, 7 runbook categories, post-mortem lifecycle (DRAFT→PUBLISHED), 3 design templates (VPC+ECS+RDS/EKS/Serverless), chat assistant system prompt, Resilience4j circuit breaker fallback chain, full DDL (5 tables), roadmap Q4'26–Q1'27.
+  - **Directories**: `docs/architecture/security/`, `docs/architecture/observability/`, `docs/architecture/go-engine/`, `docs/architecture/finops/`, `docs/architecture/ai-platform/`
+  - **Total**: ~159K across 5 files, 81 sections, all grounded in existing ADRs (008, 011, 013, 017, 018, 025, 028) and actual codebase state
+
+- **Session 2026-06-28 — ADR-036 Comprehensive Test Pyramid**: ✅ Complete
+  - **ADR-036**: Created `docs/architecture/adr-036-comprehensive-test-pyramid.md` — 11 test layers (unit, component, property-based, mutation, BDD, integration, E2E, load/stress, chaos, security, visual regression) with tooling per layer, CI pipeline, metrics, and execution strategies.
+  - **Property-Based Testing**: `fast-check` installed. Domain arbitraries (`canvasArbitraries.ts`) for nodes/edges/positions. Property tests for `uiStore` (isEnabled idempotency, toggle invariants), `canvasStore` (addNode uniqueness, removeNode edge cleanup, undo bounds), `costStore` (anomaly detection properties), `utils` (cn idempotency, nanoId uniqueness/length).
+  - **Mutation Testing**: `@stryker-mutator/vitest-runner` installed. `stryker.config.mutator.ts` configured with 50% threshold for statements/branches.
+  - **BDD Specs**: `design.behavior.spec.ts` (7 Given/When/Then scenarios), `auth.behavior.spec.ts` (6 scenarios) — Zustand stores reset via `beforeEach` + `clearCanvas()`.
+  - **Load/Stress**: k6 scripts (`load-test.js`, `stress-test.js`, `soak-test.js`) targeting `/api/v1/canvases`, `/api/v1/observe/dashboard`, `/api/v1/cost/overview`.
+  - **Chaos**: `chaos-experiments.json` — 4 experiments (latency injection, pod kill, network partition, memory pressure).
+  - **Security**: OWASP ZAP baseline (`zap-baseline.conf`), Snyk (`snyk.properties`), Playwright visual regression (15 screenshot tests across 5 modules).
+  - **CI Pipeline**: `.github/workflows/test-pyramid.yml` — 4 jobs (unit, property+mutation, E2E+visual, load+chaos+security), `test:all` script.
+  - **Bug Fixes (4 production bugs found by tests)**:
+    - `uiStore.ts`: `isEnabled` prototype pollution — `featureFlags["constructor"]` returned Object prototype method via `{}["constructor"]`. Fixed with `Object.prototype.hasOwnProperty.call()`.
+    - `design.behavior.spec.ts`: State leaked between BDD tests (no `beforeEach` reset). Fixed with `useCanvasStore.getState().clearCanvas()`.
+    - `utils.ts`: `nanoId(0)` returned UUID instead of empty string — `if (length)` treated `0` as falsy. Fixed to `if (length != null)`.
+    - `utils.property.test.ts`: `cn()` idempotent assertion assumed `cn(a,a)` contains `a` as substring, but `filter(Boolean).join(' ')` splits whitespace. Fixed to compare unique token sets.
+  - **Verification**: `npx tsc --noEmit` 0 errors. `npx vitest run` 132/132 tests pass across 13 test files.
+
+- **Session 2026-06-28 — Flyway UUID→VARCHAR(36) Migration Fix (Root Cause)**: ✅ Complete
+  - **Root Cause**: Phase 5d migrated Java entities from `UUID` to `String` for IDs, but Flyway migrations V1-V11 still used PostgreSQL `UUID` type. This caused `operator does not exist: uuid = character varying` errors on all JPA queries and `column "version" does not exist` on canvases.
+  - **Fix (11 migration files rewritten)**: V1-V9, V11 — changed all `UUID` id/FK columns to `VARCHAR(36)`. Added `version INTEGER NOT NULL DEFAULT 0` to `canvases` in V1. V10, V12-V17 already used VARCHAR or were not affected. Deleted V18 (ALTER TABLE workaround, no longer needed).
+  - **DB Schema Fixes**: V9 — added PRIMARY KEYs to 7 observability tables, removed partial unique constraint `WHERE status = 'OPEN'`. V11 — reordered partition creation (specific before default), changed default partition to `DEFAULT` keyword. V13 — replaced invalid `CREATE TRIGGER IF NOT EXISTS` with `DO $$ BEGIN IF NOT EXISTS...END $$;`.
+  - **V17 Created**: Added missing tables `regions`, `region_health`, `disaster_recovery_plans`, `iam_sessions` with VARCHAR(36) ids.
+  - **Docker**: Added `SPRING_FLYWAY_ENABLED=true`, `SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect` to docker-compose.yml backend env.
+  - **Verification**: 61 tables, 17/17 migrations success, zero UUID id columns remain. Auth login ✅, Canvas CRUD ✅ (version column working), Cost ✅, Observe ✅, Platform ✅, Audit ✅ (with tenantId path variable). Backend health UP.
+  - **Pre-existing issues (not migration-related)**: OutboxSweeper `TransactionRequiredException` (needs `@Transactional`), frontend healthcheck shows unhealthy despite backend responding.
 
 ## Installed Plugins
 

@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # Copy sources and build
 COPY src src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -DskipTests -q
+    mvn package -DskipTests -Dmaven.test.skip=true -q
 
 # ─── Stage 2: Extract Layered JAR ────────────────────────────────────────
 # Spring Boot fat-jar → extracted layers for efficient Docker caching.
@@ -40,6 +40,9 @@ RUN addgroup -S cloudbuilder && \
     apk add --no-cache curl
 
 WORKDIR /app
+
+# Create logs directory for Logback file appender (owned by cloudbuilder user)
+RUN mkdir -p /app/logs && chown cloudbuilder:cloudbuilder /app/logs
 
 # Copy extracted layers in dependency order (maximises layer caching)
 COPY --from=layers /app/dependencies/ ./
