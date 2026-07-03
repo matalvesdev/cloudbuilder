@@ -676,14 +676,27 @@ export function SettingsModule() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {visibleSections.map((section) => (
-            <button key={section.id} onClick={() => setTab(section.id as SettingsTab)}
-              className={cn('w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all',
-                tab === section.id ? 'bg-brand-navy text-brand-lime' : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy')}>
-              <section.icon className="w-4 h-4 shrink-0" />
-              <span className="truncate">{section.label}</span>
-            </button>
-          ))}
+          {visibleSections.map((section) => {
+            const badge = section.id === 'credentials' && credentials.length > 0 ? credentials.length
+              : section.id === 'environments' && environments.length > 0 ? environments.length
+              : section.id === 'api-tokens' ? null
+              : section.id === 'ssh-keys' ? null : null
+
+            return (
+              <button key={section.id} onClick={() => setTab(section.id as SettingsTab)}
+                className={cn('w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all',
+                  tab === section.id ? 'bg-brand-navy text-brand-lime' : 'text-slate-600 hover:bg-slate-50 hover:text-brand-navy')}>
+                <section.icon className="w-4 h-4 shrink-0" />
+                <span className="truncate flex-1">{section.label}</span>
+                {badge !== null && badge !== undefined && badge > 0 && (
+                  <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center',
+                    tab === section.id ? 'bg-brand-lime/20 text-brand-lime' : 'bg-slate-100 text-slate-500')}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
         {/* Setup Progress */}
         {isAdmin && (
