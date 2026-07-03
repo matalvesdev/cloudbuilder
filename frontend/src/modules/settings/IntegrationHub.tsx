@@ -93,6 +93,8 @@ export function IntegrationHub() {
   const [healthChecking, setHealthChecking] = useState<string | null>(null)
   const [providerPage, setProviderPage] = useState(1)
   const [providerSearch, setProviderSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'name' | 'date'>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const PROVIDERS_PER_PAGE = 8
 
   const fetchData = useCallback(async () => {
@@ -218,9 +220,28 @@ export function IntegrationHub() {
       {/* Provider List */}
       {activeCategory && (() => {
         const catProviders = CATEGORIES.find(c => c.id === activeCategory)?.providers || []
-        const filtered = providerSearch
+        let filtered = providerSearch
           ? catProviders.filter(p => (PROVIDER_NAMES[p] || p).toLowerCase().includes(providerSearch.toLowerCase()) || p.toLowerCase().includes(providerSearch.toLowerCase()))
-          : catProviders
+          : [...catProviders]
+
+        // Sort by name
+        filtered.sort((a, b) => {
+          const nameA = (PROVIDER_NAMES[a] || a).toLowerCase()
+          const nameB = (PROVIDER_NAMES[b] || b).toLowerCase()
+          return sortDir === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
+        })
+
+        // Sort by date (connected first, then by creation date)
+        if (sortBy === 'date') {
+          filtered.sort((a, b) => {
+            const intA = integrations.find(i => i.providerId === a)
+            const intB = integrations.find(i => i.providerId === b)
+            const dateA = intA ? new Date(intA.createdAt).getTime() : 0
+            const dateB = intB ? new Date(intB.createdAt).getTime() : 0
+            return sortDir === 'asc' ? dateA - dateB : dateB - dateA
+          })
+        }
+
         const totalPages = Math.ceil(filtered.length / PROVIDERS_PER_PAGE)
         const paginatedProviders = filtered.slice((providerPage - 1) * PROVIDERS_PER_PAGE, providerPage * PROVIDERS_PER_PAGE)
 
@@ -234,9 +255,9 @@ export function IntegrationHub() {
             <button onClick={() => { setActiveCategory(null); setProviderPage(1); setProviderSearch('') }} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
           </div>
 
-          {/* Search Input */}
-          <div className="mb-3">
-            <div className="relative">
+          {/* Search + Sort Controls */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input type="text" value={providerSearch} onChange={(e) => { setProviderSearch(e.target.value); setProviderPage(1) }}
                 placeholder="Buscar provedor..."
@@ -247,6 +268,19 @@ export function IntegrationHub() {
                   <X className="w-3 h-3" />
                 </button>
               )}
+            </div>
+            {/* Sort Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => { setSortBy('name'); setSortDir(sortBy === 'name' && sortDir === 'asc' ? 'desc' : 'asc') }}
+                className={cn('px-2 h-8 rounded-lg text-[10px] font-semibold border transition-all flex items-center gap-1',
+                  sortBy === 'name' ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300')}>
+                A-Z {sortBy === 'name' && (sortDir === 'asc' ? '↑' : '↓')}
+              </button>
+              <button onClick={() => { setSortBy('date'); setSortDir(sortBy === 'date' && sortDir === 'asc' ? 'desc' : 'asc') }}
+                className={cn('px-2 h-8 rounded-lg text-[10px] font-semibold border transition-all flex items-center gap-1',
+                  sortBy === 'date' ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300')}>
+                Data {sortBy === 'date' && (sortDir === 'asc' ? '↑' : '↓')}
+              </button>
             </div>
           </div>
 
