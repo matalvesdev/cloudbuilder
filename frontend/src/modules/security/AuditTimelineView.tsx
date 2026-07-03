@@ -76,22 +76,30 @@ function ExportButton({ format, params }: { format: 'csv' | 'json'; params: Audi
   const handleExport = useCallback(async () => {
     setLoading(true)
     try {
-      let blob: Blob
       if (format === 'csv') {
-        blob = await auditApi.exportCsv(tenantId, params)
+        const blob = await auditApi.exportCsv(tenantId, params)
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.csv`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
       } else {
-        blob = await auditApi.exportJson(tenantId, params)
+        const data = await auditApi.exportJson(tenantId, params)
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
       }
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.${format}`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
     } catch {
-      // Silent fail — export pode falhar sem feedback visual agressivo
+      // Silent fail
     } finally {
       setLoading(false)
     }
