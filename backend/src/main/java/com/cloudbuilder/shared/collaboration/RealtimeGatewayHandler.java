@@ -111,15 +111,26 @@ public class RealtimeGatewayHandler extends TextWebSocketHandler {
 
     private String extractRoomId(WebSocketSession session) {
         try {
-            var variables = UriComponentsBuilder.fromUri(session.getUri()).build().getPathSegments();
-            // URL pattern: /ws/{roomId}
+            var uri = UriComponentsBuilder.fromUri(session.getUri()).build();
+            var variables = uri.getPathSegments();
+
+            // URL pattern: /ws/{roomId} or /ws?roomId=xxx
             if (variables.size() >= 2) {
                 return variables.get(1);
             }
+
+            // Fallback: check query parameter ?roomId=xxx
+            String queryRoomId = uri.getQueryParams().getFirst("roomId");
+            if (queryRoomId != null && !queryRoomId.isBlank()) {
+                return queryRoomId;
+            }
+
+            // Default room for connections without explicit roomId
+            return "default";
         } catch (Exception e) {
             log.error("Failed to extract roomId from session URI", e);
         }
-        return null;
+        return "default";
     }
 
     /**

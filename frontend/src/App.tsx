@@ -186,7 +186,7 @@ function App() {
 
   const { projects, activeProjectId, switchProject, getActiveProject } = useTenantStore()
   const { progress, hasSeenWelcome, setStage, skipOnboarding, markTourCompleted, resetToWelcome } = useOnboardingStore()
-  const { credentials, environments } = useCredentialStore()
+  const { credentials, environments, fetchCredentials } = useCredentialStore()
   const { connectedRepos } = useRepoStore()
   const [showProjectMenu, setShowProjectMenu] = useState(false)
   const [showSetupPopover, setShowSetupPopover] = useState(false)
@@ -251,12 +251,13 @@ function App() {
     checkAuth()
   }, [checkAuth])
 
-  // Fetch feature flags after authentication
+  // Fetch feature flags and credentials after authentication
   useEffect(() => {
     if (isAuthenticated) {
       fetchFlags()
+      fetchCredentials()
     }
-  }, [isAuthenticated, fetchFlags])
+  }, [isAuthenticated, fetchFlags, fetchCredentials])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -74,7 +74,7 @@ export function GatewaySetup({ onComplete, onSkip }: GatewaySetupProps) {
   const [stateBackendType, setStateBackendType] = useState<StateBackendType>('s3')
 
   const { setRepoConfig, completeStep, setStage } = useOnboardingStore()
-  const { addCredential, addEnvironment, testCredential, credentials } = useCredentialStore()
+  const { createCredential, addCredential, addEnvironment, testCredential, credentials } = useCredentialStore()
   const { setActiveModule } = useUiStore()
 
   const steps = stepLabels.length
@@ -89,7 +89,7 @@ export function GatewaySetup({ onComplete, onSkip }: GatewaySetupProps) {
     }
   }, [step, repoUrl, provider, keyId, secret, region, envName])
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (step === 0) {
       const config: RepoConfig = { url: repoUrl, branch: repoBranch, provider: repoProvider, detectedIaC: [] }
       setRepoConfig(config)
@@ -99,13 +99,26 @@ export function GatewaySetup({ onComplete, onSkip }: GatewaySetupProps) {
       completeStep('provider')
     }
     if (step === 2 && canGoNext()) {
-      addCredential({
+      // Try API-backed persistence first, fall back to local
+      const tenantId = localStorage.getItem('cloudbuilder-active-tenant') || 'default'
+      const result = await createCredential({
         name: credName || `Credencial ${provider}`,
         provider: provider!,
         keyId,
         secret,
         region,
+        tenantId,
       })
+      if (!result) {
+        // Fallback to local if API fails
+        addCredential({
+          name: credName || `Credencial ${provider}`,
+          provider: provider!,
+          keyId,
+          secret,
+          region,
+        })
+      }
       completeStep('credential')
       setTimeout(() => {
         const allCreds = useCredentialStore.getState().credentials
@@ -114,7 +127,7 @@ export function GatewaySetup({ onComplete, onSkip }: GatewaySetupProps) {
       }, 0)
     }
     if (step < steps - 1) { setStep((s) => s + 1); setTestResult('idle') }
-  }, [step, canGoNext, repoUrl, repoBranch, repoProvider, provider, credName, keyId, secret, region, addCredential, testCredential, steps, setRepoConfig, completeStep])
+  }, [step, canGoNext, repoUrl, repoBranch, repoProvider, provider, credName, keyId, secret, region, createCredential, addCredential, testCredential, steps, setRepoConfig, completeStep])
 
   const handleBack = useCallback(() => {
     if (step > 0) setStep((s) => s - 1)

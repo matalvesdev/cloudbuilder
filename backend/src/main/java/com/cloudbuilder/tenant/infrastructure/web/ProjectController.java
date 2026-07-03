@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController
+@RestController("tenantProjectController")
 @RequestMapping("/api/v1/projects")
 @Validated
 @PreAuthorize("isAuthenticated()")

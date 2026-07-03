@@ -64,7 +64,7 @@ public class InvitationService {
         }
 
         // Create membership
-        membershipService.createMembership(invitation.getOrganizationId(), userId, invitation.getRole());
+        membershipService.inviteMember(invitation.getOrganizationId(), userId, invitation.getRole());
 
         // Mark invitation as accepted
         invitation.setStatus(InvitationStatus.ACCEPTED);

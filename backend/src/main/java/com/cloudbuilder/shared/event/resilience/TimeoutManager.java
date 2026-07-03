@@ -3,6 +3,7 @@ package com.cloudbuilder.shared.event.resilience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -49,7 +50,7 @@ public class TimeoutManager {
             if (cause instanceof RuntimeException) {
                 throw (RuntimeException) cause;
             }
-            throw new ExecutionException("Step '" + stepName + "' failed", cause);
+            throw new RuntimeException("Step '" + stepName + "' failed", cause);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RetryManager.RetryInterruptedException(e);

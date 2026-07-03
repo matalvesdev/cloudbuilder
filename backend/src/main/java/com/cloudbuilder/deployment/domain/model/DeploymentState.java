@@ -1,5 +1,7 @@
 package com.cloudbuilder.deployment.domain.model;
 
+import com.cloudbuilder.deployment.domain.service.DeploymentStateMachine;
+
 /**
  * Deployment lifecycle states with validated transitions.
  *

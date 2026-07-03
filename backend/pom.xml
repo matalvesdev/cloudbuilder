@@ -121,13 +121,6 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
-        <!-- Apicurio Schema Registry — Contract Evolution (ADR-038) -->
-        <dependency>
-            <groupId>io.apicurio</groupId>
-            <artifactId>apicurio-registry-serdes-jsonschema</artifactId>
-            <version>2.6.2</version>
-        </dependency>
-
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
