@@ -3,7 +3,7 @@ import {
   Link, Cloud, GitBranch, Box, Zap, Database, Bell, Shield, Lock,
   Activity, Brain, Settings, CheckCircle2, XCircle, AlertTriangle,
   Loader2, Plus, Trash2, RefreshCw, ChevronRight, Eye, ExternalLink,
-  Copy, Key, Fingerprint, Server, Globe, ChevronLeft,
+  Copy, Key, Fingerprint, Server, Globe, ChevronLeft, Search, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { integrationApi, type IntegrationDTO, type ProviderInfo } from '@/api/integrations'
@@ -92,6 +92,7 @@ export function IntegrationHub() {
   const [showDetail, setShowDetail] = useState<string | null>(null)
   const [healthChecking, setHealthChecking] = useState<string | null>(null)
   const [providerPage, setProviderPage] = useState(1)
+  const [providerSearch, setProviderSearch] = useState('')
   const PROVIDERS_PER_PAGE = 8
 
   const fetchData = useCallback(async () => {
@@ -217,20 +218,45 @@ export function IntegrationHub() {
       {/* Provider List */}
       {activeCategory && (() => {
         const catProviders = CATEGORIES.find(c => c.id === activeCategory)?.providers || []
-        const totalPages = Math.ceil(catProviders.length / PROVIDERS_PER_PAGE)
-        const paginatedProviders = catProviders.slice((providerPage - 1) * PROVIDERS_PER_PAGE, providerPage * PROVIDERS_PER_PAGE)
+        const filtered = providerSearch
+          ? catProviders.filter(p => (PROVIDER_NAMES[p] || p).toLowerCase().includes(providerSearch.toLowerCase()) || p.toLowerCase().includes(providerSearch.toLowerCase()))
+          : catProviders
+        const totalPages = Math.ceil(filtered.length / PROVIDERS_PER_PAGE)
+        const paginatedProviders = filtered.slice((providerPage - 1) * PROVIDERS_PER_PAGE, providerPage * PROVIDERS_PER_PAGE)
 
         return (
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h5 className="text-sm font-bold text-brand-navy">
               {CATEGORIES.find(c => c.id === activeCategory)?.label}
-              <span className="ml-2 text-[10px] text-slate-400 font-normal">({catProviders.length} provedores)</span>
+              <span className="ml-2 text-[10px] text-slate-400 font-normal">({filtered.length} provedores)</span>
             </h5>
-            <button onClick={() => { setActiveCategory(null); setProviderPage(1) }} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
+            <button onClick={() => { setActiveCategory(null); setProviderPage(1); setProviderSearch('') }} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
           </div>
+
+          {/* Search Input */}
+          <div className="mb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input type="text" value={providerSearch} onChange={(e) => { setProviderSearch(e.target.value); setProviderPage(1) }}
+                placeholder="Buscar provedor..."
+                className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime/20 focus:border-brand-navy transition-all" />
+              {providerSearch && (
+                <button onClick={() => { setProviderSearch(''); setProviderPage(1) }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2">
-            {paginatedProviders.map((providerId) => {
+            {paginatedProviders.length === 0 ? (
+              <div className="text-center py-6">
+                <Search className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">Nenhum provedor encontrado</p>
+              </div>
+            ) : paginatedProviders.map((providerId) => {
               const connected = integrations.find(i => i.providerId === providerId && i.status === 'CONNECTED')
               const health = connected ? HEALTH_CONFIG[connected.healthStatus] || HEALTH_CONFIG.UNKNOWN : null
               return (
@@ -284,7 +310,7 @@ export function IntegrationHub() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
               <p className="text-[10px] text-slate-400">
-                Mostrando {(providerPage - 1) * PROVIDERS_PER_PAGE + 1}–{Math.min(providerPage * PROVIDERS_PER_PAGE, catProviders.length)} de {catProviders.length}
+                Mostrando {(providerPage - 1) * PROVIDERS_PER_PAGE + 1}–{Math.min(providerPage * PROVIDERS_PER_PAGE, filtered.length)} de {filtered.length}
               </p>
               <div className="flex items-center gap-1">
                 <button onClick={() => setProviderPage(p => Math.max(1, p - 1))} disabled={providerPage === 1}
