@@ -582,28 +582,78 @@ function SSHKeysSection() {
 }
 
 function IntegrationsSection() {
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+
+  const categories = [
+    { id: 'source-control', label: 'Source Control', icon: GitBranch, color: 'text-purple-500', bg: 'bg-purple-50', providers: ['GitHub', 'GitLab', 'Bitbucket', 'Azure DevOps', 'Gitea', 'Forgejo'] },
+    { id: 'cloud', label: 'Cloud Providers', icon: Cloud, color: 'text-amber-500', bg: 'bg-amber-50', providers: ['AWS', 'Azure', 'GCP', 'DigitalOcean', 'Vercel'] },
+    { id: 'kubernetes', label: 'Kubernetes', icon: Box, color: 'text-blue-500', bg: 'bg-blue-50', providers: ['EKS', 'AKS', 'GKE', 'OpenShift', 'K3s'] },
+    { id: 'registry', label: 'Container Registry', icon: Database, color: 'text-green-500', bg: 'bg-green-50', providers: ['Docker Hub', 'GHCR', 'ECR', 'ACR', 'Harbor'] },
+    { id: 'cicd', label: 'CI/CD', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-50', providers: ['GitHub Actions', 'GitLab CI', 'CircleCI', 'Jenkins', 'Argo'] },
+    { id: 'databases', label: 'Databases', icon: Database, color: 'text-cyan-500', bg: 'bg-cyan-50', providers: ['Supabase', 'Neon', 'PlanetScale', 'MongoDB Atlas', 'Redis'] },
+    { id: 'messaging', label: 'Messaging', icon: Bell, color: 'text-pink-500', bg: 'bg-pink-50', providers: ['Kafka', 'RabbitMQ', 'SQS', 'PubSub', 'NATS'] },
+    { id: 'monitoring', label: 'Monitoring', icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50', providers: ['Datadog', 'Grafana', 'New Relic', 'Sentry'] },
+    { id: 'identity', label: 'Identity', icon: Shield, color: 'text-indigo-500', bg: 'bg-indigo-50', providers: ['Auth0', 'Okta', 'Keycloak', 'Google Workspace'] },
+    { id: 'secrets', label: 'Secrets', icon: Lock, color: 'text-red-500', bg: 'bg-red-50', providers: ['Vault', 'AWS Secrets', 'Azure Key Vault'] },
+    { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-yellow-500', bg: 'bg-yellow-50', providers: ['Slack', 'Teams', 'Discord', 'Email', 'Telegram'] },
+    { id: 'ai', label: 'AI Providers', icon: Brain, color: 'text-violet-500', bg: 'bg-violet-50', providers: ['OpenAI', 'Anthropic', 'AWS Bedrock', 'Azure OpenAI'] },
+  ]
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-      <h4 className="text-sm font-bold text-brand-navy mb-4 flex items-center gap-2"><Link className="w-4 h-4" /> Integrações</h4>
-      <div className="space-y-3">
-        {[
-          { name: 'GitHub', desc: 'Repositórios e CI/CD', connected: false, icon: GitBranch },
-          { name: 'GitLab', desc: 'Repositórios e CI/CD', connected: false, icon: GitBranch },
-          { name: 'Slack', desc: 'Notificações', connected: false, icon: Bell },
-          { name: 'PagerDuty', desc: 'Incidentes', connected: false, icon: AlertTriangle },
-        ].map((item) => (
-          <div key={item.name} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center"><item.icon className="w-4 h-4 text-slate-500" /></div>
-              <div><p className="text-sm font-semibold text-brand-navy">{item.name}</p><p className="text-xs text-slate-400">{item.desc}</p></div>
-            </div>
-            <button className={cn('px-4 h-8 rounded-full text-xs font-semibold transition-all',
-              item.connected ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
-              {item.connected ? 'Conectado' : 'Conectar'}
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <Link className="w-5 h-5 text-brand-navy" />
+          <h4 className="text-sm font-bold text-brand-navy">Hub de Integrações</h4>
+        </div>
+        <p className="text-xs text-slate-400 mb-5">Conecte provedores, serviços e ferramentas ao CloudBuilder</p>
+
+        {/* Category Grid */}
+        <div className="grid grid-cols-3 gap-3">
+          {categories.map((cat) => (
+            <button key={cat.id} onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
+              className={cn('p-4 rounded-xl border-2 text-left transition-all hover:shadow-md',
+                activeCategory === cat.id ? 'border-brand-navy bg-brand-navy/5 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300')}>
+              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-2', cat.bg)}>
+                <cat.icon className={cn('w-5 h-5', cat.color)} />
+              </div>
+              <p className="text-xs font-bold text-brand-navy">{cat.label}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{cat.providers.length} provedores</p>
             </button>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* Provider List (when category selected) */}
+      {activeCategory && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h5 className="text-sm font-bold text-brand-navy">
+              {categories.find(c => c.id === activeCategory)?.label}
+            </h5>
+            <button onClick={() => setActiveCategory(null)} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
+          </div>
+          <div className="space-y-2">
+            {categories.find(c => c.id === activeCategory)?.providers.map((provider) => (
+              <div key={provider} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center',
+                    categories.find(c => c.id === activeCategory)?.bg)}>
+                    {(() => {
+                      const CatIcon = categories.find(c => c.id === activeCategory)?.icon
+                      return CatIcon ? <CatIcon className={cn('w-4 h-4', categories.find(c => c.id === activeCategory)?.color)} /> : null
+                    })()}
+                  </div>
+                  <span className="text-sm font-medium text-brand-navy">{provider}</span>
+                </div>
+                <button className="px-3 h-7 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+                  Conectar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

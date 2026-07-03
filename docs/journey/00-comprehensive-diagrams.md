@@ -1952,3 +1952,353 @@ flowchart TB
 **Etapa 8:** O Discovery Engine analisa automaticamente o projeto e gera o Architecture Graph.
 **Etapa 9:** O Architecture Canvas é preenchido com a arquitetura detectada, e a IA sugere melhorias.
 **Etapa 10:** O usuário revisa a arquitetura e segue para provisionamento, deploy, observabilidade e FinOps.
+
+---
+
+## 35. Integration Hub
+
+```mermaid
+flowchart TB
+    User([User])
+
+    User --> IntegrationHub["Integration Hub"]
+
+    IntegrationHub --> SourceControl["Source Control"]
+    IntegrationHub --> CloudProviders["Cloud Providers"]
+    IntegrationHub --> Kubernetes["Kubernetes"]
+    IntegrationHub --> ContainerRegistry["Container Registry"]
+    IntegrationHub --> CICD["CI/CD"]
+    IntegrationHub --> Databases["Databases"]
+    IntegrationHub --> Messaging["Messaging"]
+    IntegrationHub --> Monitoring["Monitoring"]
+    IntegrationHub --> Identity["Identity"]
+    IntegrationHub --> Secrets["Secrets"]
+    IntegrationHub --> Notifications["Notifications"]
+    IntegrationHub --> AIProviders["AI Providers"]
+    IntegrationHub --> CustomIntegrations["Custom Integrations"]
+```
+
+---
+
+## 36. Import Project Flow
+
+```mermaid
+flowchart TB
+    Dashboard["Dashboard"]
+    Dashboard --> ImportProject["Import Existing Project"]
+    ImportProject --> ChooseGit["Choose Git Provider"]
+    ChooseGit --> Authenticate["Authenticate"]
+    Authenticate --> ChooseOrg["Choose Organization"]
+    ChooseOrg --> ChooseRepo["Choose Repository"]
+    ChooseRepo --> ChooseBranch["Choose Branch"]
+    ChooseBranch --> RepoConfig["Repository Configuration"]
+    RepoConfig --> DiscoveryEng["Discovery Engine"]
+    DiscoveryEng --> ArchGraph["Architecture Graph"]
+    ArchGraph --> ArchCanvas["Architecture Canvas"]
+```
+
+---
+
+## 37. Git Integration
+
+```mermaid
+flowchart TB
+    GitIntegration["Git Integration"]
+    GitIntegration --> GitHub["GitHub"]
+    GitIntegration --> GitLab["GitLab"]
+    GitIntegration --> Bitbucket["Bitbucket"]
+    GitIntegration --> AzureDevOps["Azure DevOps"]
+    GitIntegration --> Gitea["Gitea"]
+    GitIntegration --> Forgejo["Forgejo"]
+    GitIntegration --> SelfHostedGit["Self Hosted Git"]
+
+    GitHub --> OAuth["OAuth"]
+    GitHub --> PAT["Personal Access Token"]
+    GitHub --> SSH["SSH Authentication"]
+```
+
+---
+
+## 38. SSH Configuration
+
+```mermaid
+flowchart TB
+    SSHConfig["SSH Configuration"]
+    SSHConfig --> GenKeyPair["Generate Key Pair"]
+    SSHConfig --> ImportKey["Import Existing Key"]
+    SSHConfig --> HWKey["Hardware Security Key"]
+    SSHConfig --> DeployKey["Deploy Key"]
+
+    GenKeyPair --> RepoAccess["Repository Access"]
+    RepoAccess --> HostVerify["Host Verification"]
+    HostVerify --> FPValidate["Fingerprint Validation"]
+    FPValidate --> SSHAgent["SSH Agent"]
+    SSHAgent --> ConnTest["Connection Test"]
+    ConnTest --> Save["Save"]
+```
+
+---
+
+## 39. Repository Configuration
+
+```mermaid
+flowchart TB
+    Repo["Repository"]
+    Repo --> DefaultBranch["Default Branch"]
+    Repo --> ProtectedBranches["Protected Branches"]
+    Repo --> Monorepo["Monorepo"]
+    Repo --> WorkingDir["Working Directory"]
+    Repo --> IgnorePaths["Ignore Paths"]
+    Repo --> Secrets["Secrets"]
+    Repo --> EnvVars["Environment Variables"]
+    Repo --> Hooks["Hooks"]
+    Repo --> Webhooks["Webhooks"]
+    Repo --> DiscoveryRules["Discovery Rules"]
+```
+
+---
+
+## 40. CI/CD
+
+```mermaid
+flowchart TB
+    CICD["CI/CD"]
+    CICD --> GHActions["GitHub Actions"]
+    CICD --> GitLabCI["GitLab CI"]
+    CICD --> AzureDevOpsCI["Azure DevOps"]
+    CICD --> CircleCI["CircleCI"]
+    CICD --> Jenkins["Jenkins"]
+    CICD --> Buildkite["Buildkite"]
+    CICD --> Drone["Drone"]
+    CICD --> ArgoWorkflows["Argo Workflows"]
+    CICD --> Tekton["Tekton"]
+    CICD --> NativePipeline["Native CloudBuilder Pipeline"]
+```
+
+---
+
+## 41. Container Registry
+
+```mermaid
+flowchart TB
+    ContainerReg["Container Registry"]
+    ContainerReg --> DockerHub["Docker Hub"]
+    ContainerReg --> GHCR["GHCR"]
+    ContainerReg --> AWSECR["AWS ECR"]
+    ContainerReg --> AzureACR["Azure ACR"]
+    ContainerReg --> GAR["Google Artifact Registry"]
+    ContainerReg --> Harbor["Harbor"]
+    ContainerReg --> Quay["Quay"]
+    ContainerReg --> JFrog["JFrog Artifactory"]
+```
+
+---
+
+## 42. Kubernetes
+
+```mermaid
+flowchart TB
+    K8s["Kubernetes"]
+    K8s --> EKS["Amazon EKS"]
+    K8s --> AKS["Azure AKS"]
+    K8s --> GKE["Google GKE"]
+    K8s --> OpenShift["OpenShift"]
+    K8s --> Rancher["Rancher"]
+    K8s --> K3s["K3s"]
+    K8s --> Talos["Talos"]
+    K8s --> SelfManaged["Self Managed Cluster"]
+```
+
+---
+
+## 43. Databases
+
+```mermaid
+flowchart TB
+    DB["Databases"]
+    DB --> SupabaseDB["Supabase"]
+    DB --> NeonDB["Neon"]
+    DB --> PlanetScaleDB["PlanetScale"]
+    DB --> MongoDBAtlas["MongoDB Atlas"]
+    DB --> RedisCloud["Redis Cloud"]
+    DB --> UpstashDB["Upstash"]
+    DB --> CockroachDB["CockroachDB"]
+    DB --> TiDBCloud["TiDB Cloud"]
+    DB --> AivenDB["Aiven"]
+```
+
+---
+
+## 44. Messaging
+
+```mermaid
+flowchart TB
+    Messaging["Messaging"]
+    Messaging --> KafkaMsg["Kafka"]
+    Messaging --> ConfluentCloud["Confluent Cloud"]
+    Messaging --> RabbitMQ["RabbitMQ"]
+    Messaging --> SQS["Amazon SQS"]
+    Messaging --> SNS["Amazon SNS"]
+    Messaging --> PubSub["Google PubSub"]
+    Messaging --> ServiceBus["Azure Service Bus"]
+    Messaging --> NATS["NATS"]
+    Messaging --> Redpanda["Redpanda"]
+```
+
+---
+
+## 45. Integration Pipeline
+
+```mermaid
+flowchart TB
+    Connected["Integration Connected"]
+    Connected --> CredValid["Credential Validation"]
+    CredValid --> PermValid["Permission Validation"]
+    PermValid --> MetaDiscovery["Metadata Discovery"]
+    MetaDiscovery --> RepoAnalysis["Repository Analysis"]
+    RepoAnalysis --> PipelineAnalysis["Pipeline Analysis"]
+    PipelineAnalysis --> CloudDiscovery["Cloud Discovery"]
+    CloudDiscovery --> InfraDiscovery["Infrastructure Discovery"]
+    InfraDiscovery --> ServiceDiscovery["Service Discovery"]
+    ServiceDiscovery --> ArchGraph["Architecture Graph"]
+    ArchGraph --> KnowledgeGraph["Knowledge Graph"]
+    KnowledgeGraph --> AIAnalysis["AI Analysis"]
+    AIAnalysis --> Recommendations["Recommendations"]
+    Recommendations --> ArchCanvas["Architecture Canvas"]
+```
+
+---
+
+## 46. Identity Providers
+
+```mermaid
+flowchart TB
+    Identity["Identity"]
+    Identity --> GoogleWorkspace["Google Workspace"]
+    Identity --> EntraID["Microsoft Entra ID"]
+    Identity --> Okta["Okta"]
+    Identity --> Auth0["Auth0"]
+    Identity --> Keycloak["Keycloak"]
+    Identity --> PingIdentity["Ping Identity"]
+    Identity --> LDAP["LDAP"]
+    Identity --> SAML["SAML"]
+    Identity --> OIDC["OIDC"]
+```
+
+---
+
+## 47. Notifications
+
+```mermaid
+flowchart TB
+    Notif["Notifications"]
+    Notif --> Slack["Slack"]
+    Notif --> MSTeams["Microsoft Teams"]
+    Notif --> Discord["Discord"]
+    Notif --> Email["Email"]
+    Notif --> Telegram["Telegram"]
+    Notif --> PagerDuty["PagerDuty"]
+    Notif --> Opsgenie["Opsgenie"]
+    Notif --> Webhook["Webhook"]
+```
+
+---
+
+## 48. Integration Platform Architecture
+
+```mermaid
+flowchart TB
+    subgraph FrontendInt
+        IntMarketplace["Integration Marketplace"]
+        IntWizard["Integration Wizard"]
+        ConnDashboard["Connection Dashboard"]
+        CredManager["Credential Manager"]
+        HealthDash["Health Dashboard"]
+    end
+
+    subgraph BackendInt
+        IntService["Integration Service"]
+        ProviderReg["Provider Registry"]
+        CredService["Credential Service"]
+        WebhookService["Webhook Service"]
+        SyncService["Synchronization Service"]
+        DiscoveryEngInt["Discovery Engine"]
+        HealthMon["Health Monitor"]
+        EventPub["Event Publisher"]
+        PolicyEng["Policy Engine"]
+    end
+
+    subgraph ProvidersInt
+        GitProvidersInt["Git Providers"]
+        CloudProvidersInt["Cloud Providers"]
+        CICDInt["CI/CD"]
+        K8sInt["Kubernetes"]
+        RegistriesInt["Registries"]
+        DatabasesInt["Databases"]
+        MessagingInt["Messaging"]
+        IdentityInt["Identity"]
+        ObservabilityInt["Observability"]
+        NotificationsInt["Notifications"]
+        AIProvidersInt["AI Providers"]
+        CustomProvidersInt["Custom Providers"]
+    end
+
+    IntMarketplace --> IntService
+    IntWizard --> CredService
+    ConnDashboard --> HealthMon
+    CredService --> ProviderReg
+    ProviderReg --> ProvidersInt
+    DiscoveryEngInt --> ProvidersInt
+    SyncService --> ProvidersInt
+    EventPub --> PolicyEng
+```
+
+---
+
+## 49. Marketplace
+
+```mermaid
+flowchart TB
+    Marketplace["Integration Marketplace"]
+    Marketplace --> CloudProvidersMP["Cloud Providers"]
+    Marketplace --> GitProvidersMP["Git Providers"]
+    Marketplace --> CICDMP["CI/CD"]
+    Marketplace --> ContainersMP["Containers"]
+    Marketplace --> KubernetesMP["Kubernetes"]
+    Marketplace --> DatabasesMP["Databases"]
+    Marketplace --> MessagingMP["Messaging"]
+    Marketplace --> IdentityMP["Identity"]
+    Marketplace --> MonitoringMP["Monitoring"]
+    Marketplace --> NotificationsMP["Notifications"]
+    Marketplace --> SecurityMP["Security"]
+    Marketplace --> AIMP["AI"]
+    Marketplace --> PluginsMP["Marketplace Plugins"]
+
+    PluginsMP --> Install["Install"]
+    PluginsMP --> Configure["Configure"]
+    PluginsMP --> Validate["Validate"]
+    PluginsMP --> Enable["Enable"]
+```
+
+---
+
+## 50. Integration Platform Directory Structure
+
+```
+integration-platform/
+├── integration-service
+├── provider-registry
+├── provider-sdk
+├── oauth-service
+├── ssh-service
+├── credential-service
+├── vault-integration
+├── webhook-service
+├── discovery-engine
+├── sync-engine
+├── health-monitor
+├── integration-marketplace
+├── event-publisher
+├── policy-engine
+└── audit-service
+```
