@@ -16,6 +16,7 @@ import { usePermission } from '@/hooks/usePermission'
 import { useUiStore, type SettingsTab } from '@/store/uiStore'
 import { updateProfile } from '@/api/auth'
 import { settingsApi, type ApiTokenDTO, type SshKeyDTO } from '@/api/settings'
+import { integrationApi, type IntegrationDTO } from '@/api/integrations'
 import { showSuccess, showApiError } from '@/lib/toast'
 import type { ThemeMode, AppLanguage } from '@/store/systemSettingsStore'
 import {
@@ -583,24 +584,83 @@ function SSHKeysSection() {
 
 function IntegrationsSection() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [integrations, setIntegrations] = useState<IntegrationDTO[]>([])
+  const [loading, setLoading] = useState(false)
+  const [connecting, setConnecting] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    integrationApi.list().then(setIntegrations).catch(() => setIntegrations([])).finally(() => setLoading(false))
+  }, [])
 
   const categories = [
-    { id: 'source-control', label: 'Source Control', icon: GitBranch, color: 'text-purple-500', bg: 'bg-purple-50', providers: ['GitHub', 'GitLab', 'Bitbucket', 'Azure DevOps', 'Gitea', 'Forgejo'] },
-    { id: 'cloud', label: 'Cloud Providers', icon: Cloud, color: 'text-amber-500', bg: 'bg-amber-50', providers: ['AWS', 'Azure', 'GCP', 'DigitalOcean', 'Vercel'] },
-    { id: 'kubernetes', label: 'Kubernetes', icon: Box, color: 'text-blue-500', bg: 'bg-blue-50', providers: ['EKS', 'AKS', 'GKE', 'OpenShift', 'K3s'] },
-    { id: 'registry', label: 'Container Registry', icon: Database, color: 'text-green-500', bg: 'bg-green-50', providers: ['Docker Hub', 'GHCR', 'ECR', 'ACR', 'Harbor'] },
-    { id: 'cicd', label: 'CI/CD', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-50', providers: ['GitHub Actions', 'GitLab CI', 'CircleCI', 'Jenkins', 'Argo'] },
-    { id: 'databases', label: 'Databases', icon: Database, color: 'text-cyan-500', bg: 'bg-cyan-50', providers: ['Supabase', 'Neon', 'PlanetScale', 'MongoDB Atlas', 'Redis'] },
-    { id: 'messaging', label: 'Messaging', icon: Bell, color: 'text-pink-500', bg: 'bg-pink-50', providers: ['Kafka', 'RabbitMQ', 'SQS', 'PubSub', 'NATS'] },
-    { id: 'monitoring', label: 'Monitoring', icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50', providers: ['Datadog', 'Grafana', 'New Relic', 'Sentry'] },
-    { id: 'identity', label: 'Identity', icon: Shield, color: 'text-indigo-500', bg: 'bg-indigo-50', providers: ['Auth0', 'Okta', 'Keycloak', 'Google Workspace'] },
-    { id: 'secrets', label: 'Secrets', icon: Lock, color: 'text-red-500', bg: 'bg-red-50', providers: ['Vault', 'AWS Secrets', 'Azure Key Vault'] },
-    { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-yellow-500', bg: 'bg-yellow-50', providers: ['Slack', 'Teams', 'Discord', 'Email', 'Telegram'] },
-    { id: 'ai', label: 'AI Providers', icon: Brain, color: 'text-violet-500', bg: 'bg-violet-50', providers: ['OpenAI', 'Anthropic', 'AWS Bedrock', 'Azure OpenAI'] },
+    { id: 'source-control', label: 'Source Control', icon: GitBranch, color: 'text-purple-500', bg: 'bg-purple-50', providers: ['github', 'gitlab', 'bitbucket', 'azure-devops'] },
+    { id: 'cloud', label: 'Cloud Providers', icon: Cloud, color: 'text-amber-500', bg: 'bg-amber-50', providers: ['aws', 'azure', 'gcp'] },
+    { id: 'kubernetes', label: 'Kubernetes', icon: Box, color: 'text-blue-500', bg: 'bg-blue-50', providers: ['eks', 'aks', 'gke'] },
+    { id: 'cicd', label: 'CI/CD', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-50', providers: ['github-actions', 'gitlab-ci'] },
+    { id: 'databases', label: 'Databases', icon: Database, color: 'text-cyan-500', bg: 'bg-cyan-50', providers: ['supabase', 'neon'] },
+    { id: 'notifications', label: 'Notifications', icon: Bell, color: 'text-yellow-500', bg: 'bg-yellow-50', providers: ['slack', 'teams'] },
+    { id: 'identity', label: 'Identity', icon: Shield, color: 'text-indigo-500', bg: 'bg-indigo-50', providers: ['auth0', 'keycloak', 'okta'] },
+    { id: 'secrets', label: 'Secrets', icon: Lock, color: 'text-red-500', bg: 'bg-red-50', providers: ['vault'] },
+    { id: 'monitoring', label: 'Monitoring', icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50', providers: ['datadog', 'grafana'] },
+    { id: 'messaging', label: 'Messaging', icon: Bell, color: 'text-pink-500', bg: 'bg-pink-50', providers: ['kafka', 'rabbitmq'] },
+    { id: 'ai', label: 'AI Providers', icon: Brain, color: 'text-violet-500', bg: 'bg-violet-50', providers: ['openai', 'anthropic'] },
+    { id: 'custom', label: 'Custom', icon: Settings, color: 'text-slate-500', bg: 'bg-slate-50', providers: [] },
   ]
+
+  const providerNames: Record<string, string> = {
+    github: 'GitHub', gitlab: 'GitLab', bitbucket: 'Bitbucket', 'azure-devops': 'Azure DevOps',
+    aws: 'AWS', azure: 'Azure', gcp: 'GCP',
+    eks: 'EKS', aks: 'AKS', gke: 'GKE',
+    'github-actions': 'GitHub Actions', 'gitlab-ci': 'GitLab CI',
+    supabase: 'Supabase', neon: 'Neon',
+    slack: 'Slack', teams: 'MS Teams',
+    auth0: 'Auth0', keycloak: 'Keycloak', okta: 'Okta',
+    vault: 'Vault', datadog: 'Datadog', grafana: 'Grafana',
+    kafka: 'Kafka', rabbitmq: 'RabbitMQ',
+    openai: 'OpenAI', anthropic: 'Anthropic',
+  }
+
+  const handleConnect = async (providerId: string) => {
+    setConnecting(providerId)
+    try {
+      const cat = categories.find(c => c.providers.includes(providerId))
+      await integrationApi.create({ name: providerNames[providerId] || providerId, providerId, category: cat?.id || 'custom' })
+      const updated = await integrationApi.list()
+      setIntegrations(updated)
+      showSuccess(`${providerNames[providerId] || providerId} conectado`)
+    } catch (err) { showApiError(err, 'Erro ao conectar') } finally { setConnecting(null) }
+  }
+
+  const handleDisconnect = async (id: string) => {
+    await integrationApi.disconnect(id)
+    const updated = await integrationApi.list()
+    setIntegrations(updated)
+    showSuccess('Desconectado')
+  }
+
+  const getConnectedProviders = (category: string) => {
+    return integrations.filter(i => i.category === category && i.status === 'CONNECTED').map(i => i.providerId)
+  }
 
   return (
     <div className="space-y-4">
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Total', value: integrations.length, color: 'text-brand-navy' },
+          { label: 'Conectados', value: integrations.filter(i => i.status === 'CONNECTED').length, color: 'text-green-600' },
+          { label: 'Pendentes', value: integrations.filter(i => i.status === 'PENDING').length, color: 'text-amber-600' },
+          { label: 'Com Erro', value: integrations.filter(i => i.status === 'ERROR').length, color: 'text-red-600' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm text-center">
+            <p className={cn('text-lg font-bold', s.color)}>{s.value}</p>
+            <p className="text-[10px] text-slate-400">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Category Grid */}
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
           <Link className="w-5 h-5 text-brand-navy" />
@@ -608,49 +668,67 @@ function IntegrationsSection() {
         </div>
         <p className="text-xs text-slate-400 mb-5">Conecte provedores, serviços e ferramentas ao CloudBuilder</p>
 
-        {/* Category Grid */}
         <div className="grid grid-cols-3 gap-3">
-          {categories.map((cat) => (
-            <button key={cat.id} onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
-              className={cn('p-4 rounded-xl border-2 text-left transition-all hover:shadow-md',
-                activeCategory === cat.id ? 'border-brand-navy bg-brand-navy/5 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300')}>
-              <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center mb-2', cat.bg)}>
-                <cat.icon className={cn('w-5 h-5', cat.color)} />
-              </div>
-              <p className="text-xs font-bold text-brand-navy">{cat.label}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{cat.providers.length} provedores</p>
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const connected = getConnectedProviders(cat.id)
+            return (
+              <button key={cat.id} onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
+                className={cn('p-4 rounded-xl border-2 text-left transition-all hover:shadow-md',
+                  activeCategory === cat.id ? 'border-brand-navy bg-brand-navy/5 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300')}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', cat.bg)}>
+                    <cat.icon className={cn('w-5 h-5', cat.color)} />
+                  </div>
+                  {connected.length > 0 && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                </div>
+                <p className="text-xs font-bold text-brand-navy">{cat.label}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {connected.length > 0 ? `${connected.length} conectado(s)` : `${cat.providers.length} provedores`}
+                </p>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Provider List (when category selected) */}
+      {/* Provider List */}
       {activeCategory && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h5 className="text-sm font-bold text-brand-navy">
-              {categories.find(c => c.id === activeCategory)?.label}
-            </h5>
+            <h5 className="text-sm font-bold text-brand-navy">{categories.find(c => c.id === activeCategory)?.label}</h5>
             <button onClick={() => setActiveCategory(null)} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
           </div>
           <div className="space-y-2">
-            {categories.find(c => c.id === activeCategory)?.providers.map((provider) => (
-              <div key={provider} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
-                <div className="flex items-center gap-3">
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center',
-                    categories.find(c => c.id === activeCategory)?.bg)}>
-                    {(() => {
-                      const CatIcon = categories.find(c => c.id === activeCategory)?.icon
-                      return CatIcon ? <CatIcon className={cn('w-4 h-4', categories.find(c => c.id === activeCategory)?.color)} /> : null
-                    })()}
+            {categories.find(c => c.id === activeCategory)?.providers.map((providerId) => {
+              const connected = integrations.find(i => i.providerId === providerId && i.status === 'CONNECTED')
+              return (
+                <div key={providerId} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', categories.find(c => c.id === activeCategory)?.bg)}>
+                      {(() => {
+                        const CatIcon = categories.find(c => c.id === activeCategory)?.icon
+                        return CatIcon ? <CatIcon className={cn('w-4 h-4', categories.find(c => c.id === activeCategory)?.color)} /> : null
+                      })()}
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-brand-navy">{providerNames[providerId] || providerId}</span>
+                      {connected && <span className="ml-2 text-[10px] text-green-600 font-medium">Conectado</span>}
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-brand-navy">{provider}</span>
+                  {connected ? (
+                    <button onClick={() => handleDisconnect(connected.id)}
+                      className="px-3 h-7 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-all">
+                      Desconectar
+                    </button>
+                  ) : (
+                    <button onClick={() => handleConnect(providerId)} disabled={connecting === providerId}
+                      className="px-3 h-7 rounded-full text-[10px] font-semibold bg-brand-navy text-white hover:bg-[#0D1B2A] disabled:opacity-50 transition-all">
+                      {connecting === providerId ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Conectar'}
+                    </button>
+                  )}
                 </div>
-                <button className="px-3 h-7 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
-                  Conectar
-                </button>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
