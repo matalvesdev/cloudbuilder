@@ -3,7 +3,7 @@ import {
   Link, Cloud, GitBranch, Box, Zap, Database, Bell, Shield, Lock,
   Activity, Brain, Settings, CheckCircle2, XCircle, AlertTriangle,
   Loader2, Plus, Trash2, RefreshCw, ChevronRight, Eye, ExternalLink,
-  Copy, Key, Fingerprint, Server, Globe,
+  Copy, Key, Fingerprint, Server, Globe, ChevronLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { integrationApi, type IntegrationDTO, type ProviderInfo } from '@/api/integrations'
@@ -91,6 +91,8 @@ export function IntegrationHub() {
   const [connecting, setConnecting] = useState<string | null>(null)
   const [showDetail, setShowDetail] = useState<string | null>(null)
   const [healthChecking, setHealthChecking] = useState<string | null>(null)
+  const [providerPage, setProviderPage] = useState(1)
+  const PROVIDERS_PER_PAGE = 8
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -213,16 +215,22 @@ export function IntegrationHub() {
       </div>
 
       {/* Provider List */}
-      {activeCategory && (
+      {activeCategory && (() => {
+        const catProviders = CATEGORIES.find(c => c.id === activeCategory)?.providers || []
+        const totalPages = Math.ceil(catProviders.length / PROVIDERS_PER_PAGE)
+        const paginatedProviders = catProviders.slice((providerPage - 1) * PROVIDERS_PER_PAGE, providerPage * PROVIDERS_PER_PAGE)
+
+        return (
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h5 className="text-sm font-bold text-brand-navy">
               {CATEGORIES.find(c => c.id === activeCategory)?.label}
+              <span className="ml-2 text-[10px] text-slate-400 font-normal">({catProviders.length} provedores)</span>
             </h5>
-            <button onClick={() => setActiveCategory(null)} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
+            <button onClick={() => { setActiveCategory(null); setProviderPage(1) }} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
           </div>
           <div className="space-y-2">
-            {CATEGORIES.find(c => c.id === activeCategory)?.providers.map((providerId) => {
+            {paginatedProviders.map((providerId) => {
               const connected = integrations.find(i => i.providerId === providerId && i.status === 'CONNECTED')
               const health = connected ? HEALTH_CONFIG[connected.healthStatus] || HEALTH_CONFIG.UNKNOWN : null
               return (
@@ -271,8 +279,35 @@ export function IntegrationHub() {
               )
             })}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+              <p className="text-[10px] text-slate-400">
+                Mostrando {(providerPage - 1) * PROVIDERS_PER_PAGE + 1}–{Math.min(providerPage * PROVIDERS_PER_PAGE, catProviders.length)} de {catProviders.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setProviderPage(p => Math.max(1, p - 1))} disabled={providerPage === 1}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button key={page} onClick={() => setProviderPage(page)}
+                    className={cn('w-7 h-7 rounded-lg text-[10px] font-bold transition-all',
+                      page === providerPage ? 'bg-brand-navy text-white' : 'text-slate-500 hover:bg-slate-100')}>
+                    {page}
+                  </button>
+                ))}
+                <button onClick={() => setProviderPage(p => Math.min(totalPages, p + 1))} disabled={providerPage === totalPages}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        )
+      })()}
 
       {/* Connected Integrations List */}
       {integrations.length > 0 && !activeCategory && (
