@@ -95,6 +95,7 @@ export function IntegrationHub() {
   const [providerSearch, setProviderSearch] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'date'>('name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'connected' | 'disconnected'>('all')
   const PROVIDERS_PER_PAGE = 8
 
   const fetchData = useCallback(async () => {
@@ -220,9 +221,17 @@ export function IntegrationHub() {
       {/* Provider List */}
       {activeCategory && (() => {
         const catProviders = CATEGORIES.find(c => c.id === activeCategory)?.providers || []
-        let filtered = providerSearch
-          ? catProviders.filter(p => (PROVIDER_NAMES[p] || p).toLowerCase().includes(providerSearch.toLowerCase()) || p.toLowerCase().includes(providerSearch.toLowerCase()))
-          : [...catProviders]
+        let filtered = catProviders.filter(p => {
+          // Search filter
+          if (providerSearch && !(PROVIDER_NAMES[p] || p).toLowerCase().includes(providerSearch.toLowerCase()) && !p.toLowerCase().includes(providerSearch.toLowerCase())) return false
+          // Status filter
+          if (statusFilter !== 'all') {
+            const isConnected = integrations.some(i => i.providerId === p && i.status === 'CONNECTED')
+            if (statusFilter === 'connected' && !isConnected) return false
+            if (statusFilter === 'disconnected' && isConnected) return false
+          }
+          return true
+        })
 
         // Sort by name
         filtered.sort((a, b) => {
@@ -255,7 +264,7 @@ export function IntegrationHub() {
             <button onClick={() => { setActiveCategory(null); setProviderPage(1); setProviderSearch('') }} className="text-xs text-slate-400 hover:text-slate-600">Fechar</button>
           </div>
 
-          {/* Search + Sort Controls */}
+          {/* Search + Filter + Sort Controls */}
           <div className="flex items-center gap-2 mb-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -268,6 +277,20 @@ export function IntegrationHub() {
                   <X className="w-3 h-3" />
                 </button>
               )}
+            </div>
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 shrink-0">
+              {([
+                { value: 'all' as const, label: 'Todos' },
+                { value: 'connected' as const, label: 'Ativos' },
+                { value: 'disconnected' as const, label: 'Inativos' },
+              ]).map((f) => (
+                <button key={f.value} onClick={() => { setStatusFilter(f.value); setProviderPage(1) }}
+                  className={cn('px-2 h-8 rounded-lg text-[10px] font-semibold border transition-all',
+                    statusFilter === f.value ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300')}>
+                  {f.label}
+                </button>
+              ))}
             </div>
             {/* Sort Controls */}
             <div className="flex items-center gap-1 shrink-0">
