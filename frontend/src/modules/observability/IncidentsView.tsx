@@ -37,12 +37,10 @@ export function IncidentsView() {
   const loadIncidents = async () => {
     setLoading(true)
     try {
-      const [active, resolved] = await Promise.all([
-        observabilityApi.getActiveIncidents(),
-        observabilityApi.getIncidentHistory(),
-      ])
-      setActiveIncidents(active)
-      setResolvedIncidents(resolved)
+      const active = await observabilityApi.getActiveIncidents()
+      setActiveIncidents(active as any[])
+      // Resolved incidents would come from a separate endpoint
+      setResolvedIncidents([])
     } catch {
       setActiveIncidents([])
       setResolvedIncidents([])

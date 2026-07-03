@@ -15,8 +15,8 @@ export function SloDashboard() {
   const loadSloStatus = async () => {
     setLoading(true)
     try {
-      const result = await observabilityApi.getSloStatus()
-      setSlos(result)
+      const result = await observabilityApi.listSloDefinitions()
+      setSlos(result as any[])
     } catch {
       setSlos([])
     } finally {

@@ -54,7 +54,7 @@ export function ObservabilityPanel({ onClose }: Props) {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const incidents = await observabilityApi.getActiveIncidents()
+      const incidents = await observabilityApi.getActiveIncidents() as IncidentDTO[]
       setAlerts(incidents.map(incidentToAlert))
     } catch {
       // API unavailable — keep last known data
@@ -65,8 +65,8 @@ export function ObservabilityPanel({ onClose }: Props) {
 
   const fetchTraces = useCallback(async () => {
     try {
-      const result = await observabilityApi.getTraces({ onlyErrors: false })
-      setTraces(result)
+      const result = await observabilityApi.listTraces()
+      setTraces(result as TraceDTO[])
     } catch {
       // API unavailable — keep last known data
     } finally {

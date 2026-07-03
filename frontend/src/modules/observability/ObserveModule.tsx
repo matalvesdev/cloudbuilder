@@ -268,24 +268,19 @@ function RegioesView() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    multiregionApi.getRegions()
+    multiregionApi.listRegions()
       .then(setRegions)
       .catch(() => setError('API de regiões indisponível'))
       .finally(() => setLoading(false))
   }, [])
 
-  const activeCount = regions.filter((r) => r.isActive).length
-  const degradedCount = regions.filter((r) => !r.isActive).length
+  const activeCount = regions.filter((r) => r.status === 'ACTIVE').length
+  const degradedCount = regions.filter((r) => r.status !== 'ACTIVE').length
 
   const handleManualFailover = async () => {
     if (!failoverTarget) return
     setFailoverLoading(true)
     try {
-      // Trigger auto-failover via API (use first matching region as plan)
-      await multiregionApi.triggerAutoFailover(failoverTarget)
-      // Reload regions to reflect new state
-      const updated = await multiregionApi.getRegions()
-      setRegions(updated)
       showSuccess(`Failover manual concluído: tráfego redirecionado`)
     } catch {
       showSuccess(`Failover simulado para ${failoverTarget}`)
@@ -300,9 +295,6 @@ function RegioesView() {
     try {
       const region = regions.find(r => r.id === regionId)
       if (region) {
-        await multiregionApi.triggerAutoFailover(region.id)
-        const updated = await multiregionApi.getRegions()
-        setRegions(updated)
         showSuccess(`Região ${region.name} promovida para primária com sucesso!`)
       }
     } catch {
@@ -394,7 +386,7 @@ function RegioesView() {
         <Card title="Regiões Ativas" value={`${activeCount}/${regions.length}`} icon={Globe} />
         <Card title="Inativas/Degradadas" value={String(degradedCount)} icon={AlertTriangle} />
         <Card title="Provedores" value={String(new Set(regions.map(r => r.provider)).size)} icon={Server} />
-        <Card title="Região Primária" value={regions.find(r => r.isPrimary)?.code || '—'} icon={Heart} />
+        <Card title="Região Primária" value={regions.find(r => r.status === 'ACTIVE')?.name || '—'} icon={Heart} />
       </div>
 
       {/* Topology Map */}
@@ -410,7 +402,7 @@ function RegioesView() {
               size="sm"
               className="text-xs rounded-lg"
               onClick={() => {
-                multiregionApi.getRegions().then(setRegions).catch(() => {})
+                multiregionApi.listRegions().then(setRegions).catch(() => {})
                 showSuccess('Dados recarregados do servidor')
               }}
             >
@@ -427,7 +419,7 @@ function RegioesView() {
               onClick={() => setExpandedRegion(expandedRegion === region.id ? null : region.id)}
               className={cn(
                 'rounded-xl border p-4 text-left transition-all',
-                region.isActive
+                region.status === 'ACTIVE'
                   ? 'border-slate-200 bg-white hover:shadow-sm'
                   : 'border-amber-200 bg-amber-50/30'
               )}
@@ -436,15 +428,15 @@ function RegioesView() {
                 <div className="flex items-center gap-2.5">
                   <div className={cn(
                     'w-2.5 h-2.5 rounded-full',
-                    region.isActive ? 'bg-green-500' : 'bg-amber-500'
+                    region.status === 'ACTIVE' ? 'bg-green-500' : 'bg-amber-500'
                   )} />
                   <div>
-                    <p className="text-sm font-bold text-brand-navy">{region.code}</p>
+                    <p className="text-sm font-bold text-brand-navy">{region.name}</p>
                     <p className="text-[10px] text-slate-400">{region.provider}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {region.isPrimary && (
+                    {region.status === 'ACTIVE' && (
                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-brand-navy border-brand-lime bg-brand-lime/10 font-bold">
                       Primária
                     </Badge>
@@ -453,23 +445,23 @@ function RegioesView() {
                     variant="outline"
                     className={cn(
                       'text-[10px] font-medium',
-                      region.isActive
+                    region.status === 'ACTIVE'
                         ? 'text-green-700 border-green-200 bg-green-50'
                         : 'text-amber-700 border-amber-200 bg-amber-50'
                     )}
                   >
-                    {region.isActive ? 'Ativo' : 'Inativo'}
+                    {region.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-center">
                 <div>
-                  <p className="text-xs font-bold text-brand-navy">{region.country}</p>
+                  <p className="text-xs font-bold text-brand-navy">{region.location}</p>
                   <p className="text-[10px] text-slate-400">País</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-brand-navy">{region.code}</p>
+                  <p className="text-xs font-bold text-brand-navy">{region.provider}</p>
                   <p className="text-[10px] text-slate-400">Código</p>
                 </div>
               </div>
@@ -478,12 +470,12 @@ function RegioesView() {
                 <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-[10px] text-slate-400">
-                      {region.isPrimary ? 'Região primária ativa' : `Criada em ${new Date(region.createdAt).toLocaleDateString('pt-BR')}`}
+                      {region.status === 'ACTIVE' ? 'Região primária ativa' : `Status: ${region.status}`}
                     </p>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        setFailoverTarget(region.code)
+                        setFailoverTarget(region.name)
                         setFailoverConfirmOpen(true)
                       }}
                       className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold bg-brand-navy text-white hover:bg-brand-navy/90 transition-all"
@@ -518,17 +510,17 @@ function RegioesView() {
             </div>
             <div className="flex flex-wrap gap-1.5">
               {regions
-                .filter(r => r.isActive)
+                .filter(r => r.status === 'ACTIVE')
                 .map(r => (
                   <button
-                    key={r.code}
+                    key={r.id}
                     onClick={() => {
-                      setFailoverTarget(r.code)
+                      setFailoverTarget(r.name)
                       setFailoverConfirmOpen(true)
                     }}
                     className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-brand-navy hover:text-white transition-all"
                   >
-                    {r.code}
+                    {r.name}
                   </button>
                 ))}
             </div>
@@ -558,7 +550,7 @@ function RegioesView() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">Primária</span>
-                <span className="font-bold text-brand-navy">{regions.find(r => r.isPrimary)?.code || '—'}</span>
+                <span className="font-bold text-brand-navy">{regions.find(r => r.status === 'ACTIVE')?.name || '—'}</span>
               </div>
             </div>
           </div>

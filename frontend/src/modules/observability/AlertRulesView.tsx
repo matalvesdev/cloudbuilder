@@ -54,8 +54,8 @@ export function AlertRulesView() {
   const loadRules = async () => {
     setLoading(true)
     try {
-      const result = await observabilityApi.getAlertRules()
-      setRules(result)
+      const result = await observabilityApi.listAlertRules()
+      setRules(result as unknown as AlertRuleDTO[])
     } catch {
       setRules([])
     } finally {
@@ -65,7 +65,16 @@ export function AlertRulesView() {
 
   const createRule = async () => {
     try {
-      await observabilityApi.createAlertRule(form)
+      await observabilityApi.createAlertRule({
+        name: form.name,
+        metricName: form.metricName,
+        condition: form.condition,
+        threshold: form.threshold,
+        durationSec: form.durationSec,
+        severity: form.severity,
+        enabled: form.enabled,
+        notifyChannels: form.notifyChannels ? [form.notifyChannels] : undefined,
+      })
       setDialogOpen(false)
       setForm({ name: '', metricName: '', condition: 'gt', threshold: 0, durationSec: 60, severity: 'warning', enabled: true })
       loadRules()
@@ -83,7 +92,7 @@ export function AlertRulesView() {
         severity: rule.severity,
         enabled: !rule.enabled,
         description: rule.description || undefined,
-        notifyChannels: rule.notifyChannels || undefined,
+        notifyChannels: rule.notifyChannels ? [rule.notifyChannels] : undefined,
       })
       loadRules()
     } catch {}

@@ -37,8 +37,8 @@ export function TraceExplorer() {
   const loadTraces = async () => {
     setLoading(true)
     try {
-      const result = await observabilityApi.getTraces({ onlyErrors })
-      setTraces(result)
+      const result = await observabilityApi.listTraces()
+      setTraces(result as any[])
     } catch {
       setTraces([])
     } finally {

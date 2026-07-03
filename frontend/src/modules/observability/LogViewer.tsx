@@ -52,11 +52,8 @@ export function LogViewer() {
   const loadLogs = async () => {
     setLoading(true)
     try {
-      const result = await observabilityApi.searchLogs({
-        level: levelFilter === 'ALL' ? undefined : levelFilter,
-        size: 100,
-      })
-      setLogs(result.content)
+      const result = await observabilityApi.listLogs()
+      setLogs(result as any[])
     } catch {
       setLogs([])
     } finally {
@@ -67,12 +64,10 @@ export function LogViewer() {
   const handleSearch = async () => {
     setLoading(true)
     try {
-      const result = await observabilityApi.searchLogs({
-        query: searchQuery || undefined,
-        level: levelFilter === 'ALL' ? undefined : levelFilter,
-        size: 100,
-      })
-      setLogs(result.content)
+      const result = searchQuery
+        ? await observabilityApi.searchLogs(searchQuery)
+        : await observabilityApi.listLogs()
+      setLogs(result as any[])
     } catch {
       setLogs([])
     } finally {
