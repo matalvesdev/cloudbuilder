@@ -5,7 +5,7 @@ import { getToken } from '@/api/client'
 
 type ModuleId = 'canvas' | 'provisioning' | 'observability' | 'finops' | 'platform' | 'ai' | 'security' | 'dashboard' | 'docs' | 'settings' | 'workspace' | 'projects' | 'notifications' | 'billing';
 type PanelTab = 'palette' | 'properties' | 'validation';
-export type SettingsTab = 'credentials' | 'environments' | 'repositories' | 'multitenant' | 'profile' | 'system';
+export type SettingsTab = 'credentials' | 'environments' | 'repositories' | 'multitenant' | 'profile' | 'system' | 'organization' | 'workspaces' | 'teams' | 'members' | 'permissions' | 'git-providers' | 'integrations' | 'security' | 'billing' | 'notifications' | 'audit' | 'api-tokens' | 'ssh-keys' | 'ai-settings';
 
 // Map module IDs to their feature flag keys
 const moduleFlagMap: Record<string, string> = {

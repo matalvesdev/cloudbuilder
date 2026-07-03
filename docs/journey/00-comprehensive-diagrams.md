@@ -1605,3 +1605,350 @@ flowchart TB
     Mention --> Resolve
     Resolve --> History
 ```
+
+---
+
+## 21. User Journey — Complete Onboarding
+
+### First Access Flow (10 Steps)
+
+```mermaid
+flowchart TB
+    Start([Acessar CloudBuilder])
+
+    Start --> Register["Criar Conta"]
+    Register --> VerifyEmail["Confirmar E-mail"]
+    VerifyEmail --> Login["Login"]
+    Login --> Welcome["Boas-vindas"]
+    Welcome --> CreateOrganization["Criar Organização"]
+    CreateOrganization --> CreateWorkspace["Criar Workspace"]
+    CreateWorkspace --> InviteMembers["Convidar Time (Opcional)"]
+    InviteMembers --> ConfigureProfile["Completar Perfil"]
+    ConfigureProfile --> ConfigureProviders["Conectar Cloud Providers"]
+    ConfigureProviders --> ConfigureGit["Conectar GitHub / GitLab"]
+    ConfigureGit --> ConfigureNotifications["Preferências de Notificações"]
+    ConfigureNotifications --> CreateProject["Criar ou Importar Projeto"]
+    CreateProject --> Dashboard["Dashboard Inicial"]
+```
+
+### Navigation Flow
+
+```mermaid
+flowchart LR
+    Conta --> Perfil
+    Conta --> Organização
+    Conta --> Workspace
+    Conta --> Times
+    Conta --> Cloud
+    Conta --> Git
+    Conta --> Preferências
+    Conta --> Projeto
+    Conta --> Dashboard
+```
+
+---
+
+## 22. Profile Settings
+
+```mermaid
+flowchart TB
+    MeuPerfil["Meu Perfil"]
+    MeuPerfil --> InfoPessoais["Informações Pessoais"]
+    MeuPerfil --> Foto["Foto"]
+    MeuPerfil --> Idioma["Idioma"]
+    MeuPerfil --> FusoHorario["Fuso Horário"]
+    MeuPerfil --> Tema["Tema"]
+    MeuPerfil --> Preferencias["Preferências"]
+    MeuPerfil --> Sessoes["Sessões"]
+    MeuPerfil --> Autenticacao["Autenticação"]
+    MeuPerfil --> APITokens["API Tokens"]
+    MeuPerfil --> SSHKeys["SSH Keys"]
+```
+
+---
+
+## 23. Organization Settings
+
+```mermaid
+flowchart TB
+    Org["Organização"]
+    Org --> InfoGerais["Informações Gerais"]
+    Org --> Plano["Plano"]
+    Org --> Dominio["Domínio"]
+    Org --> Billing["Billing"]
+    Org --> Auditoria["Auditoria"]
+    Org --> Politicas["Políticas"]
+    Org --> FeatureFlags["Feature Flags"]
+    Org --> Integracoes["Integrações"]
+```
+
+---
+
+## 24. Workspace Teams
+
+```mermaid
+flowchart TB
+    Workspace["Workspace"]
+    Workspace --> PlatformTeam["Platform Team"]
+    Workspace --> BackendTeam["Backend Team"]
+    Workspace --> FrontendTeam["Frontend Team"]
+    Workspace --> DevOpsTeam["DevOps Team"]
+    Workspace --> SecurityTeam["Security Team"]
+    Workspace --> QATeam["QA Team"]
+    Workspace --> ProductTeam["Product Team"]
+
+    PlatformTeam --> Members1[Members]
+    BackendTeam --> Members2[Members]
+    FrontendTeam --> Members3[Members]
+    DevOpsTeam --> Members4[Members]
+    SecurityTeam --> Members5[Members]
+```
+
+---
+
+## 25. RBAC Roles
+
+```mermaid
+flowchart LR
+    Owner["Owner"]
+    Administrator["Administrator"]
+    PlatformEngineer["Platform Engineer"]
+    TechLead["Tech Lead"]
+    Developer["Developer"]
+    Viewer["Viewer"]
+
+    Owner --> OrgScope["Organização"]
+    Administrator --> WorkspaceScope["Workspace"]
+    PlatformEngineer --> InfraScope["Infraestrutura"]
+    TechLead --> ProjectScope["Projetos"]
+    Developer --> CanvasScope["Canvas"]
+    Viewer --> DocsScope["Documentação"]
+```
+
+---
+
+## 26. Credentials
+
+```mermaid
+flowchart TB
+    Credenciais["Credenciais"]
+    Credenciais --> CloudProviders["Cloud Providers"]
+    Credenciais --> GitProviders["Git Providers"]
+    Credenciais --> ContainerRegistry["Container Registry"]
+    Credenciais --> Secrets["Secrets"]
+    Credenciais --> APIKeys["API Keys"]
+    Credenciais --> OIDC["OIDC"]
+    Credenciais --> Vault["Vault"]
+
+    CloudProviders --> AWS
+    CloudProviders --> Azure
+    CloudProviders --> GCP
+
+    GitProviders --> GitHub
+    GitProviders --> GitLab
+    GitProviders --> Bitbucket
+```
+
+---
+
+## 27. Project Environments
+
+```mermaid
+flowchart LR
+    Projeto["Projeto"]
+    Projeto --> Development["Development"]
+    Projeto --> QA["QA"]
+    Projeto --> Staging["Staging"]
+    Projeto --> Production["Production"]
+
+    Development --> Variaveis["Variáveis"]
+    Development --> SecretsEnv["Secrets"]
+    Development --> Policies["Políticas"]
+
+    Production --> Aprovacoes["Aprovações"]
+    Production --> Monitoramento["Monitoramento"]
+```
+
+---
+
+## 28. Settings Page
+
+```mermaid
+flowchart TB
+    Settings["Configurações"]
+    Settings --> PerfilTab["Perfil"]
+    Settings --> Seguranca["Segurança"]
+    Settings --> Notificacoes["Notificações"]
+    Settings --> IntegracoesTab["Integrações"]
+    Settings --> APITokensTab["API Tokens"]
+    Settings --> SSHKeysTab["SSH Keys"]
+    Settings --> TemaTab["Tema"]
+    Settings --> IdiomaTab["Idioma"]
+    Settings --> PreferenciasCanvas["Preferências do Canvas"]
+    Settings --> Atalhos["Atalhos"]
+```
+
+---
+
+## 29. Auth Flow
+
+```mermaid
+flowchart TB
+    LoginAuth["Login"]
+    LoginAuth --> MFA["MFA"]
+    MFA --> SSO["SSO"]
+    SSO --> Sessao["Sessão"]
+    Sessao --> DeviceTrust["Device Trust"]
+    DeviceTrust --> AccessToken["Access Token"]
+    AccessToken --> RefreshToken["Refresh Token"]
+    RefreshToken --> DashboardAuth["Dashboard"]
+```
+
+---
+
+## 30. Settings Tree
+
+```mermaid
+flowchart TB
+    SettingsTree["Settings"]
+    SettingsTree --> Profile["Profile"]
+    SettingsTree --> Organization["Organization"]
+    SettingsTree --> Workspaces["Workspaces"]
+    SettingsTree --> Teams["Teams"]
+    SettingsTree --> Members["Members"]
+    SettingsTree --> Roles["Roles"]
+    SettingsTree --> Credentials["Credentials"]
+    SettingsTree --> CloudProviders["Cloud Providers"]
+    SettingsTree --> GitProviders["Git Providers"]
+    SettingsTree --> Notifications["Notifications"]
+    SettingsTree --> BillingSet["Billing"]
+    SettingsTree --> Security["Security"]
+    SettingsTree --> AuditLogs["Audit Logs"]
+    SettingsTree --> APITokensSet["API Tokens"]
+    SettingsTree --> SSHKeysSet["SSH Keys"]
+    SettingsTree --> Integrations["Integrations"]
+    SettingsTree --> AISettings["AI Settings"]
+```
+
+---
+
+## 31. Settings Wireframe
+
+```
++--------------------------------------------------------------------------------+
+| SETTINGS                                                                       |
++--------------------------------------------------------------------------------+
+| Sidebar                          |  Conteúdo Principal                        |
+|                                  |                                            |
+| • Meu Perfil                     |  Título                                    |
+| • Organização                    |  Descrição                                 |
+| • Workspaces                     |  Formulário                                |
+| • Times                          |  Salvar                                    |
+| • Usuários                       |  Cancelar                                  |
+| • Permissões                     |                                            |
+| • Cloud Providers                |                                            |
+| • Git Providers                  |                                            |
+| • Integrações                    |                                            |
+| • Segurança                      |                                            |
+| • Billing                        |                                            |
+| • Notificações                   |                                            |
+| • Auditoria                      |                                            |
+| • API Tokens                     |                                            |
+| • SSH Keys                       |                                            |
+| • Preferências                   |                                            |
+| • IA                             |                                            |
++--------------------------------------------------------------------------------+
+```
+
+---
+
+## 32. Full Pipeline
+
+```mermaid
+flowchart TB
+    ContaFlow["Conta"]
+    ContaFlow --> PerfilFlow["Perfil"]
+    PerfilFlow --> OrgFlow["Organização"]
+    OrgFlow --> WorkspaceFlow["Workspace"]
+    WorkspaceFlow --> Squads["Squads"]
+    Squads --> CloudProvidersFlow["Cloud Providers"]
+    CloudProvidersFlow --> GitProvidersFlow["Git Providers"]
+    GitProvidersFlow --> ContainerRegistryFlow["Container Registry"]
+    ContainerRegistryFlow --> ProjetoFlow["Projeto"]
+    ProjetoFlow --> ImportRepo["Importar Repositório"]
+    ImportRepo --> DiscoveryEng["Discovery Engine"]
+    DiscoveryEng --> ArchGraph["Architecture Graph"]
+    ArchGraph --> ArchCanvas["Architecture Canvas"]
+    ArchCanvas --> ProvisionEng["Provision Engine"]
+    ProvisionEng --> DeployEng["Deployment Engine"]
+    DeployEng --> Observability["Native Observability"]
+    Observability --> FinOps["Native FinOps"]
+    FinOps --> DashboardFlow["Dashboard"]
+```
+
+---
+
+## 33. System Architecture (Frontend + Backend + Infrastructure)
+
+```mermaid
+flowchart TB
+    subgraph FrontendArch
+        OnboardingWizard["Onboarding Wizard"]
+        ProfileArch["Profile"]
+        OrganizationArch["Organization"]
+        WorkspaceArch["Workspace"]
+        ProvidersArch["Providers"]
+        IntegrationsArch["Integrations"]
+    end
+
+    subgraph BackendArch
+        IdentityService["Identity Service"]
+        ProfileService["Profile Service"]
+        OrganizationService["Organization Service"]
+        WorkspaceService["Workspace Service"]
+        TeamService["Team Service"]
+        CredentialService["Credential Service"]
+        IntegrationService["Integration Service"]
+        NotificationService["Notification Service"]
+        DiscoveryEngineArch["Discovery Engine"]
+    end
+
+    subgraph InfraArch
+        VaultArch["Vault"]
+        PostgreSQLArch["PostgreSQL"]
+        KafkaArch["Kafka"]
+        EmailServiceArch["Email Service"]
+    end
+
+    OnboardingWizard --> IdentityService
+    OnboardingWizard --> ProfileService
+    OnboardingWizard --> OrganizationService
+    OnboardingWizard --> WorkspaceService
+    OnboardingWizard --> TeamService
+    OnboardingWizard --> CredentialService
+    OnboardingWizard --> IntegrationService
+
+    CredentialService --> VaultArch
+    OrganizationService --> PostgreSQLArch
+    ProfileService --> PostgreSQLArch
+
+    IntegrationService --> DiscoveryEngineArch
+    IntegrationService --> KafkaArch
+
+    IdentityService --> EmailServiceArch
+```
+
+---
+
+## 34. 10-Step Wizard
+
+**Etapa 1:** Criar conta (e-mail, Google, GitHub ou SSO).
+**Etapa 2:** Configurar perfil (nome, cargo, idioma, tema).
+**Etapa 3:** Criar organização e workspace.
+**Etapa 4:** Convidar membros e montar squads.
+**Etapa 5:** Conectar provedores (AWS, Azure, GCP, Vercel, Supabase etc.).
+**Etapa 6:** Conectar GitHub/GitLab e registrar Container Registry.
+**Etapa 7:** Importar um repositório existente ou iniciar um projeto do zero.
+**Etapa 8:** O Discovery Engine analisa automaticamente o projeto e gera o Architecture Graph.
+**Etapa 9:** O Architecture Canvas é preenchido com a arquitetura detectada, e a IA sugere melhorias.
+**Etapa 10:** O usuário revisa a arquitetura e segue para provisionamento, deploy, observabilidade e FinOps.
