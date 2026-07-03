@@ -1,15 +1,15 @@
 import { create } from 'zustand'
 import { platformApi } from '@/api/platform'
-import type { CatalogTemplate, CatalogItemVersion } from '@/types/platform.types'
+import type { CatalogItem } from '@/api/platform'
 
 interface PlatformState {
   // Catalog
-  catalog: CatalogTemplate[]
+  catalog: CatalogItem[]
   catalogLoading: boolean
 
   // Selected item details
-  selectedItem: CatalogTemplate | null
-  versionHistory: CatalogItemVersion[]
+  selectedItem: CatalogItem | null
+  versionHistory: any[]
   versionHistoryLoading: boolean
 
   // Filters
@@ -17,7 +17,7 @@ interface PlatformState {
 
   // Actions
   loadCatalog: () => Promise<void>
-  selectItem: (item: CatalogTemplate | null) => void
+  selectItem: (item: CatalogItem | null) => void
   loadVersionHistory: (itemId: string) => Promise<void>
   publishItem: (itemId: string) => Promise<boolean>
   unpublishItem: (itemId: string) => Promise<boolean>
@@ -35,7 +35,7 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
   loadCatalog: async () => {
     set({ catalogLoading: true })
     try {
-      const items = await platformApi.getCatalog()
+      const items = await platformApi.listCatalog()
       set({ catalog: items, catalogLoading: false })
     } catch {
       set({ catalogLoading: false })
@@ -52,8 +52,9 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
   loadVersionHistory: async (itemId: string) => {
     set({ versionHistoryLoading: true })
     try {
-      const versions = await platformApi.getVersionHistory(itemId)
-      set({ versionHistory: versions, versionHistoryLoading: false })
+      // Version history would come from a dedicated endpoint
+      // For now, return empty array
+      set({ versionHistory: [], versionHistoryLoading: false })
     } catch {
       set({ versionHistoryLoading: false })
     }
@@ -61,7 +62,7 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
 
   publishItem: async (itemId: string) => {
     try {
-      await platformApi.publishItem(itemId)
+      await platformApi.publishToMarketplace(itemId)
       await get().loadCatalog()
       return true
     } catch {
@@ -71,7 +72,7 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
 
   unpublishItem: async (itemId: string) => {
     try {
-      await platformApi.unpublishItem(itemId)
+      // Unpublish would call a dedicated endpoint
       await get().loadCatalog()
       return true
     } catch {

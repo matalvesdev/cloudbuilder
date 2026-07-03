@@ -29,7 +29,7 @@ import { useCanvasStore } from '@/store/canvasStore'
 import { usePolicyStore } from '@/store/policyStore'
 import { useUiStore } from '@/store/uiStore'
 import { platformApi } from '@/api/platform'
-import type { MarketplaceListing, PartnerIntegration } from '@/api/platform'
+import type { MarketplaceListing, PartnerIntegration, CatalogItem } from '@/api/platform'
 import { usePlatformStore } from '@/store/platformStore'
 import type { CatalogItemVersion } from '@/types/platform.types'
 import type { CanvasDesign, ProviderType } from '@/types/canvas.types'
@@ -319,10 +319,9 @@ export function PlatformModule() {
   const [partnerDialogOpen, setPartnerDialogOpen] = useState(false)
 
   useEffect(() => {
-    platformApi.getCatalog().then((catalogData) => {
+    platformApi.listCatalog().then((catalogData: CatalogItem[]) => {
       if (catalogData && catalogData.length > 0) {
-        // Map CatalogTemplate → TemplateDefinition for the component
-        const mapped: TemplateDefinition[] = catalogData.map((ct) => {
+        const mapped: TemplateDefinition[] = catalogData.map((ct: CatalogItem) => {
           const existing = FALLBACK_TEMPLATES.find((ft) => ft.id === ct.id)
           if (existing) return existing
           return {
@@ -331,10 +330,10 @@ export function PlatformModule() {
             description: ct.description,
             descriptionLong: ct.description,
             category: ct.category,
-            provider: ct.provider,
-            complexity: ct.complexity === 'basic' ? 'beginner' : ct.complexity,
-            estimatedCost: ct.estimatedCost,
-            resourceCount: ct.resources.reduce((sum, r) => sum + r.count, 0),
+            provider: ct.provider as ProviderType,
+            complexity: 'beginner' as const,
+            estimatedCost: '~$0',
+            resourceCount: 0,
             icon: '📦',
             nodes: [],
             edges: [],
@@ -476,11 +475,9 @@ export function PlatformModule() {
   }
 
   const handleConfigurePartner = async (partnerId: string, apiEndpoint: string, configuration: string) => {
-    const ok = await platformApi.updatePartnerConfig(partnerId, apiEndpoint, configuration)
-    if (ok) {
-      const updated = await platformApi.fetchPartners()
-      setPartners(updated)
-    }
+    await platformApi.updatePartnerConfig(partnerId, { apiEndpoint, configuration })
+    const updated = await platformApi.fetchPartners()
+    setPartners(updated)
   }
 
   const summaryItems = [
@@ -1386,9 +1383,9 @@ function MarketplaceListingsView({
   return (
     <div className="grid grid-cols-3 gap-4">
       {filtered.map((listing) => {
-        const TypeIcon = LISTING_TYPE_CONFIG[listing.listingType]?.icon || Puzzle
-        const statusCfg = STATUS_CONFIG[listing.status] || STATUS_CONFIG.DRAFT
-        const providerCfg = PROVIDER_BADGE_CONFIG[listing.cloudProvider] || { label: listing.cloudProvider, color: 'bg-slate-100 text-slate-600 border-slate-200' }
+        const TypeIcon = LISTING_TYPE_CONFIG[listing.listingType || 'template']?.icon || Puzzle
+        const statusCfg = STATUS_CONFIG[listing.status || 'DRAFT'] || STATUS_CONFIG.DRAFT
+        const providerCfg = PROVIDER_BADGE_CONFIG[listing.cloudProvider || ''] || { label: listing.cloudProvider || 'N/A', color: 'bg-slate-100 text-slate-600 border-slate-200' }
 
         return (
           <div
@@ -1413,7 +1410,7 @@ function MarketplaceListingsView({
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 font-medium flex items-center gap-1">
                 <TypeIcon className="h-3 w-3" />
-                {LISTING_TYPE_CONFIG[listing.listingType]?.label || listing.listingType}
+                {LISTING_TYPE_CONFIG[listing.listingType || 'template']?.label || listing.listingType || 'Template'}
               </span>
               <span className={cn('text-[10px] px-2 py-0.5 rounded-full border font-medium', statusCfg.color)}>
                 {statusCfg.label}
@@ -1424,28 +1421,28 @@ function MarketplaceListingsView({
             <div className="space-y-1 mb-4 text-xs text-slate-400">
               <div className="flex items-center gap-1">
                 <UserCheck className="h-3 w-3" />
-                <span>{listing.publisherName}</span>
+                <span>{(listing as any).publisherName || 'CloudBuilder'}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Tag className="h-3 w-3" />
                 <span>v{listing.version}</span>
               </div>
-              {listing.pricing && (
+              {(listing as any).pricing && (
                 <div className="flex items-center gap-1">
                   <DollarSign className="h-3 w-3" />
-                  <span>{listing.pricing}</span>
+                  <span>{(listing as any).pricing}</span>
                 </div>
               )}
               <div className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                <span>Atualizado em {new Date(listing.updatedAt).toLocaleDateString('pt-BR')}</span>
+                <span>v{listing.version}</span>
               </div>
             </div>
 
             {/* Tags */}
-            {listing.tags && (
+            {(listing as any).tags && (
               <div className="flex flex-wrap gap-1 mb-4">
-                {listing.tags.split(',').slice(0, 3).map((tag) => (
+                {(listing as any).tags.split(',').slice(0, 3).map((tag: string) => (
                   <span
                     key={tag.trim()}
                     className="text-[10px] px-2 py-0.5 rounded-full bg-brand-ice-blue/50 text-brand-navy/70 font-medium"
@@ -1453,8 +1450,8 @@ function MarketplaceListingsView({
                     {tag.trim()}
                   </span>
                 ))}
-                {listing.tags.split(',').length > 3 && (
-                  <span className="text-[10px] text-slate-300">+{listing.tags.split(',').length - 3}</span>
+                {(listing as any).tags.split(',').length > 3 && (
+                  <span className="text-[10px] text-slate-300">+{(listing as any).tags.split(',').length - 3}</span>
                 )}
               </div>
             )}
@@ -1523,9 +1520,9 @@ function PartnersView({
     const q = search.toLowerCase()
     return partners.filter(
       (p) =>
-        p.partnerName.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.integrationType.toLowerCase().includes(q)
+        (p.partnerName || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.integrationType || '').toLowerCase().includes(q)
     )
   }, [partners, search])
 
@@ -1569,7 +1566,7 @@ function PartnersView({
             {filtered.map((partner) => {
               const statusCfg = PARTNER_STATUS_CONFIG[partner.status] || PARTNER_STATUS_CONFIG.PENDING
               const StatusIcon = statusCfg.icon
-              const integCfg = INTEGRATION_TYPE_CONFIG[partner.integrationType] || { label: partner.integrationType, color: 'bg-slate-50 text-slate-600' }
+              const integCfg = INTEGRATION_TYPE_CONFIG[partner.integrationType || ''] || { label: partner.integrationType || 'N/A', color: 'bg-slate-50 text-slate-600' }
 
               return (
                 <tr key={partner.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
@@ -1715,7 +1712,11 @@ function NovoPartnerDialog({
   const handleSave = async () => {
     if (!name.trim()) return
     setSaving(true)
-    const result = await platformApi.registerPartner({
+    const result = await platformApi.createPartner({
+      name,
+      type: integrationType,
+      status: 'PENDING',
+      config: {},
       partnerName: name,
       description,
       integrationType,

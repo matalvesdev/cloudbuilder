@@ -9,6 +9,9 @@ export interface MarketplaceListing {
   version: string
   rating: number
   installs: number
+  cloudProvider?: string
+  listingType?: string
+  status?: string
 }
 
 export interface PartnerIntegration {
@@ -17,6 +20,11 @@ export interface PartnerIntegration {
   type: string
   status: string
   config: Record<string, any>
+  partnerName?: string
+  description?: string
+  integrationType?: string
+  apiEndpoint?: string
+  configuration?: string
 }
 
 export interface CatalogItem {
@@ -65,6 +73,14 @@ export function createPartner(partner: Omit<PartnerIntegration, 'id'>): Promise<
   return api.post('/platform/partners', partner)
 }
 
+export function activatePartner(id: string): Promise<PartnerIntegration> {
+  return api.post(`/platform/partners/${id}/activate`)
+}
+
+export function updatePartnerConfig(id: string, config: Record<string, any>): Promise<PartnerIntegration> {
+  return api.put(`/platform/partners/${id}`, { config })
+}
+
 export const platformApi = {
   listCatalog,
   getCatalogItem,
@@ -75,4 +91,9 @@ export const platformApi = {
   publishToMarketplace,
   listPartners,
   createPartner,
+  activatePartner,
+  updatePartnerConfig,
+  // Aliases for backward compatibility
+  fetchMarketplaceListings: listMarketplace,
+  fetchPartners: listPartners,
 }
