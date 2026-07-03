@@ -3,6 +3,7 @@ import { api } from './client'
 export interface Role {
   id: string
   name: string
+  description?: string
   permissions: string[]
 }
 
@@ -53,16 +54,44 @@ export function listUsers(): Promise<any[]> {
   return api.get('/iam/users')
 }
 
+export function listUsersByTenant(tenantId: string): Promise<any[]> {
+  return api.get(`/iam/users?tenantId=${tenantId}`)
+}
+
 export function getUser(id: string): Promise<any> {
   return api.get(`/iam/users/${id}`)
+}
+
+export function createUser(user: { name: string; email: string; password: string; roles?: string[] }): Promise<any> {
+  return api.post('/iam/users', user)
 }
 
 export function listRoles(): Promise<Role[]> {
   return api.get('/iam/roles')
 }
 
+export function createRole(role: Omit<Role, 'id'>): Promise<Role> {
+  return api.post('/iam/roles', role)
+}
+
+export function updateRole(id: string, role: Partial<Role>): Promise<Role> {
+  return api.put(`/iam/roles/${id}`, role)
+}
+
+export function deleteRole(id: string): Promise<void> {
+  return api.delete(`/iam/roles/${id}`)
+}
+
 export function listPermissions(): Promise<Permission[]> {
   return api.get('/iam/permissions')
+}
+
+export function createPermission(permission: Omit<Permission, 'id'>): Promise<Permission> {
+  return api.post('/iam/permissions', permission)
+}
+
+export function deletePermission(id: string): Promise<void> {
+  return api.delete(`/iam/permissions/${id}`)
 }
 
 export function listTenants(): Promise<Tenant[]> {
@@ -95,9 +124,16 @@ export function getPermissionMatrix(): Promise<PermissionMatrixEntry[]> {
 
 export const iamApi = {
   listUsers,
+  listUsersByTenant,
   getUser,
+  createUser,
   listRoles,
+  createRole,
+  updateRole,
+  deleteRole,
   listPermissions,
+  createPermission,
+  deletePermission,
   listTenants,
   getMfaConfig,
   enableMfa,
