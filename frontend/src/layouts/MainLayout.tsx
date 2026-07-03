@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useMemo } from 'react'
+import { type ReactNode, useState, useMemo, useRef, useEffect } from 'react'
 import {
   LayoutDashboard,
   Box,
@@ -22,6 +22,8 @@ import {
   ArrowRight,
   BarChart3,
   Flag,
+  User,
+  Zap,
 } from 'lucide-react'
 import { useUiStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
@@ -68,6 +70,8 @@ export function MainLayout({ children, activeModule, onModuleChange }: MainLayou
   const { credentials, environments } = useCredentialStore()
   const { connectedRepos } = useRepoStore()
   const [showProjectMenu, setShowProjectMenu] = useState(false)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
 
@@ -80,6 +84,17 @@ export function MainLayout({ children, activeModule, onModuleChange }: MainLayou
     []
   )
   
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const searchResults = useMemo<NavItem[]>(() => {
     if (!query.trim()) return []
     const q = query.toLowerCase()
@@ -299,44 +314,90 @@ export function MainLayout({ children, activeModule, onModuleChange }: MainLayou
             </span>
             <span className="text-[10px] font-semibold text-green-700">Online</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-500 group relative">
-            <div className="w-7 h-7 rounded-full bg-brand-navy flex items-center justify-center ring-2 ring-transparent hover:ring-brand-lime/50 transition-all">
-              <span className="text-[10px] font-bold text-brand-lime">
-                {user?.name?.substring(0, 2).toUpperCase() || '?'}
-              </span>
-            </div>
-            <span className="text-xs font-medium hidden sm:inline text-slate-600">{user?.name || 'Usuário'}</span>
-            <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              <div className="p-3 border-b border-slate-100">
-                <p className="text-sm font-medium text-brand-navy">{user?.name}</p>
-                <p className="text-xs text-slate-400">{user?.email}</p>
+
+          {/* User Profile Dropdown */}
+          <div className="relative" ref={profileDropdownRef}>
+            <button
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 transition-all"
+            >
+              <div className="w-8 h-8 rounded-full bg-brand-navy flex items-center justify-center ring-2 ring-transparent hover:ring-brand-lime/50 transition-all">
+                <span className="text-[10px] font-bold text-brand-lime">
+                  {user?.name?.substring(0, 2).toUpperCase() || '?'}
+                </span>
               </div>
-              <div className="p-1">
-                {(configuredCount < totalConfigItems || progress.stage === 'skipped') && (
-                  <button
-                    onClick={() => { resetToWelcome() }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-brand-navy hover:bg-ice-blue/50 rounded-lg transition-colors"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Reabrir Configuração
-                  </button>
-                )}
-                <button
-                  onClick={() => { onModuleChange('settings') }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-                >
-                  <Settings className="w-4 h-4" />
-                  Configurações
-                </button>
-                <button
-                  onClick={logout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sair
-                </button>
-              </div>
-            </div>
+              <ChevronDown className={cn('w-3.5 h-3.5 text-slate-400 transition-transform', showProfileDropdown && 'rotate-180')} />
+            </button>
+
+            {showProfileDropdown && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowProfileDropdown(false)} />
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden">
+                  {/* User Info Header */}
+                  <div className="p-4 bg-gradient-to-br from-brand-navy to-[#0D1B2A] text-white">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <span className="text-sm font-bold">{user?.name?.substring(0, 2).toUpperCase() || '?'}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{user?.name || 'Usuário'}</p>
+                        <p className="text-[11px] text-white/60 truncate">{user?.email}</p>
+                      </div>
+                    </div>
+                    {user?.roles && user.roles.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-3">
+                        {user.roles.map((role) => (
+                          <span key={role} className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/15 font-medium">
+                            {role === 'admin' ? 'Admin' : role === 'editor' ? 'Editor' : 'Viewer'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Menu Items */}
+                  <div className="p-1.5">
+                    <button
+                      onClick={() => { setShowProfileDropdown(false); onModuleChange('settings') }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <User className="w-4 h-4 text-slate-400" />
+                      Meu Perfil
+                    </button>
+                    <button
+                      onClick={() => { setShowProfileDropdown(false); onModuleChange('settings') }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-slate-400" />
+                      Configurações
+                    </button>
+                    {(configuredCount < totalConfigItems || progress.stage === 'skipped') && (
+                      <button
+                        onClick={() => { setShowProfileDropdown(false); resetToWelcome() }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-brand-navy hover:bg-ice-blue/50 transition-colors"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Configuração Inicial
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-slate-100 mx-1.5" />
+
+                  {/* Logout */}
+                  <div className="p-1.5">
+                    <button
+                      onClick={() => { setShowProfileDropdown(false); logout() }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sair da conta
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
