@@ -720,45 +720,80 @@ export function SettingsModule() {
         {tab === 'ai-settings' && <AISettingsSection />}
         {tab === 'credentials' && (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-slate-400">{credentials.length} credencial(is)</p>
+            {/* Provider Quick Cards */}
+            <div className="mb-6">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Provedores Disponíveis</h4>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { id: 'aws' as Provider, label: 'AWS', desc: 'Amazon Web Services', color: 'amber', count: credentials.filter(c => c.provider === 'aws').length },
+                  { id: 'azure' as Provider, label: 'Azure', desc: 'Microsoft Azure', color: 'blue', count: credentials.filter(c => c.provider === 'azure').length },
+                  { id: 'gcp' as Provider, label: 'GCP', desc: 'Google Cloud Platform', color: 'green', count: credentials.filter(c => c.provider === 'gcp').length },
+                ].map((p) => (
+                  <button key={p.id} onClick={() => { setEditCredId(null); setShowCredForm(true) }}
+                    className={cn('p-4 rounded-xl border-2 text-left transition-all hover:shadow-md',
+                      p.count > 0 ? 'border-brand-lime bg-green-50/50' : 'border-slate-200 bg-white hover:border-slate-300')}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Cloud className={cn('w-6 h-6', p.color === 'amber' ? 'text-amber-500' : p.color === 'blue' ? 'text-blue-500' : 'text-green-500')} />
+                      {p.count > 0 ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Plus className="w-4 h-4 text-slate-400" />}
+                    </div>
+                    <p className="text-sm font-bold text-brand-navy">{p.label}</p>
+                    <p className="text-[10px] text-slate-400">{p.desc}</p>
+                    {p.count > 0 && <p className="text-[10px] text-green-600 font-medium mt-1">{p.count} credencial(is)</p>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Credentials List */}
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Credenciais Configuradas</h4>
               <button onClick={() => { setEditCredId(null); setShowCredForm(true) }}
-                className="inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all">
-                <Plus className="w-3.5 h-3.5" /> Nova Credencial
+                className="inline-flex items-center gap-1.5 px-3 h-7 rounded-full text-[10px] font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all">
+                <Plus className="w-3 h-3" /> Adicionar
               </button>
             </div>
+
             {credentials.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm text-center">
-                <Cloud className="w-10 h-10 text-amber-400 mx-auto mb-3" />
+                <Cloud className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm font-bold text-brand-navy">Nenhuma credencial configurada</p>
-                <p className="text-xs text-slate-400 mt-1">Adicione credenciais AWS, Azure ou GCP</p>
+                <p className="text-xs text-slate-400 mt-1">Clique em um provedor acima para adicionar</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {credentials.map((cred) => (
-                  <div key={cred.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center',
-                        cred.provider === 'aws' ? 'bg-amber-50' : cred.provider === 'azure' ? 'bg-blue-50' : 'bg-green-50')}>
-                        <Cloud className={cn('w-4 h-4', cred.provider === 'aws' ? 'text-amber-500' : cred.provider === 'azure' ? 'text-blue-500' : 'text-green-500')} />
+                  <div key={cred.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center',
+                          cred.provider === 'aws' ? 'bg-amber-50' : cred.provider === 'azure' ? 'bg-blue-50' : 'bg-green-50')}>
+                          <Cloud className={cn('w-5 h-5', cred.provider === 'aws' ? 'text-amber-500' : cred.provider === 'azure' ? 'text-blue-500' : 'text-green-500')} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-brand-navy">{cred.name}</p>
+                            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border font-medium', PROVIDER_COLORS[cred.provider])}>{cred.provider.toUpperCase()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] text-slate-400 font-mono">{cred.keyId}</p>
+                            <span className="text-[10px] text-slate-300">•</span>
+                            <p className="text-[10px] text-slate-400">{cred.region}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-brand-navy">{cred.name}</p>
-                        <p className="text-[10px] text-slate-400 font-mono">{cred.keyId} • {cred.region}</p>
+                      <div className="flex items-center gap-2">
+                        {cred.status === 'valid' && <span className="text-[10px] text-green-600 flex items-center gap-0.5 font-medium"><CheckCircle2 className="w-3 h-3" />Válida</span>}
+                        {cred.status === 'invalid' && <span className="text-[10px] text-red-600 flex items-center gap-0.5 font-medium"><XCircle className="w-3 h-3" />Inválida</span>}
+                        {cred.status === 'unknown' && <span className="text-[10px] text-slate-400 font-medium">Não testada</span>}
+                        <button onClick={() => handleTestConnection(cred.id)} disabled={testingId === cred.id}
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 transition-all">
+                          {testingId === cred.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                        </button>
+                        <button onClick={() => { setEditCredId(cred.id); setShowCredForm(true) }}
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 transition-all"><Shield className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setDeleteConfirm({ type: 'cred', id: cred.id })}
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
-                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border font-medium', PROVIDER_COLORS[cred.provider])}>{cred.provider.toUpperCase()}</span>
-                      {cred.status === 'valid' && <span className="text-[10px] text-green-600 flex items-center gap-0.5"><CheckCircle2 className="w-3 h-3" />OK</span>}
-                      {cred.status === 'invalid' && <span className="text-[10px] text-red-600 flex items-center gap-0.5"><XCircle className="w-3 h-3" />Falhou</span>}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => handleTestConnection(cred.id)} disabled={testingId === cred.id}
-                        className="p-2 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 transition-all">
-                        {testingId === cred.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                      </button>
-                      <button onClick={() => { setEditCredId(cred.id); setShowCredForm(true) }}
-                        className="p-2 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 transition-all"><Shield className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => setDeleteConfirm({ type: 'cred', id: cred.id })}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
                 ))}

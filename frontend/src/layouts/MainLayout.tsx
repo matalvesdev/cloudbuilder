@@ -368,33 +368,9 @@ export function MainLayout({ children, activeModule, onModuleChange }: MainLayou
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setShowProfileDropdown(false); onModuleChange('settings') } }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none transition-colors"
                     >
-                      <User className="w-4 h-4 text-slate-400" />
-                      Meu Perfil
-                      <span className="ml-auto text-[10px] text-slate-300">⌘P</span>
-                    </button>
-                    <button
-                      role="menuitem"
-                      tabIndex={0}
-                      onClick={() => { setShowProfileDropdown(false); onModuleChange('settings') }}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setShowProfileDropdown(false); onModuleChange('settings') } }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-slate-700 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none transition-colors"
-                    >
                       <Settings className="w-4 h-4 text-slate-400" />
                       Configurações
-                      <span className="ml-auto text-[10px] text-slate-300">⌘,</span>
                     </button>
-                    {(configuredCount < totalConfigItems || progress.stage === 'skipped') && (
-                      <button
-                        role="menuitem"
-                        tabIndex={0}
-                        onClick={() => { setShowProfileDropdown(false); resetToWelcome() }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setShowProfileDropdown(false); resetToWelcome() } }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-brand-navy hover:bg-ice-blue/50 focus:bg-ice-blue/50 focus:outline-none transition-colors"
-                      >
-                        <Zap className="w-4 h-4" />
-                        Configuração Inicial
-                      </button>
-                    )}
                   </div>
 
                   {/* Divider */}
