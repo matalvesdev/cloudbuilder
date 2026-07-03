@@ -26,6 +26,9 @@ public class CanvasVersion {
     @Column(name = "created_by")
     private String createdBy;
 
+    @Column(nullable = false)
+    private String status = "DRAFT";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -61,6 +64,8 @@ public class CanvasVersion {
     public String getSnapshot() { return snapshot; }
     public String getChangeDescription() { return changeDescription; }
     public String getCreatedBy() { return createdBy; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }
     public Canvas getCanvas() { return canvas; }
 

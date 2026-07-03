@@ -42,7 +42,7 @@ public class ProjectController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectDTO> createProject(
             @PathVariable String organizationId,
             @RequestBody CreateProjectRequest req) {
@@ -51,7 +51,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectDTO> updateProject(
             @PathVariable String id,
             @RequestBody UpdateProjectRequest req) {
@@ -60,19 +60,19 @@ public class ProjectController {
     }
 
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectDTO> deactivateProject(@PathVariable String id) {
         return ResponseEntity.ok(ProjectDTO.fromEntity(projectService.deactivateProject(id)));
     }
 
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjectDTO> activateProject(@PathVariable String id) {
         return ResponseEntity.ok(ProjectDTO.fromEntity(projectService.activateProject(id)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteProject(@PathVariable String id) {
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();

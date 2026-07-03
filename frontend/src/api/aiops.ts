@@ -1,102 +1,88 @@
 import { api } from './client'
 
-// ─── Design Template Types ──────────────────────────────────
-
-export interface DesignTemplateResource {
-  id: string
-  label: string
-  provider: string
-  resourceType: string
-  category: string
-}
-
-export interface DesignTemplateConnection {
-  source: string
-  target: string
-  edgeType: string
-}
-
 export interface DesignTemplate {
   id: string
   name: string
   description: string
-  resources: DesignTemplateResource[]
-  connections: DesignTemplateConnection[]
-}
-
-// ─── AIOps API Service ───────────────────────────────────────
-
-export interface ChatRequest {
-  question: string
-  context: string
-  extraContext?: Record<string, any>
-}
-
-export interface ChatResponse {
-  answer: string
-  design?: any
-}
-
-export interface MetricAnalysisRequest {
-  metricName: string
-  recentValues: number[]
-  threshold: number
+  provider: string
+  resources: string[]
+  connections: string[]
 }
 
 export interface MetricAnalysisResponse {
-  metricName: string
-  analysis: string
+  anomalies: Array<{ metric: string; value: number; threshold: number }>
+  recommendations: string[]
 }
 
-class AIOpsApiService {
-  async getTemplates(): Promise<DesignTemplate[]> {
-    try {
-      const data = await api.get<DesignTemplate[]>('/aiops/templates')
-      return Array.isArray(data) ? data : []
-    } catch {
-      return []
-    }
-  }
-
-  async chatQuery(body: { question: string; context: string; extraContext?: Record<string, any> }): Promise<ChatResponse | null> {
-    try {
-      return await api.post<ChatResponse>('/aiops/query', body)
-    } catch {
-      return null
-    }
-  }
-
-  async analyzeMetric(body: MetricAnalysisRequest): Promise<MetricAnalysisResponse | null> {
-    try {
-      return await api.post<MetricAnalysisResponse>('/aiops/analyze-metric', body)
-    } catch {
-      return null
-    }
-  }
-
-  async getIncidents(environmentId: string): Promise<any[] | null> {
-    try {
-      return await api.get<any[]>(`/aiops/incidents/${environmentId}`)
-    } catch {
-      return null
-    }
-  }
-
-  async analyzeIncident(incidentId: string): Promise<any | null> {
-    try {
-      return await api.post<any>(`/aiops/incidents/${incidentId}/analyze`)
-    } catch {
-      return null
-    }
-  }
-
-  async resolveIncident(incidentId: string): Promise<any | null> {
-    try {
-      return await api.post<any>(`/aiops/incidents/${incidentId}/resolve`)
-    } catch {
-      return null
-    }
-  }
+export function queryAnalysis(query: string): Promise<MetricAnalysisResponse> {
+  return api.post('/aiops/query', { query })
 }
 
-export const aiopsApi = new AIOpsApiService()
+export function listIncidents(): Promise<any[]> {
+  return api.get('/aiops/incidents')
+}
+
+export function getIncident(id: string): Promise<any> {
+  return api.get(`/aiops/incidents/${id}`)
+}
+
+export function listDesignTemplates(): Promise<DesignTemplate[]> {
+  return api.get('/aiops/templates')
+}
+
+export function analyzeMetric(params: { resourceId: string; metricName?: string }): Promise<MetricAnalysisResponse> {
+  return api.post('/aiops/analyze', params)
+}
+
+export function listRunbooks(): Promise<any[]> {
+  return api.get('/aiops/runbooks')
+}
+
+export function listPostMortems(): Promise<any[]> {
+  return api.get('/aiops/postmortems')
+}
+
+export function getTemplates(): Promise<DesignTemplate[]> {
+  return api.get('/aiops/templates')
+}
+
+export function chatQuery(params: { question: string; context?: string; extraContext?: string }): Promise<any> {
+  return api.post('/aiops/query', params)
+}
+
+export interface AiChatResponse {
+  answer: string
+  category: string
+}
+
+export function explainArchitecture(canvasId: string, canvasName: string): Promise<AiChatResponse> {
+  return api.post('/aiops/chat/explain-architecture', { canvasId, canvasName, extraContext: {} })
+}
+
+export function optimizeCost(canvasId: string): Promise<AiChatResponse> {
+  return api.post('/aiops/chat/optimize-cost', { canvasId, extraContext: {} })
+}
+
+export function securityReview(canvasId: string): Promise<AiChatResponse> {
+  return api.post('/aiops/chat/security-review', { canvasId, extraContext: {} })
+}
+
+export function generateK8s(canvasId: string): Promise<AiChatResponse> {
+  return api.post('/aiops/chat/generate-k8s', { canvasId, extraContext: {} })
+}
+
+export const aiopsApi = {
+  queryAnalysis,
+  listIncidents,
+  getIncident,
+  listDesignTemplates,
+  getTemplates,
+  analyzeMetric,
+  listRunbooks,
+  listPostMortems,
+  chatQuery,
+  explainArchitecture,
+  optimizeCost,
+  securityReview,
+  generateK8s,
+}

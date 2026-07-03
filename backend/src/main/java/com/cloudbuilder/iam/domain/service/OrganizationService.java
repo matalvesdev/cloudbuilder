@@ -42,8 +42,8 @@ public class OrganizationService {
         var org = new Organization(name, slug, ownerId);
         var saved = organizationRepository.save(org);
         
-        // Auto-add owner as OWNER member
-        var membership = new Membership(saved.getId(), ownerId, OrgRole.OWNER);
+        // Auto-add owner as ADMIN member
+        var membership = new Membership(saved.getId(), ownerId, OrgRole.ADMIN);
         membershipRepository.save(membership);
         
         return saved;

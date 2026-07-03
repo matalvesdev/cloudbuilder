@@ -15,36 +15,26 @@ flowchart TB
         Authentication["Authentication"]
         Onboarding["Onboarding"]
         Dashboard["Dashboard"]
-        Workspace["Workspace"]
-        Projects["Projects"]
-        Canvas["Canvas"]
-        AI["AI"]
-        Environments["Environments"]
-        Deployments["Deployments"]
-        GitOps["GitOps"]
+        Canvas["Canvas/Design"]
+        Provisioning["Provisioning"]
         Observability["Observability"]
-        FinOps["FinOps"]
-        Security["Security"]
-        Notifications["Notifications"]
+        FinOps["FinOps/Cost"]
+        Platform["Platform"]
+        AIOps["AIOps"]
+        Security["Security/Audit"]
         Settings["Settings"]
-        Administration["Administration"]
     end
 
     User --> Authentication
     Authentication --> Dashboard
-    Dashboard --> Workspace
-    Workspace --> Projects
-    Projects --> Canvas
-    Projects --> AI
-    Projects --> Environments
-    Projects --> Deployments
-    Projects --> GitOps
-    Projects --> Observability
-    Projects --> FinOps
-    Projects --> Security
-    Projects --> Notifications
-    Projects --> Settings
-    Settings --> Administration
+    Dashboard --> Canvas
+    Canvas --> Provisioning
+    Provisioning --> Observability
+    Observability --> FinOps
+    FinOps --> Platform
+    Platform --> AIOps
+    AIOps --> Security
+    Security --> Settings
 ```
 
 ---
@@ -330,53 +320,41 @@ journey
 
 ```
 src/
-├── app/
-├── shared/
-├── core/
-├── features/
-│   ├── authentication/
-│   ├── onboarding/
-│   ├── dashboard/
-│   ├── workspace/
-│   ├── organizations/
-│   ├── teams/
-│   ├── projects/
-│   ├── architecture/
-│   ├── canvas/
-│   ├── ai/
-│   ├── terraform/
-│   ├── environments/
-│   ├── provisioning/
-│   ├── deployments/
-│   ├── gitops/
-│   ├── observability/
-│   ├── finops/
-│   ├── security/
-│   ├── notifications/
-│   ├── billing/
-│   ├── audit/
-│   ├── settings/
-│   └── administration/
-├── widgets/
-├── design-system/
-├── hooks/
-├── services/
-├── store/
-├── router/
-└── layouts/
+├── modules/
+│   ├── canvas/           Canvas, Palette, Properties, Validation
+│   ├── provisioning/     Terraform, CI/CD, Deployment, GitOps, Import
+│   ├── observability/    Health, alerts, drift, DR, Metrics, Traces, Logs
+│   ├── finops/           Cost dashboard, budgets, anomalies, projections
+│   ├── platform/         Catalog, marketplace
+│   ├── ai/               AI assistant, incident fix, runbooks
+│   ├── security/         Audit, IAM, Rego policies, compliance
+│   ├── dashboard/        Widgets, overview, analytics
+│   └── settings/         Configurations, feature flags, docs, repos
+├── store/              22 Zustand stores
+├── components/ui/      23 shadcn/ui wrappers
+├── api/                API client layer (9 files)
+├── lib/                Utils, Toast, Command
+├── hooks/              Custom React hooks
+├── services/           Collaboration, EventBus
+├── shared/             Auth pages, feature flags
+├── app/                Onboarding
+├── layouts/            Main layout
+└── router/             Route definitions
 ```
 
 ### Feature Module Structure
 
 ```
-features/
-└── projects/
-    ├── pages/
-    ├── components/
+modules/
+└── canvas/
+    ├── nodes/
     ├── hooks/
-    ├── services/
+    ├── validation/
+    ├── components/
+    ├── workers/
     ├── store/
-    ├── schemas/
+    └── services/
+```
     ├── routes/
     ├── api/
     ├── tests/
@@ -390,28 +368,16 @@ features/
 | Feature | Responsibility | Key Components |
 |---------|---------------|----------------|
 | **authentication** | Login, Register, ForgotPassword, MFA | LoginPage, RegisterPage, MFASetup, PasswordResetPage |
-| **onboarding** | Welcome, Tour, Gateway Setup | WelcomeScreen, TourGuide, GatewaySetupWizard |
-| **dashboard** | Overview widgets, quick actions | DashboardLayout, WidgetGrid, QuickActions |
-| **workspace** | Organization/Team management | WorkspaceSelector, TeamList, MemberTable |
-| **organizations** | Org CRUD, settings | OrgSettingsPage, OrgMembersPage |
-| **teams** | Team CRUD, permissions | TeamSettingsPage, TeamRolesPage |
-| **projects** | Project CRUD, overview | ProjectListPage, ProjectDetailPage |
-| **architecture** | Architecture visualization | ArchitectureView, DependencyGraph |
-| **canvas** | Visual design surface | CanvasView, ComponentPalette, PropertiesPanel |
-| **ai** | AI Architect, recommendations | AIChatPanel, RecommendationCards |
-| **terraform** | Code generation, preview | CodePreviewPanel, TerraformDiff |
-| **environments** | Env management, variables | EnvironmentListPage, VariableEditor |
-| **provisioning** | Provision flow, status | ProvisionFlowView, ProvisionStatus |
-| **deployments** | Deploy pipelines, history | DeploymentListPage, PipelineView |
-| **gitops** | Git integration, webhooks | GitOpsConfigPage, WebhookSettings |
-| **observability** | Metrics, logs, traces, alerts | MetricsView, LogsView, TraceView, AlertListPage |
-| **finops** | Cost management, budgets | CostDashboard, BudgetEditor, ForecastView |
-| **security** | IAM, policies, secrets | SecurityDashboard, PolicyListPage, SecretManager |
-| **notifications** | Notification center | NotificationCenter, NotificationPreferences |
-| **billing** | Plans, invoices | BillingPage, InvoiceListPage |
-| **audit** | Audit log, events | AuditLogPage, AuditEventDetailPage |
-| **settings** | User/org settings | ProfilePage, OrganizationSettingsPage |
-| **administration** | Platform admin | AdminDashboard, UserManagementPage |
+| **onboarding** | Welcome, Tour, Gateway Setup | OnboardingWelcome, OnboardingTour, GatewaySetup |
+| **dashboard** | Overview widgets, analytics | DashboardModule, DashboardCharts, AnalyticsModule, SetupWizard |
+| **canvas** | Visual design surface | DesignModule, CanvasView, ComponentPalette, PropertiesPanel, ValidationPanel, CloudNode |
+| **provisioning** | Terraform gen, deploy, GitOps | ProvisionModule, TerraformExecutor, PreviewWorkflow, ImportInfraDialog, AppDeployFlow, CiCdPipeline |
+| **observability** | Metrics, logs, traces, alerts | ObserveModule, MetricsDashboard, LogViewer, TraceExplorer, AlertRulesView, DriftDetection, ServiceMapView |
+| **finops** | Cost management, budgets | CostModule, WhatIfCost, CostAnomaliesView, BudgetComparisonView, CostProjectionChart |
+| **platform** | Catalog, marketplace | PlatformModule |
+| **ai** | AI assistant, incident fix | AIOpsModule, IncidentFixDialog, RunbooksPanel, PostMortemPanel, AutoRemediationPanel |
+| **security** | Audit, IAM, policies | AuditModule, IAMModule, RegoPolicyView, ComplianceDashboardView, AuditTimelineView |
+| **settings** | Configurations, docs | SettingsModule, FeatureFlagsPage, DocsModule, RepositorySettings, MultiTenantSettings |
 
 ---
 

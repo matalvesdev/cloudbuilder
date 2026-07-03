@@ -1,54 +1,67 @@
 package com.cloudbuilder.shared.event.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.time.Instant;
 
 /**
- * Inbox entity for event deduplication (Inbox Pattern — ADR-035).
- *
- * <p>When a Kafka consumer receives an event, it first checks this table.
- * If the eventId already exists, the event is a duplicate and is skipped.
- * If not, the eventId is inserted and processing proceeds.
- *
- * <p>Prevents duplicate processing from Kafka retries, consumer rebalances,
- * or at-least-once delivery guarantees.
+ * EventInbox: Deduplication store for Kafka consumers (Inbox Pattern).
+ * Tracks processed event IDs to prevent duplicate processing.
  */
 @Entity
-@Table(name = "event_inbox")
+@Table(name = "event_inbox", indexes = {
+    @Index(name = "idx_inbox_event_id", columnList = "eventId"),
+    @Index(name = "idx_inbox_tenant", columnList = "tenantId")
+})
 public class EventInbox {
 
     @Id
-    @Column(name = "event_id", length = 100)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "event_id", nullable = false, unique = true)
     private String eventId;
 
-    @Column(name = "event_type", nullable = false, length = 100)
+    @Column(name = "tenant_id")
+    private String tenantId;
+
+    @Column(name = "event_type")
     private String eventType;
+
+    @Column(name = "topic")
+    private String topic;
+
+    @Column(name = "partition")
+    private int partition;
+
+    @Column(name = "offset")
+    private long offset;
 
     @Column(name = "processed_at", nullable = false)
     private Instant processedAt;
 
-    @Column(nullable = false, length = 20)
-    private String status;
-
-    @Column(name = "tenant_id", length = 36)
-    private String tenantId;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 
     protected EventInbox() {}
 
-    public EventInbox(String eventId, String eventType, String tenantId) {
+    public EventInbox(String eventId, String tenantId, String eventType, String topic, int partition, long offset) {
         this.eventId = eventId;
-        this.eventType = eventType;
         this.tenantId = tenantId;
+        this.eventType = eventType;
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
         this.processedAt = Instant.now();
-        this.status = "PROCESSED";
+        this.createdAt = Instant.now();
     }
 
+    public Long getId() { return id; }
     public String getEventId() { return eventId; }
-    public String getEventType() { return eventType; }
-    public Instant getProcessedAt() { return processedAt; }
-    public String getStatus() { return status; }
     public String getTenantId() { return tenantId; }
+    public String getEventType() { return eventType; }
+    public String getTopic() { return topic; }
+    public int getPartition() { return partition; }
+    public long getOffset() { return offset; }
+    public Instant getProcessedAt() { return processedAt; }
+    public Instant getCreatedAt() { return createdAt; }
 }

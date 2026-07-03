@@ -42,6 +42,10 @@ import { ComponentPalette } from './components/ComponentPalette'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { AIChatPanel } from './components/AIChatPanel'
 import { CodePreviewPanel } from './components/CodePreviewPanel'
+import { CanvasDocPanel } from './components/CanvasDocPanel'
+import { CanvasLogsPanel } from './components/CanvasLogsPanel'
+import { CanvasEventsPanel } from './components/CanvasEventsPanel'
+import { CanvasConsolePanel } from './components/CanvasConsolePanel'
 import { CollaborationPanel } from './components/CollaborationPanel'
 import { ObservabilityPanel } from './components/ObservabilityPanel'
 import { EmptyCanvasState } from './components/EmptyCanvasState'
@@ -53,7 +57,7 @@ import { MetricsOverlay } from './components/MetricsOverlay'
 import { CanvasCommandPalette } from './components/CanvasCommandPalette'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { TerraformImportDialog } from './components/TerraformImportDialog'
-import { VersionHistoryPanel } from './components/VersionHistoryPanel'
+import { VersionHistoryPanel } from './components/versions/VersionHistoryPanel'
 import { CostEstimationBar, getResourcePrice } from './components/CostEstimationBar'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
@@ -75,6 +79,7 @@ import {
 import { useCanvasStore } from '@/store/canvasStore'
 import { useCollaborationStore } from '@/store/collaborationStore'
 import { useAuthStore } from '@/store/authStore'
+import { useUiStore } from '@/store/uiStore'
 import { downloadCanvasJson, importCanvasFromFile } from './services'
 import { importTerraform } from '@/api/import'
 import { generateDocFromCanvas } from '@/api/docs'
@@ -96,8 +101,13 @@ export function DesignModule() {
   const [showAIChat, setShowAIChat] = useState(false)
   const [showCollaboration, setShowCollaboration] = useState(false)
   const [showCodePreview, setShowCodePreview] = useState(false)
+  const [showCanvasDocs, setShowCanvasDocs] = useState(false)
+  const [showCanvasLogs, setShowCanvasLogs] = useState(false)
+  const [showCanvasEvents, setShowCanvasEvents] = useState(false)
+  const [showCanvasConsole, setShowCanvasConsole] = useState(false)
   const [showValidation, setShowValidation] = useState(false)
-  const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const showVersionHistory = useUiStore((s) => s.showVersionPanel)
+  const toggleVersionHistory = useUiStore((s) => s.toggleVersionPanel)
   const [snapEnabled, setSnapEnabled] = useState(true)
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
@@ -386,7 +396,7 @@ export function DesignModule() {
     : showCollaboration
     ? <CollaborationPanel onClose={() => setShowCollaboration(false)} />
     : showVersionHistory
-    ? <VersionHistoryPanel onClose={() => setShowVersionHistory(false)} />
+    ? <VersionHistoryPanel />
     : showRepoBrowser && githubToken
     ? <RepoBrowser token={githubToken} onClose={() => setShowRepoBrowser(false)} />
     : showObservability
@@ -657,7 +667,7 @@ export function DesignModule() {
                       <span>Código Terraform</span>
                       {showCodePreview && <span className="ml-auto w-2 h-2 rounded-full bg-brand-lime" />}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => { setShowVersionHistory(!showVersionHistory); setShowAIChat(false); setShowCollaboration(false) }}>
+                    <DropdownMenuItem onSelect={() => { toggleVersionHistory(); setShowAIChat(false); setShowCollaboration(false) }}>
                       <Clock className="w-4 h-4 text-slate-500" />
                       <span>Histórico de versões</span>
                       {showVersionHistory && <span className="ml-auto w-2 h-2 rounded-full bg-brand-lime" />}
@@ -842,10 +852,40 @@ export function DesignModule() {
         )}
       </div>
 
-      <CodePreviewPanel
-        expanded={showCodePreview}
-        onToggle={() => setShowCodePreview(!showCodePreview)}
-      />
+      {/* Bottom Panel — Tabbed: Terraform | Docs | Logs | Events | Console */}
+      {(showCodePreview || showCanvasDocs || showCanvasLogs || showCanvasEvents || showCanvasConsole) && (
+        <div className="h-[220px] border-t border-slate-200 flex flex-col shrink-0">
+          {/* Tab bar */}
+          <div className="flex items-center border-b border-slate-200 px-2 shrink-0">
+            {[
+              { key: 'terraform', label: 'Terraform', show: showCodePreview, toggle: () => { setShowCodePreview(!showCodePreview); setShowCanvasDocs(false); setShowCanvasLogs(false); setShowCanvasEvents(false); setShowCanvasConsole(false) } },
+              { key: 'docs', label: 'Documentação', show: showCanvasDocs, toggle: () => { setShowCanvasDocs(!showCanvasDocs); setShowCodePreview(false); setShowCanvasLogs(false); setShowCanvasEvents(false); setShowCanvasConsole(false) } },
+              { key: 'logs', label: 'Logs', show: showCanvasLogs, toggle: () => { setShowCanvasLogs(!showCanvasLogs); setShowCodePreview(false); setShowCanvasDocs(false); setShowCanvasEvents(false); setShowCanvasConsole(false) } },
+              { key: 'events', label: 'Eventos', show: showCanvasEvents, toggle: () => { setShowCanvasEvents(!showCanvasEvents); setShowCodePreview(false); setShowCanvasDocs(false); setShowCanvasLogs(false); setShowCanvasConsole(false) } },
+              { key: 'console', label: 'Console', show: showCanvasConsole, toggle: () => { setShowCanvasConsole(!showCanvasConsole); setShowCodePreview(false); setShowCanvasDocs(false); setShowCanvasLogs(false); setShowCanvasEvents(false) } },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={tab.toggle}
+                className={cn(
+                  'px-3 py-2 text-xs font-medium border-b-2 transition-colors',
+                  tab.show ? 'border-brand-navy text-brand-navy' : 'border-transparent text-slate-400 hover:text-slate-600'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Panel content */}
+          <div className="flex-1 overflow-hidden">
+            {showCodePreview && <CodePreviewPanel expanded={true} onToggle={() => setShowCodePreview(false)} />}
+            {showCanvasDocs && <CanvasDocPanel canvasId={useCanvasStore.getState().canvasId ?? undefined} />}
+            {showCanvasLogs && <CanvasLogsPanel environmentId={undefined} />}
+            {showCanvasEvents && <CanvasEventsPanel canvasId={useCanvasStore.getState().canvasId ?? undefined} />}
+            {showCanvasConsole && <CanvasConsolePanel canvasId={useCanvasStore.getState().canvasId ?? undefined} />}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

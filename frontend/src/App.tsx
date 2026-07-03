@@ -22,10 +22,6 @@ import {
   ArrowRight,
   BarChart3,
   Flag,
-  Users,
-  FolderKanban,
-  Bell,
-  CreditCard,
 } from 'lucide-react'
 import { useUiStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
@@ -71,10 +67,6 @@ const AIModule = lazyImport(() => import('@/modules/ai/AIOpsModule'), 'AIOpsModu
 const SecurityModule = lazyImport(() => import('@/modules/security/AuditModule'), 'AuditModule')
 const SettingsModule = lazyImport(() => import('@/modules/settings/SettingsModule'), 'SettingsModule')
 const DocsModule = lazyImport(() => import('@/modules/settings/DocsModule'), 'DocsModule')
-const WorkspaceModule = lazyImport(() => import('@/modules/workspace/WorkspaceModule'), 'WorkspaceModule')
-const ProjectsModule = lazyImport(() => import('@/modules/projects/ProjectsModule'), 'ProjectsModule')
-const NotificationsModule = lazyImport(() => import('@/modules/notifications/NotificationsModule'), 'NotificationsModule')
-const BillingModule = lazyImport(() => import('@/modules/billing/BillingModule'), 'BillingModule')
 
 function ModuleFallback() {
   return (
@@ -153,15 +145,6 @@ const navGroups = [
       { id: 'settings' as const, label: 'Config', icon: Settings },
     ],
   },
-  {
-    label: 'Organização',
-    items: [
-      { id: 'workspace' as const, label: 'Workspace', icon: Users },
-      { id: 'projects' as const, label: 'Projetos', icon: FolderKanban },
-      { id: 'notifications' as const, label: 'Notificações', icon: Bell },
-      { id: 'billing' as const, label: 'Billing', icon: CreditCard },
-    ],
-  },
 ]
 
 const moduleLabels: Record<string, string> = {
@@ -193,10 +176,6 @@ const moduleComponents: Record<string, React.ReactNode> = {
   security: <ProtectedContent roles={['admin']}><ErrorBoundary moduleName="Segurança"><Suspense fallback={<ModuleFallback />}><SecurityModule /></Suspense></ErrorBoundary></ProtectedContent>,
   docs: <ErrorBoundary moduleName="Documentação"><Suspense fallback={<ModuleFallback />}><DocsModule /></Suspense></ErrorBoundary>,
   settings: <ErrorBoundary moduleName="Configurações"><Suspense fallback={<ModuleFallback />}><SettingsModule /></Suspense></ErrorBoundary>,
-  workspace: <ErrorBoundary moduleName="Workspace"><Suspense fallback={<ModuleFallback />}><WorkspaceModule /></Suspense></ErrorBoundary>,
-  projects: <ErrorBoundary moduleName="Projetos"><Suspense fallback={<ModuleFallback />}><ProjectsModule /></Suspense></ErrorBoundary>,
-  notifications: <ErrorBoundary moduleName="Notificações"><Suspense fallback={<ModuleFallback />}><NotificationsModule /></Suspense></ErrorBoundary>,
-  billing: <ErrorBoundary moduleName="Billing"><Suspense fallback={<ModuleFallback />}><BillingModule /></Suspense></ErrorBoundary>,
 }
 
 function App() {

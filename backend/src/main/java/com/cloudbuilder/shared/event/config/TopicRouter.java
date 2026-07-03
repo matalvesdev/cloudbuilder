@@ -1,79 +1,48 @@
 package com.cloudbuilder.shared.event.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.cloudbuilder.shared.event.PlatformEvent;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Routes PlatformEvent types to Kafka topics based on event type prefix.
- *
- * <p>Topic routing (ADR-035):
- * <pre>
- *   cost.anomaly        → cost.events
- *   deployment.started  → deployment.events
- *   drift.detected      → observability.events
- *   incident.created    → ai.events
- *   canvas.created      → canvas.events
- *   ...
- * </pre>
- *
- * Unknown prefixes default to {@code system.events}.
+ * Routes platform events to appropriate Kafka topics based on event type prefix.
  */
 @Component
 public class TopicRouter {
 
-    private final Map<String, String> topicMapping;
+    private static final Map<String, String> TOPIC_MAP = Map.of(
+        "canvas.", "canvas.events",
+        "deployment.", "deployment.events",
+        "drift.", "drift.events",
+        "cost.", "cost.events",
+        "incident.", "incident.events",
+        "health.", "health.events",
+        "notification.", "notification.events",
+        "audit.", "audit.events",
+        "credential.", "credential.events",
+        "provision.", "provision.events"
+    );
 
-    public TopicRouter(@Value("${cloudbuilder.kafka.topics.cost:cost.events}") String costTopic,
-                       @Value("${cloudbuilder.kafka.topics.deployment:deployment.events}") String deploymentTopic,
-                       @Value("${cloudbuilder.kafka.topics.observability:observability.events}") String observabilityTopic,
-                       @Value("${cloudbuilder.kafka.topics.ai:ai.events}") String aiTopic,
-                       @Value("${cloudbuilder.kafka.topics.canvas:canvas.events}") String canvasTopic,
-                       @Value("${cloudbuilder.kafka.topics.provisioning:provisioning.events}") String provisioningTopic,
-                       @Value("${cloudbuilder.kafka.topics.security:security.events}") String securityTopic,
-                       @Value("${cloudbuilder.kafka.topics.identity:identity.events}") String identityTopic,
-                       @Value("${cloudbuilder.kafka.topics.audit:audit.events}") String auditTopic,
-                       @Value("${cloudbuilder.kafka.topics.policy:policy.events}") String policyTopic,
-                       @Value("${cloudbuilder.kafka.topics.notification:notification.events}") String notificationTopic,
-                       @Value("${cloudbuilder.kafka.topics.system:system.events}") String systemTopic) {
+    private static final String DEFAULT_TOPIC = "platform.events";
 
-        this.topicMapping = new HashMap<>();
-        this.topicMapping.put("cost", costTopic);
-        this.topicMapping.put("finops", costTopic);
-        this.topicMapping.put("deployment", deploymentTopic);
-        this.topicMapping.put("drift", observabilityTopic);
-        this.topicMapping.put("health", observabilityTopic);
-        this.topicMapping.put("observability", observabilityTopic);
-        this.topicMapping.put("incident", aiTopic);
-        this.topicMapping.put("aiops", aiTopic);
-        this.topicMapping.put("canvas", canvasTopic);
-        this.topicMapping.put("architecture", canvasTopic);
-        this.topicMapping.put("terraform", canvasTopic);
-        this.topicMapping.put("provisioning", provisioningTopic);
-        this.topicMapping.put("resource", provisioningTopic);
-        this.topicMapping.put("security", securityTopic);
-        this.topicMapping.put("identity", identityTopic);
-        this.topicMapping.put("user", identityTopic);
-        this.topicMapping.put("audit", auditTopic);
-        this.topicMapping.put("policy", policyTopic);
-        this.topicMapping.put("notification", notificationTopic);
-        this.topicMapping.put("system", systemTopic);
+    /**
+     * Resolve the Kafka topic for a given event type.
+     */
+    public String resolveTopic(String eventType) {
+        if (eventType == null) return DEFAULT_TOPIC;
+        for (var entry : TOPIC_MAP.entrySet()) {
+            if (eventType.startsWith(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return DEFAULT_TOPIC;
     }
 
     /**
-     * Resolves the Kafka topic for a given event type string.
-     *
-     * @param eventType the event type (e.g., "cost.anomaly", "deployment.started")
-     * @return the Kafka topic name (e.g., "cost.events", "deployment.events")
+     * Resolve the Kafka topic for a PlatformEvent.
      */
-    public String resolveTopic(String eventType) {
-        if (eventType == null || eventType.isBlank()) {
-            return topicMapping.get("system");
-        }
-        // Extract first segment: "cost.anomaly" → "cost"
-        String prefix = eventType.contains(".") ? eventType.substring(0, eventType.indexOf('.')) : eventType;
-        return topicMapping.getOrDefault(prefix, topicMapping.get("system"));
+    public String resolveTopic(PlatformEvent event) {
+        return resolveTopic(event.getEventType());
     }
 }

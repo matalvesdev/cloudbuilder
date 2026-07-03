@@ -1,44 +1,34 @@
 import { api } from './client'
-import type { AnalyticsEvent, ModuleUsage, UserActivity } from '@/types/analytics.types'
 
-export interface AnalyticsApi {
-  trackEvent(event: Omit<AnalyticsEvent, 'id' | 'timestamp'>): Promise<AnalyticsEvent | null>
-  getEvents(tenantId: string): Promise<AnalyticsEvent[]>
-  getModuleUsage(tenantId: string, days?: number): Promise<Record<string, number>>
-  getUserActivity(tenantId: string, days?: number): Promise<Record<string, number>>
+export interface AnalyticsEvent {
+  id: string
+  tenantId: string
+  userId: string
+  action: string
+  resource: string
+  timestamp: string
+  metadata: Record<string, any>
 }
 
-export const analyticsApi: AnalyticsApi = {
-  async trackEvent(event) {
-    try {
-      const res = await api.post<AnalyticsEvent>('/analytics/events', event)
-      return res ?? null
-    } catch {
-      return null
-    }
-  },
+export function getSummary(period: string): Promise<any> {
+  return api.get(`/analytics/summary?period=${period}`)
+}
 
-  async getEvents(tenantId) {
-    try {
-      return (await api.get<AnalyticsEvent[]>(`/analytics/events/${tenantId}`)) ?? []
-    } catch {
-      return []
-    }
-  },
+export function listEvents(): Promise<{ content: AnalyticsEvent[]; totalElements: number }> {
+  return api.get('/analytics/events')
+}
 
-  async getModuleUsage(tenantId, days = 30) {
-    try {
-      return (await api.get<Record<string, number>>(`/analytics/usage/${tenantId}?days=${days}`)) ?? {}
-    } catch {
-      return {}
-    }
-  },
+export function getMetrics(resourceType: string, period: string): Promise<any> {
+  return api.get(`/analytics/metrics/${resourceType}?period=${period}`)
+}
 
-  async getUserActivity(tenantId, days = 30) {
-    try {
-      return (await api.get<Record<string, number>>(`/analytics/activity/${tenantId}?days=${days}`)) ?? {}
-    } catch {
-      return {}
-    }
-  },
+export function getUsageStats(): Promise<any> {
+  return api.get('/analytics/usage')
+}
+
+export const analyticsApi = {
+  getSummary,
+  listEvents,
+  getMetrics,
+  getUsageStats,
 }

@@ -1,6 +1,5 @@
 /**
- * Provisioning Services — barrel export.
+ * GitOps Services — barrel export.
  * Re-exports from centralized API for backward compatibility.
  */
-export * as provisionApi from '@/api/provision'
-export * as importApi from '@/api/import'
+export * as multiregionApi from '@/api/multiregion'

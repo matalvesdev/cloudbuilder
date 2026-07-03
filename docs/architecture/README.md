@@ -16,8 +16,8 @@ graph TB
     subgraph Frontend["Frontend (React 19 + TypeScript)"]
         direction TB
         SPA["Vite SPA<br/>React 19 + ReactFlow"]
-        Stores["Zustand Stores<br/>(20 stores)"]
-        SHCN["shadcn/ui Components<br/>(22 wrappers)"]
+        Stores["Zustand Stores<br/>(22 stores)"]
+        SHCN["shadcn/ui Components<br/>(23 wrappers)"]
         SPA --> Stores
         SPA --> SHCN
     end
@@ -86,20 +86,19 @@ graph TB
 graph LR
     subgraph Modules
         DASH[Dashboard]
-        DSGN[Design]
-        PROV[Provisionamento]
-        OBSV[Observabilidade]
-        COST[Custos]
+        DSGN[Canvas/Design]
+        PROV[Provisioning]
+        OBSV[Observability]
+        COST[FinOps/Custos]
         PLAT[Plataforma]
         AIOPS[AIOps]
-        AUDIT[Auditoria]
-        IAM[IAM]
+        AUDIT[Security/Audit]
         SETT[Settings]
     end
 
     subgraph Core
         API["API Layer<br/>(HttpClient + auth)"]
-        STORE["Zustand Stores<br/>(20 stores)"]
+        STORE["Zustand Stores<br/>(22 stores)"]
         UI["Components<br/>(shadcn/ui)"]
         AUTH["Auth<br/>(JWT + RBAC)"]
         ONB["Onboarding<br/>(Welcome/Tour/Gateway)"]
@@ -128,21 +127,18 @@ graph LR
 ```
 frontend/src/
 ├── modules/
-│   ├── design/          ★ Completo — Canvas, Palette, Properties (54 files)
-│   ├── provision/       ★ Completo — Terraform executor, CI/CD (10 files)
-│   ├── observe/         ✅ — Health, alerts, drift, DR (3 files)
-│   ├── cost/            ✅ — Dashboard, otimizações (1 file)
-│   ├── platform/        ✅ — Catalog, marketplace (1 file)
-│   ├── aiops/           ✅ — AI assistant, incident fix (2 files)
-│   ├── audit/           ✅ — Auditoria (1 file)
-│   ├── auth/            ★ Completo — Login, Register, Password (4 files)
-│   ├── dashboard/       ✅ — Widgets, overview (3 files)
-│   ├── iam/             🔧 Stub — Identity management (1 file)
-│   ├── settings/        ✅ — Configurations (3 files)
-│   └── onboarding/      ✅ — Welcome, Tour, Gateway Setup (3 files)
-├── store/              20 Zustand stores
-├── components/ui/      22 shadcn/ui wrappers
-├── api/                API client layer (8 files)
+│   ├── canvas/           ★ Completo — Canvas, Palette, Properties, Validation, AI Chat, Code Preview
+│   ├── provisioning/     ★ Completo — Terraform executor, CI/CD, Deployment, GitOps, Import
+│   ├── observability/    ✅ — Health, alerts, drift, DR, ServiceMap, Scorecard, Metrics, Traces, Logs, SLO
+│   ├── finops/           ✅ — Cost dashboard, budgets, anomalies, projections, what-if
+│   ├── platform/         ✅ — Catalog, marketplace
+│   ├── ai/               ✅ — AI assistant, incident fix, runbooks, post-mortem
+│   ├── security/         ✅ — Audit, IAM, Rego policies, compliance
+│   ├── dashboard/        ✅ — Widgets, overview, analytics
+│   └── settings/         ✅ — Configurations, feature flags, docs, repos
+├── store/              22 Zustand stores
+├── components/ui/      23 shadcn/ui wrappers
+├── api/                API client layer (9 files)
 ├── lib/                Utils, Toast, Command
 └── services/           Collaboration, EventBus
 ```
@@ -151,7 +147,7 @@ frontend/src/
 
 ```mermaid
 graph TD
-    subgraph Stores["20 Zustand Stores"]
+    subgraph Stores["22 Zustand Stores"]
         CANVAS[canvasStore<br/>nodes/edges/history]
         UI[uiStore<br/>sidebar/panels/modules]
         AUTH[authStore<br/>login/logout/roles]
@@ -254,6 +250,15 @@ graph LR
 | **apm** | ✅ Complete | 5 | Traces, Spans, Snapshots |
 | **metrics** | ✅ Complete | 6 | Metrics, Resource Metrics |
 | **codeanalysis** | ✅ Complete | 4 | Code Analysis |
+| **credential** | ✅ Complete | — | Cloud Credentials, Secrets Encryption |
+| **environment** | ✅ Complete | — | Managed Environments, State |
+| **approval** | ✅ Complete | — | Approval Workflows, Gates |
+| **deployment** | ✅ Complete | — | Deploy Pipeline, Ephemeral, Promote |
+| **docs** | ✅ Complete | — | Doc Scanner, Auto-Documentation, ADR |
+| **featureflags** | ✅ Complete | — | Feature Flags, Toggle, Cache |
+| **search** | ✅ Complete | — | Full-Text Search, Indexing |
+| **analytics** | ✅ Complete | — | Analytics Aggregation, Rollup |
+| **observability** | ✅ Complete | — | Traces, Spans, APMSnapshot, Logs |
 
 ### Rotas da API
 
@@ -525,7 +530,6 @@ graph LR
         DRIFT[Drift Detector]
         EXEC[Deployment Executor]
         PARSER[Plan / State Parser]
-        KAFKA[Kafka Producer]
         TEMPLATES[Provider Templates<br/>AWS / Azure / GCP / K8s]
     end
 
@@ -545,7 +549,6 @@ graph LR
     GRPC --> EXEC
     EXEC --> PARSER
     PARSER --> DRIFT
-    DRIFT --> KAFKA
     DRIFT --> DB
 ```
 
@@ -590,11 +593,13 @@ graph TB
 
 | Serviço | Motivo | Substituição |
 |---------|--------|-------------|
-| Kafka + Zookeeper | Custo operacional | Spring events + gRPC |
+| Kafka + Zookeeper | Custo operacional | Spring events (in-process) |
 | Redis | Custo de memória | Caffeine in-process |
 | OpenTelemetry Collector | Dependência externa | Native metrics (PostgreSQL) |
 | Prometheus | Dependência externa | Native metrics service |
 | Grafana | Dependência externa | Native dashboard views |
+| OPA | Dependência externa | Rego policies via in-process evaluation |
+| Provision Engine | Custo operacional | Backend code generation (Spring) |
 
 ---
 
@@ -730,7 +735,9 @@ gantt
 
 ---
 
-## 15. Arquitetura EDA — Diagramas
+## 15. Arquitetura EDA — Diagramas (Planejado — ADR-035)
+
+> **Status**: Kafka foi removido na Phase 1 ($0 infra cleanup). A reintrodução está planejada via ADR-035 (Event-Driven Architecture). Os diagramas abaixo documentam a arquitetura EDA pretendida para quando o Kafka for reintegrado.
 
 CloudBuilder adota uma arquitetura orientada a eventos (Event-Driven Architecture) baseada em Apache Kafka. Esta seção apresenta os 10 diagramas Mermaid que documentam a arquitetura EDA completa. Para documentação detalhada, consulte [EDA README](./eda/README.md) e [ADR-035](./adr-035-production-event-driven-architecture.md).
 
@@ -887,12 +894,7 @@ flowchart LR
 flowchart LR
     ProjectionService["Projection\nService"]
 
-    ProjectionService --> PostgreSQL["PostgreSQL\nTransactional Data"]
-    ProjectionService --> ClickHouse["ClickHouse\nAnalytics OLAP"]
-    ProjectionService --> Elasticsearch["Elasticsearch\nFull-Text Search"]
-    ProjectionService --> Redis["Redis\nCache & Sessions"]
-    ProjectionService --> TimescaleDB["TimescaleDB\nTime-Series Metrics"]
-    ProjectionService --> S3["S3 / Object Store\nFiles & Artifacts"]
+    ProjectionService --> PostgreSQL["PostgreSQL\nTransactional Data + Analytics"]
 ```
 
 ### 15.7 Reliability Patterns (Outbox → Inbox → Saga → DLQ)

@@ -1,7 +1,6 @@
 /**
- * Provisioning Store — barrel export.
+ * GitOps Store — barrel export.
  * Re-exports from centralized store for backward compatibility.
- * Implementation lives in src/store/deployStore.ts and src/store/credentialStore.ts (centralized).
+ * TODO: Migrate actual implementation here in Phase 3.
  */
-export { useDeployStore } from '@/store/deployStore'
-export { useCredentialStore } from '@/store/credentialStore'
+export { useRepoStore } from '@/store/repoStore'

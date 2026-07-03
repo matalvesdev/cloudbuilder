@@ -27,57 +27,6 @@ services:
     networks:
       - db-net
 
-  kafka:
-    image: apache/kafka:3.7.1
-    container_name: cloudbuilder-kafka
-    environment:
-      # KRaft mode (no Zookeeper)
-      KAFKA_NODE_ID: "1"
-      KAFKA_PROCESS_ROLES: "broker,controller"
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
-      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      # Listeners
-      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
-      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
-      # Topics
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKA_NUM_PARTITIONS: "3"
-      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
-      # Retention
-      KAFKA_LOG_RETENTION_HOURS: "168"
-      KAFKA_LOG_SEGMENT_BYTES: "1073741824"
-      # Performance
-      KAFKA_NUM_IO_THREADS: "8"
-      KAFKA_NUM_NETWORK_THREADS: "3"
-      # Cluster
-      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
-    ports:
-      - "9092:9092"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    networks:
-      - kafka-net
-      - frontend-net
-
   backend:
     build:
       context: ./backend
@@ -88,18 +37,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cloudbuilder
       SPRING_DATASOURCE_USERNAME: cloudbuilder
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-cloudbuilder}
-      # Override dev profile's H2-oriented settings (dev uses H2Dialect + create-drop)
       SPRING_JPA_HIBERNATE_DDL_AUTO: none
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       SPRING_FLYWAY_ENABLED: "true"
       JWT_SECRET: "${JWT_SECRET:?ERRO - Defina JWT_SECRET no .env. Gere com openssl rand -base64 64}"
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "8080:8080"
     depends_on:
       postgres:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health/liveness || exit 1"]
@@ -118,53 +63,6 @@ services:
     networks:
       - frontend-net
       - db-net
-      - kafka-net
-
-  opa:
-    image: openpolicyagent/opa:latest
-    container_name: cloudbuilder-opa
-    command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=info"]
-    ports:
-      - "8181:8181"
-    volumes:
-      - ./opa/policies:/policies
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 128M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
-    networks:
-      - frontend-net
-
-  provision-engine:
-    build:
-      context: ./provision-engine
-      dockerfile: Dockerfile
-    container_name: cloudbuilder-provision-engine
-    ports:
-      - "50051:50051"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "echo | timeout 2 nc localhost 50051 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 128M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
-    networks:
-      - frontend-net
 
   frontend:
     build:
@@ -172,7 +70,7 @@ services:
       dockerfile: Dockerfile
     container_name: cloudbuilder-frontend
     ports:
-      - "3001:80"
+      - "3000:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -196,8 +94,6 @@ services:
 volumes:
   pgdata:
     name: cloudbuilder_pgdata
-  kafka_data:
-    name: cloudbuilder_kafka_data
 
 networks:
   frontend-net:
@@ -206,6 +102,3 @@ networks:
   db-net:
     driver: bridge
     name: cloudbuilder_db
-  kafka-net:
-    driver: bridge
-    name: cloudbuilder_kafka

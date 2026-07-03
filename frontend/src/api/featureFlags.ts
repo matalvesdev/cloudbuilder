@@ -2,54 +2,56 @@ import { api } from './client'
 
 export interface FeatureFlagDTO {
   id: string
-  flagKey: string
-  enabled: boolean
   tenantId: string | null
-  configJson: string | null
-  description: string | null
+  flagKey: string
+  flagType: 'BOOLEAN' | 'STRING' | 'JSON'
+  valueJson: string
+  enabled: boolean
+  description: string
   createdAt: string
   updatedAt: string
-  resolved: boolean
-}
-
-export interface CreateFlagRequest {
-  flagKey: string
-  enabled: boolean
-  tenantId?: string
-  configJson?: string
-  description?: string
 }
 
 export interface UpdateFlagRequest {
   enabled?: boolean
-  configJson?: string
+  valueJson?: string
   description?: string
 }
 
-const BASE = '/flags'
+export function listFlags(): Promise<FeatureFlagDTO[]> {
+  return api.get('/feature-flags')
+}
+
+export function getFlag(key: string): Promise<FeatureFlagDTO> {
+  return api.get(`/feature-flags/${key}`)
+}
+
+export function updateFlag(key: string, req: UpdateFlagRequest): Promise<FeatureFlagDTO> {
+  return api.put(`/feature-flags/${key}`, req)
+}
+
+export function createFlag(flag: Omit<FeatureFlagDTO, 'id' | 'createdAt' | 'updatedAt'>): Promise<FeatureFlagDTO> {
+  return api.post('/feature-flags', flag)
+}
+
+export function deleteFlag(key: string): Promise<void> {
+  return api.delete(`/feature-flags/${key}`)
+}
+
+export function refreshCache(): Promise<void> {
+  return api.post('/feature-flags/refresh')
+}
+
+export function checkFlag(key: string): Promise<{ enabled: boolean }> {
+  return api.get(`/feature-flags/${key}/check`)
+}
 
 export const featureFlagsApi = {
-  /** Fetch all feature flags for the current tenant */
-  getFlags: () =>
-    api.get<FeatureFlagDTO[]>(BASE),
-
-  /** Check if a specific flag is enabled */
-  checkFlag: (flagKey: string) =>
-    api.get<{ flagKey: string; enabled: boolean }>(`${BASE}/${flagKey}`),
-
-  /** Create a new feature flag (admin) */
-  createFlag: (request: CreateFlagRequest) =>
-    api.post<FeatureFlagDTO>(BASE, request),
-
-  /** Update an existing feature flag (admin) */
-  updateFlag: (id: string, request: UpdateFlagRequest) =>
-    api.put<FeatureFlagDTO>(`${BASE}/${id}`, request),
-
-  /** Delete a feature flag (admin) */
-  deleteFlag: (id: string) =>
-    api.delete(`${BASE}/${id}`),
-
-  /** Refresh the flag cache (admin) */
-  refreshCache: () =>
-    api.post<{ status: string }>(`${BASE}/refresh`),
+  listFlags,
+  getFlag,
+  updateFlag,
+  createFlag,
+  deleteFlag,
+  refreshCache,
+  checkFlag,
 }

@@ -2,70 +2,54 @@ import { api } from './client'
 
 export interface RegionDto {
   id: string
-  code: string
   name: string
   provider: string
-  country: string
-  isPrimary: boolean
-  isActive: boolean
-  metadata: string | null
-  createdAt: string
-  updatedAt: string
+  location: string
+  status: string
 }
 
 export interface ReplicationConfig {
   id: string
-  tenantId: string
-  planId: string
   sourceRegionId: string
   targetRegionId: string
-  resourceType: string
-  strategy: string
+  type: string
   status: string
-  lagMs: number
-  lastSyncedAt: string | null
-  createdAt: string
 }
 
-export interface DisasterRecoveryPlanDto {
-  id: string
-  name: string
-  description: string | null
-  primaryRegionId: string
-  secondaryRegionId: string
-  failoverStrategy: string
-  status: string
-  lastTestedAt: string | null
-  createdAt: string
-  updatedAt: string
+export function listRegions(): Promise<RegionDto[]> {
+  return api.get('/regions')
 }
 
-const BASE = '/multiregion'
-
-export async function getRegions(): Promise<RegionDto[]> {
-  return api.get<RegionDto[]>(`${BASE}/regions`)
+export function getRegion(id: string): Promise<RegionDto> {
+  return api.get(`/regions/${id}`)
 }
 
-export async function getActiveRegions(): Promise<RegionDto[]> {
-  return api.get<RegionDto[]>(`${BASE}/regions/active`)
+export function createRegion(region: Omit<RegionDto, 'id'>): Promise<RegionDto> {
+  return api.post('/regions', region)
 }
 
-export async function getRegion(id: string): Promise<RegionDto> {
-  return api.get<RegionDto>(`${BASE}/regions/${id}`)
+export function listDrPlans(): Promise<any[]> {
+  return api.get('/dr-plans')
 }
 
-export async function getReplicationConfigsByPlan(planId: string): Promise<ReplicationConfig[]> {
-  return api.get<ReplicationConfig[]>(`${BASE}/regions/replication/plan/${planId}`)
+export function createDrPlan(plan: any): Promise<any> {
+  return api.post('/dr-plans', plan)
 }
 
-export async function getReplicationConfigsByTenant(tenantId: string): Promise<ReplicationConfig[]> {
-  return api.get<ReplicationConfig[]>(`${BASE}/regions/replication/tenant/${tenantId}`)
+export function getRegionHealth(id: string): Promise<any> {
+  return api.get(`/regions/${id}/health`)
 }
 
-export async function triggerAutoFailover(planId: string): Promise<DisasterRecoveryPlanDto> {
-  return api.post<DisasterRecoveryPlanDto>(`${BASE}/regions/dr/plans/${planId}/auto-failover`)
+export function listReplicationConfigs(): Promise<ReplicationConfig[]> {
+  return api.get('/regions/replication')
 }
 
-export async function verifyFailover(planId: string): Promise<string> {
-  return api.post<string>(`${BASE}/regions/dr/plans/${planId}/verify-failover`)
+export const multiregionApi = {
+  listRegions,
+  getRegion,
+  createRegion,
+  listDrPlans,
+  createDrPlan,
+  getRegionHealth,
+  listReplicationConfigs,
 }

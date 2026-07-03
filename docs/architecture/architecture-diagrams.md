@@ -18,8 +18,6 @@ graph TB
 
     subgraph "Infrastructure"
         PG[(PostgreSQL 16)]
-        Kafka[Apache Kafka]
-        OPA[OPA Policy Engine]
     end
 
     subgraph "Go Engine"
@@ -33,8 +31,6 @@ graph TB
     Controllers --> Services
     Services --> Repositories
     Repositories --> PG
-    Services -.-> Kafka
-    Services -.-> OPA
     Controllers -.-> GRPC
     GRPC --> Terraform
 ```
@@ -537,7 +533,7 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant C as Client (Browser)
-    participant NG as Nginx (Port 3001)
+    participant NG as Nginx (Port 3000)
     participant BE as Spring Boot (Port 8080)
     participant SEC as Security Filter
     participant DB as PostgreSQL
@@ -695,7 +691,7 @@ graph LR
 
 ---
 
-## Diagrama 9: Todos os Módulos do Backend (25 módulos)
+## Diagrama 9: Todos os Módulos do Backend (24 módulos)
 
 ### Responsabilidades dos Módulos
 
@@ -728,10 +724,10 @@ graph LR
 
 ### Frontend Sub-Módulos (componentes compartilhados)
 
-| Sub-módulo | Importado por | Responsabilidade |
-|------------|--------------|-----------------|
-| deployment/ | ProvisionModule, SettingsModule | AppDeployFlow, ApprovalDialog, CiCdPipeline, EphemeralEnvironments, PromoteDialog |
-| gitops/ | ProvisionModule | GitOpsSection, Pipeline Runs, Webhooks |
+| Sub-módulo | Localização atual | Responsabilidade |
+|------------|------------------|-----------------|
+| deployment/ | provisioning/ (consolidado) | AppDeployFlow, ApprovalDialog, CiCdPipeline, EphemeralEnvironments, PromoteDialog |
+| gitops/ | provisioning/ (consolidado) | GitOpsSection, Pipeline Runs, Webhooks |
 
 ---
 

@@ -28,7 +28,7 @@ public class ProjectService {
         project = projectRepository.save(project);
 
         ProjectMember owner = new ProjectMember(
-                project.getId(), ownerUserId, ownerName, ownerEmail, ProjectMember.ROLE_OWNER);
+                project.getId(), ownerUserId, ownerName, ownerEmail, ProjectMember.ROLE_ADMIN);
         memberRepository.save(owner);
 
         return project;
@@ -59,7 +59,7 @@ public class ProjectService {
 
     public ProjectMember inviteMember(String projectId, String userId, String userName,
                                        String userEmail, String role) {
-        if (!List.of(ProjectMember.ROLE_ADMIN, ProjectMember.ROLE_MEMBER, ProjectMember.ROLE_VIEWER)
+        if (!List.of(ProjectMember.ROLE_ADMIN, ProjectMember.ROLE_EDITOR, ProjectMember.ROLE_VIEWER)
                 .contains(role)) {
             throw new IllegalArgumentException("Invalid role: " + role);
         }
@@ -85,8 +85,8 @@ public class ProjectService {
         ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found"));
 
-        if (ProjectMember.ROLE_OWNER.equals(member.getRole())) {
-            throw new IllegalStateException("Cannot remove the project owner");
+        if (ProjectMember.ROLE_ADMIN.equals(member.getRole())) {
+            throw new IllegalStateException("Cannot remove the project admin");
         }
 
         memberRepository.deleteByProjectIdAndUserId(projectId, userId);
@@ -98,7 +98,7 @@ public class ProjectService {
     }
 
     public ProjectMember updateMemberRole(String projectId, String userId, String newRole) {
-        if (!List.of(ProjectMember.ROLE_ADMIN, ProjectMember.ROLE_MEMBER, ProjectMember.ROLE_VIEWER)
+        if (!List.of(ProjectMember.ROLE_ADMIN, ProjectMember.ROLE_EDITOR, ProjectMember.ROLE_VIEWER)
                 .contains(newRole)) {
             throw new IllegalArgumentException("Invalid role: " + newRole);
         }
@@ -106,8 +106,8 @@ public class ProjectService {
         ProjectMember member = memberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Member not found"));
 
-        if (ProjectMember.ROLE_OWNER.equals(member.getRole())) {
-            throw new IllegalStateException("Cannot change the project owner's role");
+        if (ProjectMember.ROLE_ADMIN.equals(member.getRole())) {
+            throw new IllegalStateException("Cannot change the project admin's role");
         }
 
         member.setRole(newRole);

@@ -10,9 +10,8 @@ import java.util.UUID;
 })
 public class ProjectMember {
 
-    public static final String ROLE_OWNER = "owner";
     public static final String ROLE_ADMIN = "admin";
-    public static final String ROLE_MEMBER = "member";
+    public static final String ROLE_EDITOR = "editor";
     public static final String ROLE_VIEWER = "viewer";
 
     @Id

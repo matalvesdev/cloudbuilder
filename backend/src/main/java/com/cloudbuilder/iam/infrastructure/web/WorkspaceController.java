@@ -33,7 +33,7 @@ public class WorkspaceController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WorkspaceDTO> createWorkspace(
             @PathVariable String organizationId,
             @RequestBody CreateWorkspaceRequest req) {
@@ -42,7 +42,7 @@ public class WorkspaceController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WorkspaceDTO> updateWorkspace(
             @PathVariable String id,
             @RequestBody UpdateWorkspaceRequest req) {
@@ -50,14 +50,14 @@ public class WorkspaceController {
     }
 
     @PostMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deactivateWorkspace(@PathVariable String id) {
         workspaceService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteWorkspace(@PathVariable String id) {
         workspaceService.delete(id);
         return ResponseEntity.noContent().build();

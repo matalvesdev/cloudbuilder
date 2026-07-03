@@ -44,7 +44,7 @@ public class MembershipController {
     }
 
     @PostMapping("/invite")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MembershipDTO> inviteMember(
             @PathVariable String organizationId,
             @RequestBody InviteMemberRequest req) {
@@ -58,7 +58,7 @@ public class MembershipController {
     }
 
     @PutMapping("/{id}/role")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MembershipDTO> updateRole(
             @PathVariable String id,
             @RequestBody UpdateRoleRequest req) {
@@ -66,7 +66,7 @@ public class MembershipController {
     }
 
     @PostMapping("/{id}/team")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MembershipDTO> assignToTeam(
             @PathVariable String id,
             @RequestBody AssignToTeamRequest req) {
@@ -74,20 +74,20 @@ public class MembershipController {
     }
 
     @DeleteMapping("/{id}/team")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MembershipDTO> removeFromTeam(@PathVariable String id) {
         return ResponseEntity.ok(MembershipDTO.fromEntity(membershipService.removeFromTeam(id)));
     }
 
     @PostMapping("/{id}/disable")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> disableMember(@PathVariable String id) {
         membershipService.disableMember(id);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> removeMember(@PathVariable String id) {
         membershipService.removeMember(id);
         return ResponseEntity.noContent().build();

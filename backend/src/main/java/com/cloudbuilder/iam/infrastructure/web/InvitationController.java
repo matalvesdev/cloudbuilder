@@ -35,7 +35,7 @@ public class InvitationController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<InvitationDTO> createInvitation(
             @PathVariable String organizationId,
             @RequestBody CreateInvitationRequest req,
@@ -49,7 +49,7 @@ public class InvitationController {
     }
 
     @PostMapping("/{invitationId}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<InvitationDTO> cancelInvitation(
             @PathVariable String organizationId,
             @PathVariable String invitationId) {

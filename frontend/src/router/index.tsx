@@ -22,10 +22,6 @@ export const AIModule = lazyImport(() => import('@/modules/ai/AIOpsModule'), 'AI
 export const SecurityModule = lazyImport(() => import('@/modules/security/AuditModule'), 'AuditModule')
 export const SettingsModule = lazyImport(() => import('@/modules/settings/SettingsModule'), 'SettingsModule')
 export const DocsModule = lazyImport(() => import('@/modules/settings/DocsModule'), 'DocsModule')
-export const WorkspaceModule = lazyImport(() => import('@/modules/workspace/WorkspaceModule'), 'WorkspaceModule')
-export const ProjectsModule = lazyImport(() => import('@/modules/projects/ProjectsModule'), 'ProjectsModule')
-export const NotificationsModule = lazyImport(() => import('@/modules/notifications/NotificationsModule'), 'NotificationsModule')
-export const BillingModule = lazyImport(() => import('@/modules/billing/BillingModule'), 'BillingModule')
 
 /**
  * Module hierarchy for breadcrumb navigation
@@ -89,15 +85,6 @@ export const navGroups = [
     items: [
       { id: 'docs' as const, label: 'Docs', icon: 'BookOpen' },
       { id: 'settings' as const, label: 'Config', icon: 'Settings' },
-    ],
-  },
-  {
-    label: 'Organização',
-    items: [
-      { id: 'workspace' as const, label: 'Workspace', icon: 'Users' },
-      { id: 'projects' as const, label: 'Projetos', icon: 'FolderKanban' },
-      { id: 'notifications' as const, label: 'Notificações', icon: 'Bell' },
-      { id: 'billing' as const, label: 'Billing', icon: 'CreditCard' },
     ],
   },
 ]

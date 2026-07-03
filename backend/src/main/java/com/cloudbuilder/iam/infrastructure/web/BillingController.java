@@ -27,7 +27,7 @@ public class BillingController {
     }
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BillingStubDTO> updateBilling(
             @PathVariable String organizationId,
             @RequestBody UpdateBillingPlanRequest req) {
@@ -35,7 +35,7 @@ public class BillingController {
     }
 
     @PostMapping("/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'OWNER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deactivateBilling(@PathVariable String organizationId) {
         billingStubService.deactivate(organizationId);
         return ResponseEntity.noContent().build();

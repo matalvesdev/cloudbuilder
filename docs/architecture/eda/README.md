@@ -1,9 +1,10 @@
 # CloudBuilder — Event-Driven Architecture (EDA)
 
 **Versão**: 1.0.0  
-**Última atualização**: 2026-06-28  
+**Última atualização**: 2026-07-01  
 **ADR**: ADR-035 (Production Event-Driven Architecture)  
-**Framework**: FAANg (Future Autonomous AI Network for Engineering)
+**Framework**: FAANg (Future Autonomous AI Network for Engineering)  
+**Status**: ⚠️ **Planejado** — Kafka foi removido na Phase 1 ($0 infra cleanup). Esta documentação descreve a arquitetura EDA pretendida para reintrodução futura.
 
 ---
 

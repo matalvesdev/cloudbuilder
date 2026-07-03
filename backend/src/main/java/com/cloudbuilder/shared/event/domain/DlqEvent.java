@@ -4,62 +4,65 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 /**
- * Dead Letter Queue entity for events that failed processing (ADR-035).
- *
- * <p>When a Kafka consumer fails to process an event after max retries,
- * the event is routed to the DLQ topic ({@code *.events.dlq}) and
- * persisted here for manual inspection and replay.
+ * DlqEvent: Dead Letter Queue for failed event processing.
+ * Stores events that failed processing after max retries.
  */
 @Entity
-@Table(name = "dlq_events")
+@Table(name = "dlq_events", indexes = {
+    @Index(name = "idx_dlq_topic", columnList = "topic"),
+    @Index(name = "idx_dlq_created", columnList = "createdAt")
+})
 public class DlqEvent {
 
     @Id
-    @Column(length = 100)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(name = "original_topic", nullable = false, length = 100)
-    private String originalTopic;
+    @Column(name = "event_id")
+    private String eventId;
 
-    @Column(name = "original_partition", nullable = false)
-    private int originalPartition;
+    @Column(name = "topic", nullable = false)
+    private String topic;
 
-    @Column(name = "original_offset", nullable = false)
-    private long originalOffset;
+    @Column(name = "partition")
+    private int partition;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "offset_val")
+    private long offsetVal;
+
+    @Column(columnDefinition = "TEXT")
     private String payload;
 
-    @Column(name = "failure_reason", columnDefinition = "TEXT")
-    private String failureReason;
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
 
-    @Column(name = "failed_at", nullable = false)
-    private Instant failedAt;
+    @Column(name = "retry_count")
+    private int retryCount;
 
-    @Column(name = "tenant_id", length = 36)
-    private String tenantId;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 
     protected DlqEvent() {}
 
-    public DlqEvent(String id, String originalTopic, int originalPartition,
-                    long originalOffset, String payload, String failureReason,
-                    String tenantId) {
-        this.id = id;
-        this.originalTopic = originalTopic;
-        this.originalPartition = originalPartition;
-        this.originalOffset = originalOffset;
+    public DlqEvent(String eventId, String topic, int partition, long offsetVal,
+                    String payload, String errorMessage, int retryCount) {
+        this.eventId = eventId;
+        this.topic = topic;
+        this.partition = partition;
+        this.offsetVal = offsetVal;
         this.payload = payload;
-        this.failureReason = failureReason;
-        this.tenantId = tenantId;
-        this.failedAt = Instant.now();
+        this.errorMessage = errorMessage;
+        this.retryCount = retryCount;
+        this.createdAt = Instant.now();
     }
 
-    public String getId() { return id; }
-    public String getOriginalTopic() { return originalTopic; }
-    public int getOriginalPartition() { return originalPartition; }
-    public long getOriginalOffset() { return originalOffset; }
+    public Long getId() { return id; }
+    public String getEventId() { return eventId; }
+    public String getTopic() { return topic; }
+    public int getPartition() { return partition; }
+    public long getOffsetVal() { return offsetVal; }
     public String getPayload() { return payload; }
-    public String getFailureReason() { return failureReason; }
-    public Instant getFailedAt() { return failedAt; }
-    public String getTenantId() { return tenantId; }
+    public String getErrorMessage() { return errorMessage; }
+    public int getRetryCount() { return retryCount; }
+    public Instant getCreatedAt() { return createdAt; }
 }

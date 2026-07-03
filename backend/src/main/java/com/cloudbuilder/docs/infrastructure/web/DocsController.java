@@ -270,4 +270,72 @@ public class DocsController {
         }
         return maxAdr + 1;
     }
+
+    /**
+     * Generates a full architecture document with real Mermaid diagrams from a canvas.
+     */
+    @PostMapping("/generate-architecture")
+    public ResponseEntity<DocContent> generateArchitectureDoc(@RequestBody Map<String, String> request) {
+        String canvasId = request.get("canvasId");
+        if (canvasId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        DocContent doc = autoDocService.generateArchitectureDoc(canvasId);
+
+        // Save the generated doc
+        try {
+            Optional<DocContent> saved = docScannerService.saveFile(
+                    DEFAULT_DOCS_PATH, "architecture/" + doc.getPath().replace("docs/", ""), doc.getContent()
+            );
+            if (saved.isPresent()) {
+                doc = saved.get();
+            }
+        } catch (IOException e) {
+            // Return doc anyway even if save fails
+        }
+
+        return ResponseEntity.ok(doc);
+    }
+
+    /**
+     * Returns AI context summary from the knowledge graph for a canvas.
+     */
+    @GetMapping("/ai-context/{canvasId}")
+    public ResponseEntity<Map<String, String>> getAiContext(@PathVariable String canvasId) {
+        String context = autoDocService.generateAiContext(canvasId);
+        return ResponseEntity.ok(Map.of("context", context));
+    }
+
+    /**
+     * Generates a README.md for a canvas project.
+     */
+    @PostMapping("/generate-readme")
+    public ResponseEntity<DocContent> generateReadme(@RequestBody Map<String, String> request) {
+        String canvasId = request.get("canvasId");
+        if (canvasId == null) return ResponseEntity.badRequest().build();
+
+        DocContent doc = autoDocService.generateReadme(canvasId);
+        try {
+            Optional<DocContent> saved = docScannerService.saveFile(DEFAULT_DOCS_PATH, doc.getPath(), doc.getContent());
+            if (saved.isPresent()) doc = saved.get();
+        } catch (IOException e) { /* return anyway */ }
+        return ResponseEntity.ok(doc);
+    }
+
+    /**
+     * Generates C4 model diagrams for a canvas.
+     */
+    @PostMapping("/generate-c4")
+    public ResponseEntity<DocContent> generateC4(@RequestBody Map<String, String> request) {
+        String canvasId = request.get("canvasId");
+        if (canvasId == null) return ResponseEntity.badRequest().build();
+
+        DocContent doc = autoDocService.generateC4(canvasId);
+        try {
+            Optional<DocContent> saved = docScannerService.saveFile(DEFAULT_DOCS_PATH, doc.getPath(), doc.getContent());
+            if (saved.isPresent()) doc = saved.get();
+        } catch (IOException e) { /* return anyway */ }
+        return ResponseEntity.ok(doc);
+    }
 }

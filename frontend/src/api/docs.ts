@@ -1,46 +1,53 @@
 import { api } from './client'
-import type { DocTreeItem, DocContent, StaleDoc, DocLink } from '@/modules/settings/docsStore'
 
-const BASE = '/docs'
-
-export function fetchDocTree(): Promise<DocTreeItem[]> {
-  return api.get(`${BASE}/tree`)
+export interface DocNode {
+  id: string
+  path: string
+  name: string
+  type: 'file' | 'directory'
+  children?: DocNode[]
 }
 
-export function fetchDocContent(path: string): Promise<DocContent> {
-  return api.get(`${BASE}/content?path=${encodeURIComponent(path)}`)
+export function fetchDocTree(): Promise<DocNode[]> {
+  return api.get('/docs/tree')
 }
 
-export function saveDocContent(path: string, content: string): Promise<DocContent> {
-  return api.put(`${BASE}/content`, { path, content })
+export function fetchDocContent(path: string): Promise<string> {
+  return api.get(`/docs/content?path=${encodeURIComponent(path)}`)
 }
 
-export function searchDocs(query: string): Promise<DocTreeItem[]> {
-  return api.get(`${BASE}/search?q=${encodeURIComponent(query)}`)
+export function searchDocs(query: string): Promise<DocNode[]> {
+  return api.get(`/docs/search?q=${encodeURIComponent(query)}`)
 }
 
-export function scanDocsDirectory(): Promise<{ scanned: number }> {
-  return api.post(`${BASE}/scan`)
+export function fetchStaleDocs(): Promise<DocNode[]> {
+  return api.get('/docs/stale')
 }
 
-export function generateDocFromCanvas(canvasId: string, canvasName?: string, description?: string): Promise<DocContent> {
-  return api.post(`${BASE}/generate`, { canvasId, canvasName, description })
+export function fetchDocLinks(path: string): Promise<string[]> {
+  return api.get(`/docs/links?path=${encodeURIComponent(path)}`)
 }
 
-export function fetchStaleDocs(): Promise<StaleDoc[]> {
-  return api.get(`${BASE}/stale`)
+export function saveDocContent(path: string, content: string): Promise<void> {
+  return api.put('/docs/content', { path, content })
 }
 
-// ── Cross-module links ──
-
-export function fetchDocLinks(path: string): Promise<DocLink[]> {
-  return api.get(`${BASE}/links?path=${encodeURIComponent(path)}`)
+export function generateDocFromCanvas(canvasId: string, canvasName?: string, description?: string): Promise<string> {
+  return api.post('/docs/generate', { canvasId, canvasName, description })
 }
 
-export function createDocLink(sourcePath: string, linkedPath: string, relationship: string = 'references', tenantId?: string): Promise<DocLink> {
-  return api.post(`${BASE}/links`, { sourcePath, linkedPath, relationship, tenantId })
+export function generateArchitectureDoc(canvasId: string): Promise<{ path: string; title: string; content: string }> {
+  return api.post('/docs/generate-architecture', { canvasId })
 }
 
-export function deleteDocLink(id: string): Promise<void> {
-  return api.delete(`${BASE}/links/${id}`)
+export function getAiContext(canvasId: string): Promise<{ context: string }> {
+  return api.get(`/docs/ai-context/${canvasId}`)
+}
+
+export function generateReadme(canvasId: string): Promise<{ path: string; title: string; content: string }> {
+  return api.post('/docs/generate-readme', { canvasId })
+}
+
+export function generateC4(canvasId: string): Promise<{ path: string; title: string; content: string }> {
+  return api.post('/docs/generate-c4', { canvasId })
 }

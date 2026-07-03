@@ -270,4 +270,55 @@ public class AIOpsController {
     // Post-mortem records
     record UpdatePostMortemRequest(String summary, String rootCause, String impact,
                                     String timeline, String actionItems, String lessonsLearned) {}
+
+    // Canvas AI Chat capabilities
+    record ExplainArchitectureRequest(String canvasId, String canvasName, Map<String, Object> extraContext) {}
+    record OptimizeCostRequest(String canvasId, Map<String, Object> extraContext) {}
+    record SecurityReviewRequest(String canvasId, Map<String, Object> extraContext) {}
+    record GenerateK8sRequest(String canvasId, Map<String, Object> extraContext) {}
+    record AiChatResponse(String answer, String category) {}
+
+    /**
+     * Explain architecture: AI analyzes the canvas and explains the design.
+     */
+    @PostMapping("/chat/explain-architecture")
+    public ResponseEntity<AiChatResponse> explainArchitecture(@RequestBody ExplainArchitectureRequest request) {
+        String question = "Explique a arquitetura do canvas '" + request.canvasName()
+                + "'. Descreva os componentes, conexões e padrões utilizados.";
+        String answer = aiOpsService.answerQuery(question, "architecture", request.extraContext());
+        return ResponseEntity.ok(new AiChatResponse(answer, "architecture"));
+    }
+
+    /**
+     * Optimize cost: AI analyzes the canvas for cost optimization opportunities.
+     */
+    @PostMapping("/chat/optimize-cost")
+    public ResponseEntity<AiChatResponse> optimizeCost(@RequestBody OptimizeCostRequest request) {
+        String question = "Analise o canvas e sugira otimizações de custo. Identifique recursos subutilizados, "
+                + "oportunidades de reserved instances, right-sizing, e estratégias de economia.";
+        String answer = aiOpsService.answerQuery(question, "cost-optimization", request.extraContext());
+        return ResponseEntity.ok(new AiChatResponse(answer, "cost"));
+    }
+
+    /**
+     * Security review: AI reviews the canvas for security issues.
+     */
+    @PostMapping("/chat/security-review")
+    public ResponseEntity<AiChatResponse> securityReview(@RequestBody SecurityReviewRequest request) {
+        String question = "Realize uma revisão de segurança do canvas. Verifique exposição de portas, "
+                + "grupos de segurança, criptografia, credenciais e conformidade com boas práticas.";
+        String answer = aiOpsService.answerQuery(question, "security-review", request.extraContext());
+        return ResponseEntity.ok(new AiChatResponse(answer, "security"));
+    }
+
+    /**
+     * Generate Kubernetes manifests from canvas components.
+     */
+    @PostMapping("/chat/generate-k8s")
+    public ResponseEntity<AiChatResponse> generateK8s(@RequestBody GenerateK8sRequest request) {
+        String question = "Gere manifests Kubernetes (Deployment, Service, ConfigMap, Ingress) "
+                + "para os componentes do canvas. Inclua replicas, resource limits, health checks e labels.";
+        String answer = aiOpsService.answerQuery(question, "k8s-generation", request.extraContext());
+        return ResponseEntity.ok(new AiChatResponse(answer, "k8s"));
+    }
 }
