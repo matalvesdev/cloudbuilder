@@ -15,6 +15,7 @@ import { useSystemSettingsStore } from '@/store/systemSettingsStore'
 import { usePermission } from '@/hooks/usePermission'
 import { useUiStore, type SettingsTab } from '@/store/uiStore'
 import { updateProfile } from '@/api/auth'
+import { settingsApi, type ApiTokenDTO, type SshKeyDTO } from '@/api/settings'
 import { showSuccess, showApiError } from '@/lib/toast'
 import type { ThemeMode, AppLanguage } from '@/store/systemSettingsStore'
 import {
@@ -368,29 +369,214 @@ function OrganizationSection() {
 }
 
 function APITokensSection() {
+  const [tokens, setTokens] = useState<ApiTokenDTO[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [newTokenName, setNewTokenName] = useState('')
+  const [createdToken, setCreatedToken] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    settingsApi.listTokens().then(setTokens).catch(() => setTokens([])).finally(() => setLoading(false))
+  }, [])
+
+  const handleCreate = async () => {
+    if (!newTokenName.trim()) return
+    setCreating(true)
+    try {
+      const result = await settingsApi.createToken(newTokenName.trim())
+      setCreatedToken(result.token)
+      setTokens((prev) => [{ id: result.id, name: result.name, prefix: result.prefix, scopes: result.scopes, active: true, createdAt: result.createdAt, lastUsedAt: null }, ...prev])
+      setNewTokenName('')
+      showSuccess('Token criado — guarde ele agora!')
+    } catch (err) { showApiError(err, 'Erro ao criar token') } finally { setCreating(false) }
+  }
+
+  const handleRevoke = async (id: string) => {
+    await settingsApi.revokeToken(id)
+    setTokens((prev) => prev.filter((t) => t.id !== id))
+    showSuccess('Token revogado')
+  }
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-bold text-brand-navy flex items-center gap-2"><Key className="w-4 h-4" /> API Tokens</h4>
-        <button className="inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all">
-          <Plus className="w-3.5 h-3.5" /> Novo Token
-        </button>
+    <div className="space-y-4">
+      {/* Created Token Alert */}
+      {createdToken && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle2 className="w-4 h-4 text-green-600" />
+            <p className="text-sm font-bold text-green-800">Token criado com sucesso</p>
+          </div>
+          <p className="text-xs text-green-700 mb-3">Copie e guarde este token. Ele não será exibido novamente.</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 px-3 py-2 bg-white rounded-lg border border-green-200 text-xs font-mono text-green-800 break-all">{createdToken}</code>
+            <button onClick={() => { navigator.clipboard.writeText(createdToken); showSuccess('Copiado!') }}
+              className="p-2 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 transition-all">
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+          <button onClick={() => setCreatedToken(null)} className="mt-2 text-xs text-green-600 hover:text-green-800">Fechar</button>
+        </div>
+      )}
+
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h4 className="text-sm font-bold text-brand-navy flex items-center gap-2"><Key className="w-4 h-4" /> API Tokens</h4>
+            <p className="text-xs text-slate-400 mt-0.5">Tokens para acesso programático à API</p>
+          </div>
+          <button onClick={() => setShowCreate(!showCreate)}
+            className="inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all">
+            <Plus className="w-3.5 h-3.5" /> Novo Token
+          </button>
+        </div>
+
+        {showCreate && (
+          <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nome do Token</label>
+            <div className="flex gap-2">
+              <input type="text" value={newTokenName} onChange={(e) => setNewTokenName(e.target.value)}
+                placeholder="Ex: CI/CD Pipeline" className="flex-1 h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime" />
+              <button onClick={handleCreate} disabled={creating || !newTokenName.trim()}
+                className="px-4 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] disabled:opacity-50 transition-all">
+                {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Criar'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+        ) : tokens.length === 0 ? (
+          <div className="text-center py-8">
+            <Key className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-xs text-slate-400">Nenhum token criado</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tokens.map((token) => (
+              <div key={token.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center"><Key className="w-4 h-4 text-slate-400" /></div>
+                  <div>
+                    <p className="text-sm font-semibold text-brand-navy">{token.name}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">{token.prefix}... • {token.scopes}</p>
+                  </div>
+                  <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                    token.active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600')}>
+                    {token.active ? 'Ativo' : 'Revogado'}
+                  </span>
+                </div>
+                {token.active && (
+                  <button onClick={() => handleRevoke(token.id)}
+                    className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <p className="text-xs text-slate-400">Tokens para acesso programático à API</p>
     </div>
   )
 }
 
 function SSHKeysSection() {
+  const [keys, setKeys] = useState<SshKeyDTO[]>([])
+  const [loading, setLoading] = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
+  const [keyName, setKeyName] = useState('')
+  const [publicKey, setPublicKey] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    settingsApi.listSshKeys().then(setKeys).catch(() => setKeys([])).finally(() => setLoading(false))
+  }, [])
+
+  const handleAdd = async () => {
+    if (!keyName.trim() || !publicKey.trim()) return
+    setAdding(true)
+    try {
+      const result = await settingsApi.addSshKey(keyName.trim(), publicKey.trim())
+      setKeys((prev) => [result, ...prev])
+      setKeyName(''); setPublicKey(''); setShowAdd(false)
+      showSuccess('Chave SSH adicionada')
+    } catch (err) { showApiError(err, 'Erro ao adicionar chave') } finally { setAdding(false) }
+  }
+
+  const handleDelete = async (id: string) => {
+    await settingsApi.deleteSshKey(id)
+    setKeys((prev) => prev.filter((k) => k.id !== id))
+    showSuccess('Chave removida')
+  }
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-bold text-brand-navy flex items-center gap-2"><Fingerprint className="w-4 h-4" /> SSH Keys</h4>
-        <button className="inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all">
+        <div>
+          <h4 className="text-sm font-bold text-brand-navy flex items-center gap-2"><Fingerprint className="w-4 h-4" /> SSH Keys</h4>
+          <p className="text-xs text-slate-400 mt-0.5">Chaves públicas para operações Git e acesso a servidores</p>
+        </div>
+        <button onClick={() => setShowAdd(!showAdd)}
+          className="inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all">
           <Plus className="w-3.5 h-3.5" /> Adicionar Chave
         </button>
       </div>
-      <p className="text-xs text-slate-400">Chaves públicas para operações Git e acesso a servidores</p>
+
+      {showAdd && (
+        <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nome</label>
+            <input type="text" value={keyName} onChange={(e) => setKeyName(e.target.value)}
+              placeholder="Ex: MacBook Pro" className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Chave Pública</label>
+            <textarea value={publicKey} onChange={(e) => setPublicKey(e.target.value)} rows={3}
+              placeholder="ssh-rsa AAAA..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime resize-none" />
+          </div>
+          <button onClick={handleAdd} disabled={adding || !keyName.trim() || !publicKey.trim()}
+            className="px-4 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] disabled:opacity-50 transition-all">
+            {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Adicionar'}
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+      ) : keys.length === 0 ? (
+        <div className="text-center py-8">
+          <Fingerprint className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+          <p className="text-xs text-slate-400">Nenhuma chave SSH adicionada</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {keys.map((key) => (
+            <div key={key.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center"><Fingerprint className="w-4 h-4 text-slate-400" /></div>
+                <div>
+                  <p className="text-sm font-semibold text-brand-navy">{key.name}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{key.fingerprint}</p>
+                </div>
+                <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                  key.active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600')}>
+                  {key.active ? 'Ativa' : 'Removida'}
+                </span>
+              </div>
+              {key.active && (
+                <button onClick={() => handleDelete(key.id)}
+                  className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
