@@ -25,6 +25,7 @@ import {
 } from '@/types/settings.types'
 import { RepositorySettings } from './RepositorySettings'
 import { MultiTenantSettings } from './MultiTenantSettings'
+import { IntegrationHub } from './IntegrationHub'
 
 // ─── Sidebar sections per diagram 31 ─────────────────────────────
 interface SidebarSection {
@@ -857,7 +858,7 @@ export function SettingsModule() {
         {tab === 'organization' && <OrganizationSection />}
         {tab === 'api-tokens' && <APITokensSection />}
         {tab === 'ssh-keys' && <SSHKeysSection />}
-        {tab === 'integrations' && <IntegrationsSection />}
+        {tab === 'integrations' && <IntegrationHub />}
         {tab === 'ai-settings' && <AISettingsSection />}
         {tab === 'credentials' && (
           <div>
