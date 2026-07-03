@@ -68,7 +68,6 @@ export function MainLayout({ children, activeModule, onModuleChange }: MainLayou
   const { credentials, environments } = useCredentialStore()
   const { connectedRepos } = useRepoStore()
   const [showProjectMenu, setShowProjectMenu] = useState(false)
-  const [showSetupPopover, setShowSetupPopover] = useState(false)
   const [query, setQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
 
@@ -292,60 +291,6 @@ export function MainLayout({ children, activeModule, onModuleChange }: MainLayou
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          {/* Setup Status Indicator */}
-          <div className="relative hidden sm:block">
-            <button
-              onClick={() => setShowSetupPopover(!showSetupPopover)}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full text-[10px] font-semibold border transition-all',
-                configuredCount === totalConfigItems
-                  ? 'bg-green-50 border-green-200 text-green-700'
-                  : configuredCount > 0
-                    ? 'bg-amber-50 border-amber-200 text-amber-700'
-                    : 'bg-red-50 border-red-200 text-red-700'
-              )}
-            >
-              <span className={cn(
-                'w-1.5 h-1.5 rounded-full',
-                configuredCount === totalConfigItems ? 'bg-green-500' :
-                configuredCount > 0 ? 'bg-amber-500' : 'bg-red-500'
-              )} />
-              {configuredCount}/{totalConfigItems}
-            </button>
-            {showSetupPopover && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowSetupPopover(false)} />
-                <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl border border-slate-200 shadow-lg z-50 p-3 space-y-2">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Configuração</p>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={cn('w-1.5 h-1.5 rounded-full', hasCredentials ? 'bg-green-500' : 'bg-slate-300')} />
-                      <span className={hasCredentials ? 'text-brand-navy font-medium' : 'text-slate-400'}>Credenciais</span>
-                      <span className="ml-auto text-slate-400">{credentials.length}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={cn('w-1.5 h-1.5 rounded-full', hasEnvironments ? 'bg-green-500' : 'bg-slate-300')} />
-                      <span className={hasEnvironments ? 'text-brand-navy font-medium' : 'text-slate-400'}>Ambientes</span>
-                      <span className="ml-auto text-slate-400">{environments.length}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={cn('w-1.5 h-1.5 rounded-full', hasRepos ? 'bg-green-500' : 'bg-slate-300')} />
-                      <span className={hasRepos ? 'text-brand-navy font-medium' : 'text-slate-400'}>Repositórios</span>
-                      <span className="ml-auto text-slate-400">{connectedRepos.length}</span>
-                    </div>
-                  </div>
-                  {configuredCount < totalConfigItems && (
-                    <button
-                      onClick={() => { setShowSetupPopover(false); resetToWelcome() }}
-                      className="w-full mt-1 inline-flex items-center justify-center gap-1.5 px-3 h-8 rounded-lg text-[11px] font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all"
-                    >
-                      Continuar Configuração
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
 
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200">
             <span className="relative flex h-1.5 w-1.5">
