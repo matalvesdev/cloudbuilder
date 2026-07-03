@@ -1,15 +1,30 @@
 import { api } from './client'
 
+export interface DesignTemplateResource {
+  id: string
+  label: string
+  provider: string
+  resourceType: string
+}
+
+export interface DesignTemplateConnection {
+  source: string
+  target: string
+  edgeType: string
+}
+
 export interface DesignTemplate {
   id: string
   name: string
   description: string
   provider: string
-  resources: string[]
-  connections: string[]
+  resources: DesignTemplateResource[]
+  connections: DesignTemplateConnection[]
 }
 
 export interface MetricAnalysisResponse {
+  metricName?: string
+  analysis?: string
   anomalies: Array<{ metric: string; value: number; threshold: number }>
   recommendations: string[]
 }
@@ -30,8 +45,8 @@ export function listDesignTemplates(): Promise<DesignTemplate[]> {
   return api.get('/aiops/templates')
 }
 
-export function analyzeMetric(params: { resourceId: string; metricName?: string }): Promise<MetricAnalysisResponse> {
-  return api.post('/aiops/analyze', params)
+export function analyzeMetric(params: { metricName: string; recentValues?: number[]; threshold?: number }): Promise<MetricAnalysisResponse> {
+  return api.post('/aiops/analyze-metric', params)
 }
 
 export function listRunbooks(): Promise<any[]> {
@@ -46,7 +61,7 @@ export function getTemplates(): Promise<DesignTemplate[]> {
   return api.get('/aiops/templates')
 }
 
-export function chatQuery(params: { question: string; context?: string; extraContext?: string }): Promise<any> {
+export function chatQuery(params: { question: string; context?: string; extraContext?: Record<string, unknown> }): Promise<any> {
   return api.post('/aiops/query', params)
 }
 

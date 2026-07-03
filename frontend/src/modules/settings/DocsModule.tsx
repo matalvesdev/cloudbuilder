@@ -365,8 +365,8 @@ export function DocsModule() {
     if (!activeDoc) return
     setSaveStatus('saving')
     try {
-      const saved = await saveDocContent(activeDoc.path, editContent)
-      useDocsStore.setState({ activeDoc: saved })
+      await saveDocContent(activeDoc.path, editContent)
+      useDocsStore.setState({ activeDoc: { ...activeDoc, content: editContent } })
       setSaveStatus('success')
       useDocsStore.setState({ editing: false })
       showSuccess('Documento salvo com sucesso')
