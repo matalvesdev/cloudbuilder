@@ -57,8 +57,7 @@ public class ProviderRegistry {
         Map.entry("okta", new ProviderInfo("okta", "Okta", "identity", "IAM enterprise", List.of("oauth", "oidc", "saml"), Map.of("sso", "true", "mfa", "true", "lifecycle", "true")))
     );
 
-    @org.springframework.stereotype.Component
-    public static ProviderInfo getProvider(String id) {
+    public ProviderInfo getProvider(String id) {
         return PROVIDERS.get(id);
     }
 

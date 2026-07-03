@@ -4,10 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * OAuthService: Handles OAuth flows for Git providers (GitHub, GitLab, Bitbucket).
