@@ -10,7 +10,31 @@ export interface AnalyticsEvent {
   metadata: Record<string, any>
 }
 
-export function getSummary(period: string): Promise<any> {
+export interface AnalyticsSummary {
+  totalEvents: number
+  uniqueUsers: number
+  topActions: Array<{ action: string; count: number }>
+  topResources: Array<{ resource: string; count: number }>
+  period: string
+}
+
+export interface AnalyticsMetrics {
+  resourceType: string
+  period: string
+  totalCount: number
+  uniqueUsers: number
+  timeline: Array<{ date: string; count: number }>
+}
+
+export interface UsageStats {
+  totalUsers: number
+  activeUsers: number
+  totalSessions: number
+  averageSessionDuration: number
+  topFeatures: Array<{ feature: string; usage: number }>
+}
+
+export function getSummary(period: string): Promise<AnalyticsSummary> {
   return api.get(`/analytics/summary?period=${period}`)
 }
 
@@ -18,11 +42,11 @@ export function listEvents(): Promise<{ content: AnalyticsEvent[]; totalElements
   return api.get('/analytics/events')
 }
 
-export function getMetrics(resourceType: string, period: string): Promise<any> {
+export function getMetrics(resourceType: string, period: string): Promise<AnalyticsMetrics> {
   return api.get(`/analytics/metrics/${resourceType}?period=${period}`)
 }
 
-export function getUsageStats(): Promise<any> {
+export function getUsageStats(): Promise<UsageStats> {
   return api.get('/analytics/usage')
 }
 

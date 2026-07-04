@@ -41,9 +41,19 @@ export interface NotificationChannel {
   enabled: boolean
 }
 
+export interface DashboardData {
+  totalServices: number
+  degradedServices: number
+  downServices: number
+  averageLatencyMs: number
+  averageUptime: number
+  services: Array<{ serviceName: string; status: string; latencyMs: number; uptimePercent: number }>
+  recentAlerts: Array<{ id: string; severity: string; message: string; source: string; status: string; triggeredAt: string }>
+}
+
 // ─── Dashboard ─────────────────────────────────────────────────
 
-export function getDashboard(environmentId: string): Promise<any> {
+export function getDashboard(environmentId: string): Promise<DashboardData> {
   return api.get(`/observe/dashboard/${environmentId}`)
 }
 

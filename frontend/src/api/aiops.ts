@@ -33,11 +33,39 @@ export function queryAnalysis(query: string): Promise<MetricAnalysisResponse> {
   return api.post('/aiops/query', { query })
 }
 
-export function listIncidents(): Promise<any[]> {
+export interface Incident {
+  id: string
+  title: string
+  description: string
+  severity: string
+  status: string
+  environmentId?: string
+  startedAt: string
+  resolvedAt?: string
+}
+
+export interface Runbook {
+  id: string
+  title: string
+  content: string
+  category: string
+  severity: string
+}
+
+export interface PostMortem {
+  id: string
+  incidentId: string
+  summary: string
+  rootCause: string
+  impact: string
+  status: string
+}
+
+export function listIncidents(): Promise<Incident[]> {
   return api.get('/aiops/incidents')
 }
 
-export function getIncident(id: string): Promise<any> {
+export function getIncident(id: string): Promise<Incident> {
   return api.get(`/aiops/incidents/${id}`)
 }
 
@@ -49,11 +77,11 @@ export function analyzeMetric(params: { metricName: string; recentValues?: numbe
   return api.post('/aiops/analyze-metric', params)
 }
 
-export function listRunbooks(): Promise<any[]> {
+export function listRunbooks(): Promise<Runbook[]> {
   return api.get('/aiops/runbooks')
 }
 
-export function listPostMortems(): Promise<any[]> {
+export function listPostMortems(): Promise<PostMortem[]> {
   return api.get('/aiops/postmortems')
 }
 
@@ -61,7 +89,12 @@ export function getTemplates(): Promise<DesignTemplate[]> {
   return api.get('/aiops/templates')
 }
 
-export function chatQuery(params: { question: string; context?: string; extraContext?: Record<string, unknown> }): Promise<any> {
+export interface ChatResponse {
+  answer: string
+  suggestions?: string[]
+}
+
+export function chatQuery(params: { question: string; context?: string; extraContext?: Record<string, unknown> }): Promise<ChatResponse> {
   return api.post('/aiops/query', params)
 }
 

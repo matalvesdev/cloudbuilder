@@ -28,15 +28,32 @@ export function createRegion(region: Omit<RegionDto, 'id'>): Promise<RegionDto> 
   return api.post('/regions', region)
 }
 
-export function listDrPlans(): Promise<any[]> {
+export interface DrPlan {
+  id: string
+  name: string
+  sourceRegionId: string
+  targetRegionId: string
+  type: string
+  status: string
+}
+
+export interface RegionHealth {
+  regionId: string
+  status: string
+  latencyMs: number
+  uptimePercent: number
+  lastChecked: string
+}
+
+export function listDrPlans(): Promise<DrPlan[]> {
   return api.get('/dr-plans')
 }
 
-export function createDrPlan(plan: any): Promise<any> {
+export function createDrPlan(plan: Omit<DrPlan, 'id'>): Promise<DrPlan> {
   return api.post('/dr-plans', plan)
 }
 
-export function getRegionHealth(id: string): Promise<any> {
+export function getRegionHealth(id: string): Promise<RegionHealth> {
   return api.get(`/regions/${id}/health`)
 }
 

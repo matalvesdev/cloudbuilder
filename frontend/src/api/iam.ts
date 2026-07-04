@@ -50,19 +50,28 @@ export interface PermissionMatrixEntry {
   permissions: string[]
 }
 
-export function listUsers(): Promise<any[]> {
+export interface User {
+  id: string
+  name: string
+  email: string
+  roles: string[]
+  tenantId?: string
+  createdAt: string
+}
+
+export function listUsers(): Promise<User[]> {
   return api.get('/iam/users')
 }
 
-export function listUsersByTenant(tenantId: string): Promise<any[]> {
+export function listUsersByTenant(tenantId: string): Promise<User[]> {
   return api.get(`/iam/users?tenantId=${tenantId}`)
 }
 
-export function getUser(id: string): Promise<any> {
+export function getUser(id: string): Promise<User> {
   return api.get(`/iam/users/${id}`)
 }
 
-export function createUser(user: { name: string; email: string; password: string; roles?: string[] }): Promise<any> {
+export function createUser(user: { name: string; email: string; password: string; roles?: string[] }): Promise<User> {
   return api.post('/iam/users', user)
 }
 
