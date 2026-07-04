@@ -134,7 +134,7 @@ function OverviewView({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const totalServices = data?.totalServices || 0
   const avgLatency = data?.averageLatencyMs || 0
   const avgUptime = data?.averageUptime || 99.8
-  const reqCount = Math.floor(Math.random() * 5000 + 1000)
+  const reqCount = data?.totalRequests || 0
 
   return (
     <div className="space-y-6">

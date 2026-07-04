@@ -78,11 +78,11 @@ function generateMockCommits(repoId: string, repoName: string, count: number = 8
   ]
 
   return Array.from({ length: count }, (_, i) => {
-    const author = authors[Math.floor(Math.random() * authors.length)]
-    const timestamp = new Date(Date.now() - i * 3600000 * (1 + Math.random()))
+    const author = authors[i % authors.length]
+    const timestamp = new Date(Date.now() - i * 3600000 * (1 + (i * 0.1)))
     return {
       id: crypto.randomUUID(),
-      hash: Array.from({ length: 7 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+      hash: `a${i.toString(16).padStart(6, '0')}`,
       author: author.name,
       email: author.email,
       message: subjects[i % subjects.length],
@@ -98,7 +98,7 @@ function generateMockPipelines(repoId: string, commits: GitCommit[]): PipelineRu
     const statuses: PipelineRun['status'][] = ['passing', 'passing', 'passing', 'failing', 'running', 'passing', 'pending']
     const status = statuses[i % statuses.length]
     const start = new Date(commit.timestamp)
-    const durMinutes = Math.floor(Math.random() * 15) + 2
+    const durMinutes = 5 + (i * 2)
     const finish = new Date(start.getTime() + durMinutes * 60000)
 
     return {
@@ -109,9 +109,9 @@ function generateMockPipelines(repoId: string, commits: GitCommit[]): PipelineRu
       status,
       startedAt: start.toISOString(),
       finishedAt: status !== 'running' && status !== 'pending' ? finish.toISOString() : null,
-      duration: status === 'running' ? `${Math.floor(Math.random() * 5) + 1}m` : `${durMinutes}m ${Math.floor(Math.random() * 60)}s`,
+      duration: status === 'running' ? `${2 + i}m` : `${durMinutes}m ${(i * 10) % 60}s`,
       pipelineName: `CI: ${commit.message.substring(0, 40)}...`,
-      pipelineUrl: status === 'passing' || status === 'failing' ? `https://ci.cloudbuilder.io/pipelines/${crypto.randomUUID().substring(0, 8)}` : null,
+      pipelineUrl: status === 'passing' || status === 'failing' ? `https://ci.cloudbuilder.io/pipelines/${commit.hash}` : null,
       stages: [
         { name: 'Checkout', status: 'passing', duration: '30s' },
         { name: 'Lint', status: status === 'failing' ? 'failing' : 'passing', duration: '45s' },

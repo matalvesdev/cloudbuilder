@@ -47,6 +47,7 @@ export interface DashboardData {
   downServices: number
   averageLatencyMs: number
   averageUptime: number
+  totalRequests?: number
   services: Array<{ serviceName: string; status: string; latencyMs: number; uptimePercent: number }>
   recentAlerts: Array<{ id: string; severity: string; message: string; source: string; status: string; triggeredAt: string }>
 }

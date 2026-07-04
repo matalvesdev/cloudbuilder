@@ -92,6 +92,7 @@ export function getTemplates(): Promise<DesignTemplate[]> {
 export interface ChatResponse {
   answer: string
   suggestions?: string[]
+  design?: Record<string, unknown>
 }
 
 export function chatQuery(params: { question: string; context?: string; extraContext?: Record<string, unknown> }): Promise<ChatResponse> {

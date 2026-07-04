@@ -176,10 +176,9 @@ export function AIOpsModule() {
   const handleAnalyzeMetric = useCallback(async (metricName: string) => {
     setIsTyping(true)
     try {
-      // Generate sample recent values based on metric type
+      const base = metricName.toLowerCase().includes('cpu') ? 45 : metricName.toLowerCase().includes('mem') ? 60 : 50
       const recentValues = Array.from({ length: 24 }, (_, i) => {
-        const base = metricName.toLowerCase().includes('cpu') ? 45 : metricName.toLowerCase().includes('mem') ? 60 : 50
-        const variance = Math.sin(i / 4) * 15 + (Math.random() - 0.5) * 10
+        const variance = Math.sin(i / 4) * 15
         return Math.round((base + variance) * 10) / 10
       })
 
