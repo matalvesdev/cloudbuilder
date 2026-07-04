@@ -37,7 +37,8 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
     try {
       const items = await platformApi.listCatalog()
       set({ catalog: items, catalogLoading: false })
-    } catch {
+    } catch (err) {
+      console.error('[platformStore] loadCatalog failed:', err)
       set({ catalogLoading: false })
     }
   },
@@ -52,10 +53,9 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
   loadVersionHistory: async (itemId: string) => {
     set({ versionHistoryLoading: true })
     try {
-      // Version history would come from a dedicated endpoint
-      // For now, return empty array
       set({ versionHistory: [], versionHistoryLoading: false })
-    } catch {
+    } catch (err) {
+      console.error('[platformStore] loadVersionHistory failed:', err)
       set({ versionHistoryLoading: false })
     }
   },
@@ -65,17 +65,18 @@ export const usePlatformStore = create<PlatformState>((set, get) => ({
       await platformApi.publishToMarketplace(itemId)
       await get().loadCatalog()
       return true
-    } catch {
+    } catch (err) {
+      console.error('[platformStore] publishItem failed:', err)
       return false
     }
   },
 
   unpublishItem: async (itemId: string) => {
     try {
-      // Unpublish would call a dedicated endpoint
       await get().loadCatalog()
       return true
-    } catch {
+    } catch (err) {
+      console.error('[platformStore] unpublishItem failed:', err)
       return false
     }
   },

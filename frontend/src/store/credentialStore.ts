@@ -96,7 +96,8 @@ export const useCredentialStore = create<CredentialState>()(
             updatedAt: dto.updatedAt,
           }))
           set({ credentials, loading: false })
-        } catch {
+        } catch (err) {
+          console.error('[credentialStore] fetchCredentials failed:', err)
           set({ loading: false, credentials: [] })
         }
       },
@@ -120,7 +121,8 @@ export const useCredentialStore = create<CredentialState>()(
           }
           set((state) => ({ credentials: [...state.credentials, newCred], loading: false }))
           return newCred
-        } catch {
+        } catch (err) {
+          console.error('[credentialStore] createCredential failed:', err)
           set({ loading: false })
           return null
         }
