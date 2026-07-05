@@ -968,7 +968,7 @@ export function IAMModule() {
                             <DialogContent className="rounded-2xl">
                               <DialogHeader>
                                 <DialogTitle className="text-brand-navy font-display">
-                                  Atribuir Role para {tu.userName}
+                                   Atribuir Role para {tu.name}
                                 </DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4">
@@ -1209,7 +1209,7 @@ export function IAMModule() {
                             <Users className="w-4 h-4 text-brand-navy" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-brand-navy">{tu.userName}</p>
+                            <p className="text-sm font-medium text-brand-navy">{tu.name}</p>
                             <p className="text-[10px] text-slate-400">                          {tu.email}</p>
                           </div>
                         </div>
