@@ -26,6 +26,7 @@ import {
 import { RepositorySettings } from './RepositorySettings'
 import { MultiTenantSettings } from './MultiTenantSettings'
 import { IntegrationHub } from './IntegrationHub'
+import { TeamsSettings } from './TeamsSettings'
 
 // ─── Sidebar sections per diagram 31 ─────────────────────────────
 interface SidebarSection {
@@ -949,7 +950,7 @@ export function SettingsModule() {
         )}
         {tab === 'git-providers' && <RepositorySettings />}
         {tab === 'workspaces' && <MultiTenantSettings />}
-        {tab === 'teams' && <MultiTenantSettings />}
+        {tab === 'teams' && <TeamsSettings />}
         {tab === 'members' && <MultiTenantSettings />}
         {tab === 'permissions' && <MultiTenantSettings />}
         {tab === 'billing' && <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm"><h4 className="text-sm font-bold text-brand-navy mb-2 flex items-center gap-2"><CreditCard className="w-4 h-4" /> Billing</h4><p className="text-xs text-slate-400">Gerencie plano, faturas e métodos de pagamento</p></div>}

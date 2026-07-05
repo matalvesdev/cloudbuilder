@@ -25,7 +25,7 @@ public class AuthController {
 
     @Audited(action = "REGISTER", resourceType = "USER", resourceId = "#result?.userId", details = "'Registro: ' + #result?.email")
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         var response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

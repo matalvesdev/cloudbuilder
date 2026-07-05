@@ -4,13 +4,15 @@ async function setupApp(page: Page, mocks: Record<string, unknown> = {}) {
   const initCode = `
     localStorage.setItem('cloudbuilder-auth-token', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXYifQ.fake')
     localStorage.setItem('cloudbuilder-refresh-token', 'fake-refresh')
+    localStorage.setItem('cloudbuilder-active-tenant-id', 'tenant-1')
+    localStorage.setItem('cloudbuilder-active-environment', 'env-1')
     localStorage.setItem('cloudbuilder-onboarding-storage', JSON.stringify({
       state: { progress: { stage: 'skipped', completedSteps: [] }, repoConfig: null, tourCompleted: false, hasSeenWelcome: true },
       version: 0,
     }))
     const mockUser = JSON.stringify({
       id: 'dev-user', name: 'Desenvolvedor',
-      email: 'dev@cloudbuilder.com', roles: ['ADMIN']
+      email: 'dev@cloudbuilder.com', roles: ['admin']
     })
     const mocks = ${JSON.stringify(mocks)}
     const origFetch = window.fetch.bind(window)
@@ -33,22 +35,29 @@ async function setupApp(page: Page, mocks: Record<string, unknown> = {}) {
 async function goToModule(page: Page, navLabel: string) {
   await page.goto('/')
   await expect(page.locator('nav').first()).toBeVisible({ timeout: 15000 })
-  const groupMap: Record<string, string> = {
-    'Custos': 'Operações', 'AIOps': 'Operações', 'Observar': 'Operações',
-    'Docs': 'Sistema', 'Design': 'Infraestrutura', 'Provisionar': 'Infraestrutura',
-    'Dashboard': 'Visão Geral', 'Análises': 'Visão Geral',
-    'Auditoria': 'Governança', 'IAM': 'Governança', 'Config': 'Sistema',
+  const labelMap: Record<string, string[]> = {
+    'Auditoria': ['Auditoria', 'Segurança'],
+    'IAM': ['IAM', 'Segurança'],
+    'Config': ['Config', 'Configurações', 'Flags'],
+    'Observar': ['Observar', 'Observabilidade'],
+    'Custos': ['Custos'],
+    'AIOps': ['AI', 'AIOps'],
+    'Docs': ['Docs', 'Documentação'],
+    'Design': ['Design', 'Canvas'],
   }
-  const groupLabel = groupMap[navLabel]
-  if (groupLabel) {
-    const groupBtn = page.locator(`nav button:has-text("${groupLabel}")`).first()
-    await groupBtn.hover()
-    await page.waitForTimeout(400)
-    await page.locator(`button:has-text("${navLabel}")`).last().click({ force: true })
-  } else {
-    await page.locator(`button:has-text("${navLabel}")`).first().click()
-  }
-  await page.waitForTimeout(1000)
+  const candidates = labelMap[navLabel] || [navLabel]
+  await page.evaluate((labels: string[]) => {
+    const all = Array.from(document.querySelectorAll('nav button'))
+    for (const label of labels) {
+      const target = all.find(b => b.textContent?.trim() === label)
+      if (target) { (target as HTMLElement).click(); return }
+    }
+    for (const label of labels) {
+      const partial = all.find(b => b.textContent?.includes(label))
+      if (partial) { (partial as HTMLElement).click(); return }
+    }
+  }, candidates)
+  await page.waitForTimeout(3000)
 }
 
 test.describe('Modules — desmockagem smoke tests', () => {
@@ -72,7 +81,8 @@ test.describe('Modules — desmockagem smoke tests', () => {
 
   test('AIOpsModule — renderiza assistant e incidentes', async ({ page }) => {
     await setupApp(page, {
-      '/api/v1/aiops/incidents/env-1': [{ id: 'i1', environmentId: 'env-1', title: 'Alta latência', description: 'Latência acima de 500ms', severity: 'warning', status: 'OPEN' }],
+      '/api/v1/aiops/incidents': [{ id: 'i1', environmentId: 'env-1', title: 'Alta latência', description: 'Latência acima de 500ms', severity: 'warning', status: 'OPEN' }],
+      '/api/v1/aiops/templates': [],
     })
     await goToModule(page, 'AIOps')
     await expect(page.locator('text=Incidentes').first()).toBeVisible({ timeout: 8000 })
@@ -89,9 +99,9 @@ test.describe('Modules — desmockagem smoke tests', () => {
 
   test('DesignModule — renderiza canvas de design', async ({ page }) => {
     await setupApp(page)
-    await page.goto('/')
-    await expect(page.locator('nav').first()).toBeVisible({ timeout: 15000 })
-    await expect(page.locator('text=Design').or(page.locator('[data-testid*="canvas"]')).first()).toBeVisible({ timeout: 8000 })
+    await goToModule(page, 'Design')
+    // Design module renders with ReactFlow canvas
+    await expect(page.locator('.react-flow').or(page.locator('[class*="react-flow"]')).first()).toBeVisible({ timeout: 8000 })
   })
 
   test('DocsModule — renderiza árvore de documentação', async ({ page }) => {

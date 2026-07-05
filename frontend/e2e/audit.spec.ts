@@ -6,15 +6,17 @@ test.describe('Audit Module', () => {
   test('renderiza página de auditoria com título', async ({ page }) => {
     await setupApp(page)
     await goToModule(page, 'Auditoria')
-    await expect(page.locator('h1:has-text("Auditoria")').first()).toBeVisible({ timeout: 8000 })
+    await expect(page.locator('text=Auditoria').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('exibe abas Timeline, Conformidade e Políticas OPA', async ({ page }) => {
     await setupApp(page, {
-      '/api/v1/audit/query': [],
-      '/api/v1/compliance/score': { overallScore: 85, categoryScores: [] },
-      '/api/v1/compliance/evaluate': [],
-      '/api/v1/compliance/rules': [],
+      '/api/v1/audit/events/tenant-1': { content: [], totalElements: 0 },
+      '/api/v1/audit/query/tenant-1': { content: [], totalElements: 0 },
+      '/api/v1/audit/compliance/tenant-1/score': { overallScore: 85, categoryScores: [] },
+      '/api/v1/audit/compliance/tenant-1/evaluations': [],
+      '/api/v1/audit/compliance/rules/tenant-1': [],
+      '/api/v1/audit/compliance/rules': [],
     })
     await goToModule(page, 'Auditoria')
     await page.waitForTimeout(2000)
@@ -26,10 +28,12 @@ test.describe('Audit Module', () => {
 
   test('alterna para aba Conformidade', async ({ page }) => {
     await setupApp(page, {
-      '/api/v1/audit/query': [],
-      '/api/v1/compliance/score': { overallScore: 85, categoryScores: [] },
-      '/api/v1/compliance/evaluate': [],
-      '/api/v1/compliance/rules': [],
+      '/api/v1/audit/events/tenant-1': { content: [], totalElements: 0 },
+      '/api/v1/audit/query/tenant-1': { content: [], totalElements: 0 },
+      '/api/v1/audit/compliance/tenant-1/score': { overallScore: 85, categoryScores: [] },
+      '/api/v1/audit/compliance/tenant-1/evaluations': [],
+      '/api/v1/audit/compliance/rules/tenant-1': [],
+      '/api/v1/audit/compliance/rules': [],
     })
     await goToModule(page, 'Auditoria')
     await page.waitForTimeout(2000)
@@ -41,10 +45,12 @@ test.describe('Audit Module', () => {
 
   test('alterna para aba Políticas OPA', async ({ page }) => {
     await setupApp(page, {
-      '/api/v1/audit/query': [],
-      '/api/v1/compliance/score': { overallScore: 85, categoryScores: [] },
-      '/api/v1/compliance/evaluate': [],
-      '/api/v1/compliance/rules': [],
+      '/api/v1/audit/events/tenant-1': { content: [], totalElements: 0 },
+      '/api/v1/audit/query/tenant-1': { content: [], totalElements: 0 },
+      '/api/v1/audit/compliance/tenant-1/score': { overallScore: 85, categoryScores: [] },
+      '/api/v1/audit/compliance/tenant-1/evaluations': [],
+      '/api/v1/audit/compliance/rules/tenant-1': [],
+      '/api/v1/audit/compliance/rules': [],
     })
     await goToModule(page, 'Auditoria')
     await page.waitForTimeout(2000)

@@ -5,12 +5,12 @@ test.describe('IAM Module', () => {
 
   test('renderiza página IAM com abas', async ({ page }) => {
     await setupApp(page, {
-      '/api/v1/iam/roles': [
+      '/api/v1/iam/tenants/tenant-1/roles': [
         { id: 'r1', name: 'Admin', description: 'Acesso total', permissions: ['*'] },
         { id: 'r2', name: 'Editor', description: 'Editar recursos', permissions: ['read', 'write'] },
       ],
-      '/api/v1/iam/users': [
-        { id: 'u1', email: 'user@test.com', name: 'Usuário Teste', roles: ['admin'], status: 'ACTIVE' },
+      '/api/v1/iam/tenants/tenant-1/users': [
+        { id: 'u1', email: 'user@test.com', name: 'Usuario Teste', roles: ['admin'], status: 'ACTIVE' },
       ],
       '/api/v1/iam/tenants': [
         { id: 't1', name: 'Default Tenant', plan: 'enterprise' },
@@ -23,10 +23,10 @@ test.describe('IAM Module', () => {
 
   test('exibe abas de navegação (Funções, Usuários, Permissões)', async ({ page }) => {
     await setupApp(page, {
-      '/api/v1/iam/roles': [],
-      '/api/v1/iam/users': [],
+      '/api/v1/iam/tenants/tenant-1/roles': [],
+      '/api/v1/iam/tenants/tenant-1/users': [],
       '/api/v1/iam/tenants': [],
-      '/api/v1/iam/permissions': {},
+      '/api/v1/iam/roles/': {},
     })
     await goToModule(page, 'IAM')
     // Should see role/user/permission tabs

@@ -32,3 +32,22 @@ export const ROLE_LABELS: Record<ProjectRole, string> = {
 };
 
 export const ROLE_HIERARCHY: ProjectRole[] = ['viewer', 'member', 'admin', 'owner'];
+
+export interface Team {
+  id: string
+  organizationId: string
+  name: string
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Squad {
+  id: string
+  workspaceId: string
+  tenantId: string
+  name: string
+  description: string
+  leadId: string | null
+  createdAt: string
+}

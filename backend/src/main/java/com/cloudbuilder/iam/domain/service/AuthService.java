@@ -27,6 +27,10 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final OrganizationRepository organizationRepository;
+    private final MembershipRepository membershipRepository;
+    private final ProjectRepository projectRepository;
+    private final TeamRepository teamRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
 
@@ -40,6 +44,10 @@ public class AuthService {
                        RoleRepository roleRepository,
                        PermissionRepository permissionRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
+                       OrganizationRepository organizationRepository,
+                       MembershipRepository membershipRepository,
+                       ProjectRepository projectRepository,
+                       TeamRepository teamRepository,
                        JwtTokenProvider jwtTokenProvider,
                        PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
@@ -48,27 +56,42 @@ public class AuthService {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.organizationRepository = organizationRepository;
+        this.membershipRepository = membershipRepository;
+        this.projectRepository = projectRepository;
+        this.teamRepository = teamRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // Validate password complexity
+        validatePasswordComplexity(request.password());
+
         if (userRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("E-mail já cadastrado.");
         }
-        if (tenantRepository.findBySlug(request.tenantSlug()).isPresent()) {
+
+        var slug = request.tenantSlug() != null && !request.tenantSlug().isBlank()
+            ? request.tenantSlug()
+            : generateSlug(request.email());
+        var tenantName = request.tenantName() != null && !request.tenantName().isBlank()
+            ? request.tenantName()
+            : request.name();
+
+        if (tenantRepository.findBySlug(slug).isPresent()) {
             throw new RuntimeException("Slug da organização já está em uso.");
         }
 
         // Create tenant
-        var tenant = new Tenant(request.tenantName(), request.tenantSlug());
+        var tenant = new Tenant(tenantName, slug);
         tenant = tenantRepository.save(tenant);
 
         // Create default roles for the tenant
         var adminRole = createSystemRole(tenant.getId(), "admin", "Administrador com acesso total");
-        var editorRole = createSystemRole(tenant.getId(), "editor", "Editor com permissões de leitura e escrita");
-        var viewerRole = createSystemRole(tenant.getId(), "viewer", "Visualizador com acesso somente leitura");
+        createSystemRole(tenant.getId(), "editor", "Editor com permissões de leitura e escrita");
+        createSystemRole(tenant.getId(), "viewer", "Visualizador com acesso somente leitura");
 
         // Create user
         var user = new User(request.email(), passwordEncoder.encode(request.password()), request.name());
@@ -77,6 +100,17 @@ public class AuthService {
         // Link user to tenant as admin
         var tenantUser = new TenantUser(tenant.getId(), user.getId(), adminRole.getId());
         tenantUserRepository.save(tenantUser);
+
+        // Create organization (used by Projects, Teams, Memberships)
+        var org = organizationRepository.save(new Organization(tenantName, slug, user.getId()));
+
+        // Create default project
+        var defaultProject = new Project(org.getId(), "Projeto Padrão", "Projeto principal da organização");
+        projectRepository.save(defaultProject);
+
+        // Create default team
+        var defaultTeam = new Team(org.getId(), "Equipe Principal", "Time principal da organização");
+        teamRepository.save(defaultTeam);
 
         return buildAuthResponse(user, tenant, adminRole);
     }
@@ -260,5 +294,32 @@ public class AuthService {
 
     private void savePermission(String roleId, String action, String resource) {
         permissionRepository.save(new Permission(roleId, action, resource));
+    }
+
+    private void validatePasswordComplexity(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("A senha deve ter pelo menos 8 caracteres.");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new IllegalArgumentException("A senha deve conter pelo menos uma letra maiúscula.");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new IllegalArgumentException("A senha deve conter pelo menos uma letra minúscula.");
+        }
+        if (!password.matches(".*\\d.*")) {
+            throw new IllegalArgumentException("A senha deve conter pelo menos um número.");
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            throw new IllegalArgumentException("A senha deve conter pelo menos um caractere especial (!@#$%^&*...).");
+        }
+    }
+
+    private String generateSlug(String email) {
+        if (email == null || !email.contains("@")) return "org";
+        return email.split("@")[0]
+            .toLowerCase()
+            .replaceAll("[^a-z0-9]", "-")
+            .replaceAll("-+", "-")
+            .replaceAll("^-|-$", "");
     }
 }

@@ -20,7 +20,7 @@ export async function setupApp(page: Page, mocks: Record<string, unknown> = {}) 
     // Mock user for /auth/me
     const mockUser = JSON.stringify({
       id: 'dev-user', name: 'Desenvolvedor',
-      email: 'dev@cloudbuilder.com', roles: ['ADMIN']
+      email: 'dev@cloudbuilder.com', roles: ['admin']
     })
 
     // Mock data for endpoints
@@ -67,17 +67,31 @@ export async function setupApp(page: Page, mocks: Record<string, unknown> = {}) 
  */
 export async function goToModule(page: Page, navLabel: string) {
   await page.goto('/')
-  // Wait for the nav bar to appear (confirms auth succeeded)
   await expect(page.locator('nav').first()).toBeVisible({ timeout: 15000 })
 
-  // Click the nav button using evaluate (avoids Playwright visibility checks)
-  await page.evaluate((label) => {
-    const buttons = Array.from(document.querySelectorAll('nav button'))
-    const target = buttons.find(b => b.textContent?.trim() === label)
-    if (target) target.click()
-  }, navLabel)
+  // Map test labels to actual nav button text
+  const labelMap: Record<string, string[]> = {
+    'Auditoria': ['Auditoria', 'Segurança'],
+    'IAM': ['IAM', 'Segurança'],
+    'Config': ['Config', 'Configurações', 'Flags'],
+    'Observar': ['Observar', 'Observabilidade'],
+    'Design': ['Design', 'Canvas'],
+  }
+  const candidates = labelMap[navLabel] || [navLabel]
 
-  // Wait for lazy-loaded module to render + fetch data
+  await page.evaluate((labels: string[]) => {
+    const all = Array.from(document.querySelectorAll('nav button'))
+    for (const label of labels) {
+      const target = all.find(b => b.textContent?.trim() === label)
+      if (target) { (target as HTMLElement).click(); return }
+    }
+    // Fallback partial match
+    for (const label of labels) {
+      const partial = all.find(b => b.textContent?.includes(label))
+      if (partial) { (partial as HTMLElement).click(); return }
+    }
+  }, candidates)
+
   await page.waitForTimeout(3000)
 }
 

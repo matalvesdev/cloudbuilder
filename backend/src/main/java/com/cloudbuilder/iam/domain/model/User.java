@@ -23,6 +23,9 @@ public class User {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified;
+
     @Column(columnDefinition = "TEXT")
     private String roles;
 
@@ -46,6 +49,7 @@ public class User {
         this.passwordHash = passwordHash;
         this.name = name;
         this.enabled = true;
+        this.emailVerified = false;
         this.ssoOnly = false;
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
@@ -59,6 +63,8 @@ public class User {
     public void setName(String name) { this.name = name; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
     public String getRoles() { return roles; }
     public void setRoles(String roles) { this.roles = roles; }
     public boolean isSsoOnly() { return ssoOnly; }
