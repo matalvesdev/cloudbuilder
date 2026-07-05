@@ -35,8 +35,8 @@ export const moduleHierarchy: Record<string, { section: string; path: string[] }
   platform: { section: 'Plataforma', path: ['Plataforma', 'Catálogo'] },
   ai: { section: 'Operações', path: ['Operações', 'AI'] },
   security: { section: 'Governança', path: ['Governança', 'Segurança'] },
-  settings: { section: 'Sistema', path: ['Sistema', 'Configurações'] },
-  docs: { section: 'Sistema', path: ['Sistema', 'Documentação'] },
+  settings: { section: 'Governança', path: ['Governança', 'Configurações'] },
+  docs: { section: 'Governança', path: ['Governança', 'Docs'] },
   workspace: { section: 'Organização', path: ['Organização', 'Workspace'] },
   projects: { section: 'Organização', path: ['Organização', 'Projetos'] },
   notifications: { section: 'Organização', path: ['Organização', 'Notificações'] },
@@ -78,13 +78,7 @@ export const navGroups = [
     label: 'Governança',
     items: [
       { id: 'security' as const, label: 'Segurança', icon: 'Shield' },
-    ],
-  },
-  {
-    label: 'Sistema',
-    items: [
       { id: 'docs' as const, label: 'Docs', icon: 'BookOpen' },
-      { id: 'settings' as const, label: 'Config', icon: 'Settings' },
     ],
   },
 ]

@@ -5,7 +5,7 @@ import {
   Smartphone, LogOut, Globe, Monitor, Clock, AlertTriangle, CheckCircle,
   LayoutGrid, MoreHorizontal, Eye, EyeOff, ChevronDown, ChevronRight, Copy,
 } from 'lucide-react'
-import { iamApi, type Role, type TenantUser, type Permission, type Tenant, type MfaConfig, type UserSession, type PermissionMatrixEntry } from '@/api/iam'
+import { iamApi, type Role, type TenantUserInfo, type Permission, type Tenant, type MfaConfig, type UserSession, type PermissionMatrixEntry } from '@/api/iam'
 import { showSuccess, showApiError } from '@/lib/toast'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ export function IAMModule() {
   const [roleSearch, setRoleSearch] = useState('')
 
   // Users state
-  const [users, setUsers] = useState<TenantUser[]>([])
+  const [users, setUsers] = useState<TenantUserInfo[]>([])
   const [usersLoading, setUsersLoading] = useState(true)
   const [userSearch, setUserSearch] = useState('')
 
@@ -924,23 +924,23 @@ export function IAMModule() {
                           <div className="w-8 h-8 rounded-lg bg-ice-blue flex items-center justify-center">
                             <Users className="w-4 h-4 text-brand-navy" />
                           </div>
-                          {tu.userName}
+                          {tu.name}
                         </div>
                       </td>
-                      <td className={`${cellCls} text-slate-500`}>{tu.userEmail}</td>
+                      <td className={`${cellCls} text-slate-500`}>                          {tu.email}</td>
                       <td className={`${cellCls}`}>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-ice-blue text-brand-navy">
                           {tu.roleName}
                         </span>
                       </td>
-                      <td className={`${cellCls}`}>
+                       <td className={`${cellCls}`}>
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          true // TenantUser doesn't have enabled field, assume active
+                          tu.enabled
                             ? 'bg-green-50 text-green-700'
                             : 'bg-red-50 text-red-700'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${
-                            true ? 'bg-green-500' : 'bg-red-500'
+                            tu.enabled ? 'bg-green-500' : 'bg-red-500'
                           }`} />
                           Ativo
                         </span>
@@ -1210,7 +1210,7 @@ export function IAMModule() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-brand-navy">{tu.userName}</p>
-                            <p className="text-[10px] text-slate-400">{tu.userEmail}</p>
+                            <p className="text-[10px] text-slate-400">                          {tu.email}</p>
                           </div>
                         </div>
                       </td>

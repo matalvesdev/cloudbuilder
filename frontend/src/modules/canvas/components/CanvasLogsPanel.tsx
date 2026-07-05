@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Terminal, Download } from 'lucide-react'
+import { Terminal } from 'lucide-react'
 
 interface LogEntry {
   timestamp: string
@@ -17,19 +17,13 @@ interface CanvasLogsPanelProps {
  * Shows structured logs with filtering and search.
  */
 export function CanvasLogsPanel({ environmentId }: CanvasLogsPanelProps) {
-  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [logs] = useState<LogEntry[]>([])
   const [filter, setFilter] = useState('')
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Simulated log entries (in production, connect to log stream)
   useEffect(() => {
-    if (!environmentId) return
-    const mockLogs: LogEntry[] = [
-      { timestamp: new Date().toISOString(), level: 'INFO', source: 'system', message: 'Log stream conectado' },
-      { timestamp: new Date().toISOString(), level: 'INFO', source: 'deploy', message: 'Aguardando eventos...' },
-    ]
-    setLogs(mockLogs)
+    // In production, connect to log stream
   }, [environmentId])
 
   const filtered = logs.filter(log => {

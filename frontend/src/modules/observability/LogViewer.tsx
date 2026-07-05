@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-// @ts-ignore
-import { FixedSizeList as List } from 'react-window'
+// @ts-expect-error react-window v2 exports List directly
+import { List } from 'react-window'
 import {
   FileText,
   Search,

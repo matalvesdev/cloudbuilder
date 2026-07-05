@@ -18,36 +18,27 @@ public class AwsCostExplorerService {
 
     /**
      * Busca dados de custo e uso da AWS Cost Explorer API.
-     * Atualmente retorna dados mockados como placeholder.
      *
      * @param startDate data inicial no formato YYYY-MM-DD
      * @param endDate   data final no formato YYYY-MM-DD
-     * @return JSON string com resultados mockados
+     * @return JSON string com resultados (vazio quando não há credenciais AWS configuradas)
      */
     public String getCostAndUsage(String startDate, String endDate) {
         log.info("AwsCostExplorer: fetching data for period {} to {}", startDate, endDate);
         return """
-                { "results": [
-                    { "date": "%s", "amount": 1250.45, "service": "EC2", "currency": "USD" },
-                    { "date": "%s", "amount": 980.20, "service": "S3", "currency": "USD" },
-                    { "date": "%s", "amount": 340.10, "service": "RDS", "currency": "USD" }
-                ]}
-                """.formatted(startDate, endDate, endDate).stripIndent();
+                { "results": [] }
+                """.stripIndent();
     }
 
     /**
      * Busca previsão de custos da AWS Cost Explorer API.
-     * Atualmente retorna dados mockados como placeholder.
      *
-     * @return JSON string com previsão mockada
+     * @return JSON string com previsão (vazio quando não há credenciais AWS configuradas)
      */
     public String getCostForecast() {
         log.info("AwsCostExplorer: fetching forecast");
         return """
-                { "results": [
-                    { "period": "next_month", "predictedAmount": 3200.00, "lowerBound": 2800.00, "upperBound": 3600.00 },
-                    { "period": "next_quarter", "predictedAmount": 9600.00, "lowerBound": 8500.00, "upperBound": 10800.00 }
-                ]}
+                { "results": [] }
                 """.stripIndent();
     }
 }

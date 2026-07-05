@@ -45,3 +45,4 @@ frontend/debug_*.mjs
 frontend/test-results/
 // session tracking files
 .omo/run-continuation/
+.env.prod

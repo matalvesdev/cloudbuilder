@@ -17,8 +17,8 @@ interface ProviderCostSummary {
   resources: ResourceCost[]
 }
 
-// ─── Mock pricing database (simplified per-resource estimates in USD/mo) ──
-const MOCK_PRICING: Partial<Record<string, number>> = {
+// ─── Local pricing database (simplified per-resource estimates in USD/mo) ──
+const LOCAL_PRICING: Partial<Record<string, number>> = {
   // AWS
   'ec2-instance': 35,
   'ec2-instance-t3-medium': 30,
@@ -178,7 +178,7 @@ const PROVIDER_COLORS: Record<ProviderType, string> = {
 
 export function getResourcePrice(resourceType: string): number {
   // Exact match first
-  if (MOCK_PRICING[resourceType] !== undefined) return MOCK_PRICING[resourceType]!
+  if (LOCAL_PRICING[resourceType] !== undefined) return LOCAL_PRICING[resourceType]!
 
   // Prefix match for known resource families
   const prefixes: [string, number][] = [

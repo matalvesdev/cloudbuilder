@@ -91,8 +91,8 @@ const moduleHierarchy: Record<string, { section: string; path: string[] }> = {
   aiops: { section: 'Operações', path: ['Operações', 'AIOps'] },
   audit: { section: 'Governança', path: ['Governança', 'Auditoria'] },
   iam: { section: 'Governança', path: ['Governança', 'IAM'] },
-  settings: { section: 'Sistema', path: ['Sistema', 'Configurações'] },
-  docs: { section: 'Sistema', path: ['Sistema', 'Documentação'] },
+  settings: { section: 'Governança', path: ['Governança', 'Configurações'] },
+  docs: { section: 'Governança', path: ['Governança', 'Docs'] },
   analytics: { section: 'Visão Geral', path: ['Visão Geral', 'Análises'] },
   flags: { section: 'Governança', path: ['Governança', 'Feature Flags'] },
   workspace: { section: 'Organização', path: ['Organização', 'Workspace'] },
@@ -136,13 +136,7 @@ const navGroups = [
       { id: 'security' as const, label: 'Auditoria', icon: ScrollText },
       { id: 'security' as const, label: 'IAM', icon: Shield },
       { id: 'settings' as const, label: 'Flags', icon: Flag },
-    ],
-  },
-  {
-    label: 'Sistema',
-    items: [
       { id: 'docs' as const, label: 'Docs', icon: BookOpen },
-      { id: 'settings' as const, label: 'Config', icon: Settings },
     ],
   },
 ]

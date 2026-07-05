@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Radio, Filter } from 'lucide-react'
+import { Radio } from 'lucide-react'
 
 interface EventEntry {
   id: string
@@ -18,15 +18,11 @@ interface CanvasEventsPanelProps {
  * Shows domain events emitted by the canvas and connected services.
  */
 export function CanvasEventsPanel({ canvasId }: CanvasEventsPanelProps) {
-  const [events, setEvents] = useState<EventEntry[]>([])
+  const [events] = useState<EventEntry[]>([])
   const [typeFilter, setTypeFilter] = useState('all')
 
-  // Simulated events (in production, subscribe to SSE/WebSocket event stream)
   useEffect(() => {
-    const mockEvents: EventEntry[] = [
-      { id: '1', type: 'canvas.updated', timestamp: new Date().toISOString(), source: 'design', data: { canvasId } },
-    ]
-    setEvents(mockEvents)
+    // In production, subscribe to SSE/WebSocket event stream
   }, [canvasId])
 
   const eventTypes = [...new Set(events.map(e => e.type))]

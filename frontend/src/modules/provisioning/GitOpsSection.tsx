@@ -55,74 +55,6 @@ export interface PipelineStage {
   duration: string
 }
 
-// ─── Mock data generators ─────────────────────────────────────
-
-function generateMockCommits(repoId: string, repoName: string, count: number = 8): GitCommit[] {
-  const authors = [
-    { name: 'Ana Silva', email: 'ana.silva@cloudbuilder.io' },
-    { name: 'Carlos Oliveira', email: 'carlos.oliveira@cloudbuilder.io' },
-    { name: 'Maria Santos', email: 'maria.santos@cloudbuilder.io' },
-    { name: 'Pedro Costa', email: 'pedro.costa@cloudbuilder.io' },
-  ]
-  const subjects = [
-    'feat: add auto-scaling configuration for ECS services',
-    'fix: resolve security group ingress CIDR validation',
-    'chore: update Terraform provider versions to 5.x',
-    'feat: implement VPC flow logs integration',
-    'fix: correct RDS backup retention period configuration',
-    'refactor: extract common variables into shared module',
-    'feat: add health check endpoints for all services',
-    'docs: update deployment documentation with new workflows',
-    'fix: resolve IAM role trust policy syntax error',
-    'feat: implement multi-region failover support',
-  ]
-
-  return Array.from({ length: count }, (_, i) => {
-    const author = authors[i % authors.length]
-    const timestamp = new Date(Date.now() - i * 3600000 * (1 + (i * 0.1)))
-    return {
-      id: crypto.randomUUID(),
-      hash: `a${i.toString(16).padStart(6, '0')}`,
-      author: author.name,
-      email: author.email,
-      message: subjects[i % subjects.length],
-      timestamp: timestamp.toISOString(),
-      branch: i < 2 ? 'feature/auto-scaling' : i < 4 ? 'main' : 'develop',
-      repoId,
-    }
-  })
-}
-
-function generateMockPipelines(repoId: string, commits: GitCommit[]): PipelineRun[] {
-  return commits.slice(0, 5).map((commit, i) => {
-    const statuses: PipelineRun['status'][] = ['passing', 'passing', 'passing', 'failing', 'running', 'passing', 'pending']
-    const status = statuses[i % statuses.length]
-    const start = new Date(commit.timestamp)
-    const durMinutes = 5 + (i * 2)
-    const finish = new Date(start.getTime() + durMinutes * 60000)
-
-    return {
-      id: crypto.randomUUID(),
-      repoId,
-      branch: commit.branch,
-      commitHash: commit.hash,
-      status,
-      startedAt: start.toISOString(),
-      finishedAt: status !== 'running' && status !== 'pending' ? finish.toISOString() : null,
-      duration: status === 'running' ? `${2 + i}m` : `${durMinutes}m ${(i * 10) % 60}s`,
-      pipelineName: `CI: ${commit.message.substring(0, 40)}...`,
-      pipelineUrl: status === 'passing' || status === 'failing' ? `https://ci.cloudbuilder.io/pipelines/${commit.hash}` : null,
-      stages: [
-        { name: 'Checkout', status: 'passing', duration: '30s' },
-        { name: 'Lint', status: status === 'failing' ? 'failing' : 'passing', duration: '45s' },
-        { name: 'Test', status: status === 'running' ? 'running' : status === 'failing' ? 'skipped' : 'passing', duration: '2m' },
-        { name: 'Build', status: status === 'running' ? 'running' : status === 'failing' ? 'skipped' : 'passing', duration: '3m' },
-        { name: 'Deploy', status: status === 'passing' ? 'passing' : status === 'running' ? 'pending' : 'skipped', duration: '1m' },
-      ],
-    }
-  })
-}
-
 // ─── Sub-components ──────────────────────────────────────────
 
 function PipelineStatusBadge({ status }: { status: PipelineRun['status'] }) {
@@ -317,11 +249,10 @@ interface GitOpsSectionProps {
 export function GitOpsSection({ connectedRepos, className }: GitOpsSectionProps) {
   const [expandedRepo, setExpandedRepo] = useState<string | null>(null)
 
-  // Generate mock data per repo
   const repoData = useMemo(() => {
     return connectedRepos.map((repo) => {
-      const commits = generateMockCommits(repo.id, repo.repoName)
-      const pipelines = generateMockPipelines(repo.id, commits)
+      const commits: GitCommit[] = []
+      const pipelines: PipelineRun[] = []
       return { repo, commits, pipelines }
     })
   }, [connectedRepos])

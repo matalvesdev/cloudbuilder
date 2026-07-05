@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
  *
  * POST /api/v1/metrics/snapshot
  *  → Single snapshot (one-shot, no stream)
+ *
+ * Without configured cloud provider integrations, returns empty metric snapshots.
  */
 @RestController
 @RequestMapping("/api/v1/metrics")
@@ -60,13 +62,16 @@ public class MetricsController {
             resourceMap.put(nodeIds[i], name);
         }
 
-        // Fallback: if no nodeIds provided, use dummy data
+        // If no nodeIds provided, return empty snapshot
         if (resourceMap.isEmpty()) {
-            resourceMap.put("node-1", "VPC Principal");
-            resourceMap.put("node-2", "RDS PostgreSQL");
-            resourceMap.put("node-3", "ECS Fargate");
-            resourceMap.put("node-4", "ElastiCache Redis");
-            resourceMap.put("node-5", "ALB");
+            SseEmitter emitter = new SseEmitter(0L);
+            try {
+                emitter.send(SseEmitter.event().name("metrics").data(metricsService.getSnapshot(resourceMap)));
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+            emitter.complete();
+            return emitter;
         }
 
         SseEmitter emitter = new SseEmitter(0L); // no timeout

@@ -6,7 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 @Service
 @Transactional
 public class IamService {
@@ -59,13 +60,88 @@ public class IamService {
     // --- Tenant Users ---
 
     @Transactional(readOnly = true)
-    public List<TenantUser> listUsersByTenant(String tenantId) {
-        return tenantUserRepository.findByTenantId(tenantId);
+    public List<TenantUserInfoDTO> listUsersByTenant(String tenantId) {
+        var tenantUsers = tenantUserRepository.findByTenantId(tenantId);
+        return tenantUsers.stream().map(tu -> {
+            var user = userRepository.findById(tu.getUserId()).orElse(null);
+            var role = roleRepository.findById(tu.getRoleId()).orElse(null);
+            return new TenantUserInfoDTO(
+                tu.getId(),
+                tu.getUserId(),
+                user != null ? user.getName() : "Desconhecido",
+                user != null ? user.getEmail() : "",
+                user != null ? user.isEnabled() : false,
+                tu.getRoleId(),
+                role != null ? role.getName() : "UNKNOWN",
+                tu.getStatus().name(),
+                tu.getJoinedAt()
+            );
+        }).toList();
     }
 
+    public record TenantUserInfoDTO(
+        String id, String userId, String name, String email, boolean enabled,
+        String roleId, String roleName, String status, java.time.LocalDateTime joinedAt
+    ) {}
+
     @Transactional(readOnly = true)
-    public List<TenantUser> listTenantsByUser(String userId) {
-        return tenantUserRepository.findByUserId(userId);
+    public List<UserTenantInfoDTO> listTenantsByUser(String userId) {
+        var tenantUsers = tenantUserRepository.findByUserId(userId);
+        return tenantUsers.stream().map(tu -> {
+            var tenant = tenantRepository.findById(tu.getTenantId()).orElse(null);
+            var role = roleRepository.findById(tu.getRoleId()).orElse(null);
+            return new UserTenantInfoDTO(
+                tu.getTenantId(),
+                tenant != null ? tenant.getName() : "Desconhecido",
+                tenant != null ? tenant.getSlug() : "",
+                tenant != null ? tenant.isActive() : false,
+                tu.getRoleId(),
+                role != null ? role.getName() : "UNKNOWN",
+                tu.getStatus().name(),
+                tu.getJoinedAt()
+            );
+        }).toList();
+    }
+
+    public record UserTenantInfoDTO(
+        String tenantId, String tenantName, String tenantSlug, boolean tenantActive,
+        String roleId, String roleName, String status, java.time.LocalDateTime joinedAt
+    ) {}
+
+    public TenantUser createUserInTenant(String tenantId, String name, String email, String passwordHash, String roleId) {
+        // Validate tenant exists
+        getTenant(tenantId);
+
+        // Validate role exists and belongs to this tenant
+        var role = getRole(roleId);
+        if (!role.getTenantId().equals(tenantId)) {
+            throw new IllegalArgumentException("Role não pertence a este tenant");
+        }
+
+        // Check if user already exists by email
+        var existingUser = userRepository.findByEmail(email);
+        String userId;
+        if (existingUser.isPresent()) {
+            userId = existingUser.get().getId();
+            // Check if already in this tenant
+            if (tenantUserRepository.findByTenantIdAndUserId(tenantId, userId).isPresent()) {
+                throw new IllegalArgumentException("Usuário já está neste tenant: " + email);
+            }
+        } else {
+            // Create new user
+            var user = createUser(name, email, passwordHash);
+            userId = user.getId();
+        }
+
+        // Link user to tenant
+        var tenantUser = new TenantUser(tenantId, userId, roleId);
+        return tenantUserRepository.save(tenantUser);
+    }
+
+    public void removeUserFromTenant(String tenantId, String userId) {
+        var tu = tenantUserRepository.findByTenantIdAndUserId(tenantId, userId)
+            .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado neste tenant"));
+        tenantUserRepository.delete(tu);
     }
 
     public void assignRole(String tenantId, String userId, String roleId) {
@@ -167,10 +243,44 @@ public class IamService {
         return tenantRepository.findAll();
     }
 
+    public Tenant createTenant(String name, String slug) {
+        var existing = tenantRepository.findBySlug(slug);
+        if (existing.isPresent()) {
+            throw new IllegalArgumentException("Tenant com slug já existe: " + slug);
+        }
+        var tenant = new Tenant(name, slug);
+        var saved = tenantRepository.save(tenant);
+
+        // Create default roles for the new tenant
+        roleRepository.save(new Role(saved.getId(), "ADMIN", "Administrador do tenant", true));
+        roleRepository.save(new Role(saved.getId(), "EDITOR", "Editor com acesso de escrita", true));
+        roleRepository.save(new Role(saved.getId(), "VIEWER", "Somente leitura", true));
+
+        return saved;
+    }
+
     // --- Validation ---
 
     @Transactional(readOnly = true)
     public boolean validateTenantAccess(String tenantId, String userId) {
         return tenantUserRepository.findByTenantIdAndUserId(tenantId, userId).isPresent();
     }
+
+    // --- User Permissions Summary ---
+
+    @Transactional(readOnly = true)
+    public List<UserPermissionsDTO> getUserPermissions(String userId) {
+        var tenantUsers = tenantUserRepository.findByUserId(userId);
+        return tenantUsers.stream().map(tu -> {
+            var role = roleRepository.findById(tu.getRoleId()).orElse(null);
+            var roleName = role != null ? role.getName() : "UNKNOWN";
+            var permissions = permissionRepository.findByRoleId(tu.getRoleId());
+            var permissionSet = permissions.stream()
+                .map(p -> p.getAction() + ":" + p.getResource())
+                .collect(Collectors.toSet());
+            return new UserPermissionsDTO(tu.getTenantId(), tu.getRoleId(), roleName, permissionSet);
+        }).toList();
+    }
+
+    public record UserPermissionsDTO(String tenantId, String roleId, String roleName, Set<String> permissions) {}
 }

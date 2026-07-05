@@ -1,42 +1,54 @@
-# ─── CloudBuilder — Production Profile ───────────────────────────────────
-# Ativado com SPRING_PROFILES_ACTIVE=prod
-
 spring:
-  datasource:
-    url: jdbc:postgresql://postgres:5432/cloudbuilder
-    username: cloudbuilder
-    password: ${DB_PASSWORD}
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 5000
-      max-lifetime: 1800000
+  application:
+    name: cloudbuilder
 
-  jpa:
-    hibernate:
-      ddl-auto: validate # NEVER use update in prod — Flyway manages schema
-      naming:
-        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-    show-sql: false
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/cloudbuilder}
+    username: ${SPRING_DATASOURCE_USERNAME:cloudbuilder}
+    password: ${SPRING_DATASOURCE_PASSWORD:?SPRING_DATASOURCE_PASSWORD obrigatorio}
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL:20}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    baseline-on-migrate: false
     validate-on-migrate: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    out-of-order: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: public
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
 
   modulith:
     events:
       jpa:
         schema-initialization:
           enabled: true
-      externalization:
-        enabled: true
 
 server:
   port: 8080
+  compression:
+    enabled: true
+    mime-types: text/html,text/plain,text/css,application/javascript,application/json
+    min-response-size: 1024
+  error:
+    include-stacktrace: never
+    include-message: never
 
 management:
   endpoints:
@@ -45,7 +57,7 @@ management:
         include: health,info,metrics,prometheus
     jmx:
       exposure:
-        include: health,metrics,prometheus
+        include: health
   endpoint:
     health:
       show-details: when-authorized
@@ -68,23 +80,79 @@ management:
       slo:
         http.server.requests: 50ms,100ms,200ms,500ms,1s,2s
 
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
+# ── Resilience4j Circuit Breaker (ADR-023) ──────────────────────────
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        recordExceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+      llmClient:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 40
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 3
+      gitHubClient:
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 30
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+    instances:
+      opaClient:
+        baseConfig: default
+      llmClient:
+        baseConfig: llmClient
+      gitHubClient:
+        baseConfig: gitHubClient
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 10s
+      llmClient:
+        timeoutDuration: 30s
+    instances:
+      opaClient:
+        baseConfig: default
+      llmClient:
+        baseConfig: llmClient
+      gitHubClient:
+        baseConfig: default
 
 cloudbuilder:
+  sso:
+    enabled: false
+
   security:
-    jwt-secret: ${JWT_SECRET}
-    access-token-expiration: 900000    # 15 min
-    refresh-token-expiration: 604800000 # 7 dias
-    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:https://app.cloudbuilder.io}
+    jwt-secret: ${JWT_SECRET:?JWT_SECRET obrigatorio}
+    access-token-expiration: 900000
+    refresh-token-expiration: 604800000
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:https://cloudbuilder.example.com}
     h2-console-enabled: false
+    encryption-key: ${CLOUDBUILDER_ENCRYPTION_KEY:?CLOUDBUILDER_ENCRYPTION_KEY obrigatorio}
+
+  ai:
+    llm:
+      provider: ${LLM_PROVIDER:rule-based}
+      openai:
+        api-key: ${OPENAI_API_KEY:}
+        model: gpt-4o
+      anthropic:
+        api-key: ${ANTHROPIC_API_KEY:}
+        model: claude-sonnet-4-20250514
+
+  opa:
+    url: ${OPA_URL:http://opa:8181}
     rate-limit:
       auth-max-requests: 10
       auth-window-seconds: 60
-      global-max-requests: 1000
+      global-max-requests: 500
       global-window-seconds: 60
-      tenant-max-requests: 500
-      tenant-window-seconds: 60

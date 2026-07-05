@@ -34,8 +34,7 @@ public class SecretEncryptionConverter implements AttributeConverter<String, Str
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
 
-    // Master encryption key — in production, fetch from Vault / KMS / env variable
-    // Temporary dev key — MUST be overridden in production
+    // Master encryption key — must be set via CLOUDBUILDER_ENCRYPTION_KEY env var
     private static final String MASTER_KEY_ENV = "CLOUDBUILDER_ENCRYPTION_KEY";
     private static final String PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256";
     private static final int PBKDF2_ITERATIONS = 600_000; // OWASP 2023 recommended minimum
@@ -44,22 +43,22 @@ public class SecretEncryptionConverter implements AttributeConverter<String, Str
 
     static {
         String envKey = System.getenv(MASTER_KEY_ENV);
+        if (envKey == null || envKey.isBlank()) {
+            throw new IllegalStateException(
+                MASTER_KEY_ENV + " environment variable is required. " +
+                "Generate with: node -e \"console.log(require('crypto').randomBytes(64).toString('base64'))\""
+            );
+        }
         byte[] keyBytes;
-        if (envKey != null && !envKey.isBlank()) {
-            try {
-                // Derive 256-bit AES key from the env var using PBKDF2-HMAC-SHA256
-                // Uses a static app-specific salt (not secret, different per application)
-                SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
-                byte[] salt = "CloudBuilder-AES256-GCM".getBytes(StandardCharsets.UTF_8);
-                PBEKeySpec spec = new PBEKeySpec(envKey.toCharArray(), salt, PBKDF2_ITERATIONS, KEY_LENGTH);
-                keyBytes = factory.generateSecret(spec).getEncoded();
-            } catch (Exception e) {
-                throw new RuntimeException("Falha ao derivar chave de criptografia com PBKDF2", e);
-            }
-        } else {
-            // Fallback for dev: deterministic but documented warning
-            log.warn("⚠️ {} não definida! Usando chave DEV fixa. Configure esta env var em produção.", MASTER_KEY_ENV);
-            keyBytes = "CloudBuilderDevKey32Bytes!!".getBytes(StandardCharsets.UTF_8);
+        try {
+            // Derive 256-bit AES key from the env var using PBKDF2-HMAC-SHA256
+            // Uses a static app-specific salt (not secret, different per application)
+            SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
+            byte[] salt = "CloudBuilder-AES256-GCM".getBytes(StandardCharsets.UTF_8);
+            PBEKeySpec spec = new PBEKeySpec(envKey.toCharArray(), salt, PBKDF2_ITERATIONS, KEY_LENGTH);
+            keyBytes = factory.generateSecret(spec).getEncoded();
+        } catch (Exception e) {
+            throw new RuntimeException("Falha ao derivar chave de criptografia com PBKDF2", e);
         }
         SECRET_KEY = new SecretKeySpec(keyBytes, "AES");
     }

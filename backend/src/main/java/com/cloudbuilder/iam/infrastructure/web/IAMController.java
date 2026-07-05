@@ -35,6 +35,18 @@ public class IAMController {
         return ResponseEntity.ok(iamService.getUser(id));
     }
 
+    @GetMapping("/users/{id}/permissions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<IamService.UserPermissionsDTO>> getUserPermissions(@PathVariable String id) {
+        return ResponseEntity.ok(iamService.getUserPermissions(id));
+    }
+
+    @GetMapping("/users/{id}/tenants")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<IamService.UserTenantInfoDTO>> getUserTenants(@PathVariable String id) {
+        return ResponseEntity.ok(iamService.listTenantsByUser(id));
+    }
+
     @Audited(action = "CREATE_USER", resourceType = "USER", resourceId = "#result?.getId()?.toString()")
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
@@ -61,8 +73,18 @@ public class IAMController {
 
     @GetMapping("/tenants/{tenantId}/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<TenantUser>> listUsersByTenant(@PathVariable String tenantId) {
+    public ResponseEntity<List<IamService.TenantUserInfoDTO>> listUsersByTenant(@PathVariable String tenantId) {
         return ResponseEntity.ok(iamService.listUsersByTenant(tenantId));
+    }
+
+    @PostMapping("/tenants/{tenantId}/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TenantUser> createUserInTenant(
+            @PathVariable String tenantId,
+            @RequestBody CreateUserInTenantRequest req) {
+        var tenantUser = iamService.createUserInTenant(
+            tenantId, req.name(), req.email(), req.passwordHash(), req.roleId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(tenantUser);
     }
 
     @PostMapping("/tenants/{tenantId}/users/{userId}/roles/{roleId}")
@@ -70,6 +92,13 @@ public class IAMController {
     public ResponseEntity<Void> assignRole(@PathVariable String tenantId, @PathVariable String userId, @PathVariable String roleId) {
         iamService.assignRole(tenantId, userId, roleId);
         return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/tenants/{tenantId}/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> removeUserFromTenant(@PathVariable String tenantId, @PathVariable String userId) {
+        iamService.removeUserFromTenant(tenantId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     // --- Roles ---
@@ -124,9 +153,16 @@ public class IAMController {
     // --- Tenant Management ---
 
     @GetMapping("/tenants")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Tenant>> listTenants() {
         return ResponseEntity.ok(iamService.listTenants());
+    }
+
+    @PostMapping("/tenants")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Tenant> createTenant(@RequestBody CreateTenantRequest req) {
+        var tenant = iamService.createTenant(req.name(), req.slug());
+        return ResponseEntity.status(HttpStatus.CREATED).body(tenant);
     }
 
     @GetMapping("/tenants/{id}")
@@ -223,6 +259,8 @@ public class IAMController {
     record CreateRoleRequest(String name, String description, String tenantId) {}
     record UpdateRoleRequest(String name, String description) {}
     record CreatePermissionRequest(String action, String resource) {}
+    record CreateTenantRequest(String name, String slug) {}
+    record CreateUserInTenantRequest(String name, String email, String passwordHash, String roleId) {}
     record ValidateAccessRequest(String tenantId, String userId) {}
     record HasPermissionRequest(String tenantId, String userId, String action, String resource) {}
 

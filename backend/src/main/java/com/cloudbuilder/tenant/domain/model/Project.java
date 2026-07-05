@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "projects")
+@Entity(name = "TenantProject")
+@Table(name = "tenant_projects")
 public class Project {
 
     @Id

@@ -30,147 +30,6 @@ interface ScannedGroup {
   resources: ScannedResource[]
 }
 
-const providerMockData: Record<string, ScannedGroup[]> = {
-  aws: [
-    {
-      name: 'Compute',
-      provider: 'aws',
-      icon: 'Server',
-      resources: [
-        { id: 'i-0a1b2c3d4e5f', resourceType: 'aws_instance', name: 'web-server-prod-01', provider: 'aws', properties: { instanceType: 't3.large', ami: 'ami-0c55b159cbfafe1f0', vpcId: 'vpc-0a1b2c3d' } },
-        { id: 'i-0f6e7d8c9b0a', resourceType: 'aws_instance', name: 'web-server-prod-02', provider: 'aws', properties: { instanceType: 't3.large', ami: 'ami-0c55b159cbfafe1f0', vpcId: 'vpc-0a1b2c3d' } },
-        { id: 'i-0b2c3d4e5f6a', resourceType: 'aws_instance', name: 'app-server-01', provider: 'aws', properties: { instanceType: 't3.medium', ami: 'ami-0c55b159cbfafe1f0', vpcId: 'vpc-0a1b2c3d' } },
-        { id: 'asg-0a1b2c3d', resourceType: 'aws_autoscaling_group', name: 'web-asg-prod', provider: 'aws', properties: { minSize: '2', maxSize: '10', desiredCapacity: '2' } },
-        { id: 'lt-0a1b2c3d', resourceType: 'aws_launch_template', name: 'web-launch-template', provider: 'aws', properties: { instanceType: 't3.large' } },
-      ],
-    },
-    {
-      name: 'Networking',
-      provider: 'aws',
-      icon: 'Globe',
-      resources: [
-        { id: 'vpc-0a1b2c3d', resourceType: 'aws_vpc', name: 'prod-vpc', provider: 'aws', properties: { cidrBlock: '10.0.0.0/16', enableDnsSupport: 'true' } },
-        { id: 'subnet-pub-a', resourceType: 'aws_subnet', name: 'prod-subnet-public-a', provider: 'aws', properties: { cidrBlock: '10.0.1.0/24', availabilityZone: 'us-east-1a' } },
-        { id: 'subnet-pub-b', resourceType: 'aws_subnet', name: 'prod-subnet-public-b', provider: 'aws', properties: { cidrBlock: '10.0.2.0/24', availabilityZone: 'us-east-1b' } },
-        { id: 'subnet-priv-a', resourceType: 'aws_subnet', name: 'prod-subnet-private-a', provider: 'aws', properties: { cidrBlock: '10.0.3.0/24', availabilityZone: 'us-east-1a' } },
-        { id: 'subnet-priv-b', resourceType: 'aws_subnet', name: 'prod-subnet-private-b', provider: 'aws', properties: { cidrBlock: '10.0.4.0/24', availabilityZone: 'us-east-1b' } },
-        { id: 'igw-0a1b2c3d', resourceType: 'aws_internet_gateway', name: 'prod-igw', provider: 'aws', properties: { vpcId: 'vpc-0a1b2c3d' } },
-        { id: 'rtb-pub', resourceType: 'aws_route_table', name: 'prod-rtb-public', provider: 'aws', properties: { vpcId: 'vpc-0a1b2c3d' } },
-        { id: 'sg-web', resourceType: 'aws_security_group', name: 'web-sg', provider: 'aws', properties: { vpcId: 'vpc-0a1b2c3d', description: 'Web tier security group' } },
-        { id: 'sg-app', resourceType: 'aws_security_group', name: 'app-sg', provider: 'aws', properties: { vpcId: 'vpc-0a1b2c3d', description: 'App tier security group' } },
-        { id: 'sg-db', resourceType: 'aws_security_group', name: 'db-sg', provider: 'aws', properties: { vpcId: 'vpc-0a1b2c3d', description: 'Database security group' } },
-        { id: 'alb-0a1b2c3d', resourceType: 'aws_lb', name: 'prod-web-alb', provider: 'aws', properties: { scheme: 'internet-facing', loadBalancerType: 'application' } },
-      ],
-    },
-    {
-      name: 'Storage',
-      provider: 'aws',
-      icon: 'HardDrive',
-      resources: [
-        { id: 's3-logs', resourceType: 'aws_s3_bucket', name: 'prod-logs-bucket', provider: 'aws', properties: { acl: 'private', versioning: 'enabled' } },
-        { id: 's3-assets', resourceType: 'aws_s3_bucket', name: 'prod-assets-bucket', provider: 'aws', properties: { acl: 'private', versioning: 'disabled' } },
-        { id: 'ebs-web-01', resourceType: 'aws_ebs_volume', name: 'web-01-data', provider: 'aws', properties: { size: '100', type: 'gp3', availabilityZone: 'us-east-1a' } },
-        { id: 'ebs-app-01', resourceType: 'aws_ebs_volume', name: 'app-01-data', provider: 'aws', properties: { size: '50', type: 'gp3', availabilityZone: 'us-east-1a' } },
-      ],
-    },
-    {
-      name: 'Database',
-      provider: 'aws',
-      icon: 'Database',
-      resources: [
-        { id: 'rds-main', resourceType: 'aws_db_instance', name: 'prod-postgres-main', provider: 'aws', properties: { engine: 'postgres', engineVersion: '16.3', instanceClass: 'db.r6g.large', allocatedStorage: '200' } },
-        { id: 'rds-replica', resourceType: 'aws_db_instance', name: 'prod-postgres-replica', provider: 'aws', properties: { engine: 'postgres', engineVersion: '16.3', instanceClass: 'db.r6g.large' } },
-        { id: 'redis-cache', resourceType: 'aws_elasticache_cluster', name: 'prod-redis-cache', provider: 'aws', properties: { engine: 'redis', nodeType: 'cache.r6g.large', numCacheNodes: '3' } },
-      ],
-    },
-  ],
-  azure: [
-    {
-      name: 'Compute',
-      provider: 'azure',
-      icon: 'Monitor',
-      resources: [
-        { id: 'vm-web-01', resourceType: 'azurerm_virtual_machine', name: 'vm-web-prod-01', provider: 'azure', properties: { vmSize: 'Standard_D4s_v3', subnetId: 'subnet-web' } },
-        { id: 'vm-web-02', resourceType: 'azurerm_virtual_machine', name: 'vm-web-prod-02', provider: 'azure', properties: { vmSize: 'Standard_D4s_v3', subnetId: 'subnet-web' } },
-        { id: 'aks-cluster', resourceType: 'azurerm_kubernetes_cluster', name: 'aks-prod', provider: 'azure', properties: { kubernetesVersion: '1.30', nodeCount: '3', vmSize: 'Standard_D4s_v3' } },
-      ],
-    },
-    {
-      name: 'Networking',
-      provider: 'azure',
-      icon: 'Globe',
-      resources: [
-        { id: 'vnet-prod', resourceType: 'azurerm_virtual_network', name: 'vnet-prod', provider: 'azure', properties: { addressSpace: '10.0.0.0/16', location: 'eastus' } },
-        { id: 'snet-web', resourceType: 'azurerm_subnet', name: 'snet-web', provider: 'azure', properties: { addressPrefixes: '10.0.1.0/24' } },
-        { id: 'snet-app', resourceType: 'azurerm_subnet', name: 'snet-app', provider: 'azure', properties: { addressPrefixes: '10.0.2.0/24' } },
-        { id: 'snet-db', resourceType: 'azurerm_subnet', name: 'snet-db', provider: 'azure', properties: { addressPrefixes: '10.0.3.0/24' } },
-        { id: 'nsg-web', resourceType: 'azurerm_network_security_group', name: 'nsg-web', provider: 'azure', properties: { securityRules: 'HTTP,HTTPS,SSH' } },
-        { id: 'appgw-prod', resourceType: 'azurerm_application_gateway', name: 'appgw-prod', provider: 'azure', properties: { sku: 'WAF_v2', subnetId: 'snet-web' } },
-      ],
-    },
-    {
-      name: 'Storage',
-      provider: 'azure',
-      icon: 'HardDrive',
-      resources: [
-        { id: 'sa-logs', resourceType: 'azurerm_storage_account', name: 'stprodsa', provider: 'azure', properties: { accountTier: 'Standard', replicationType: 'GRS' } },
-        { id: 'sa-backup', resourceType: 'azurerm_storage_account', name: 'stproddrgrs', provider: 'azure', properties: { accountTier: 'Standard', replicationType: 'GRS' } },
-      ],
-    },
-    {
-      name: 'Database',
-      provider: 'azure',
-      icon: 'Database',
-      resources: [
-        { id: 'sql-prod', resourceType: 'azurerm_mssql_database', name: 'sqldb-prod', provider: 'azure', properties: { sku: 'S2', maxSizeGb: '250' } },
-        { id: 'sql-server', resourceType: 'azurerm_mssql_server', name: 'sqlsrv-prod', provider: 'azure', properties: { version: '12.0' } },
-      ],
-    },
-  ],
-  gcp: [
-    {
-      name: 'Compute',
-      provider: 'gcp',
-      icon: 'Monitor',
-      resources: [
-        { id: 'instance-web-01', resourceType: 'google_compute_instance', name: 'web-prod-01', provider: 'gcp', properties: { machineType: 'e2-standard-4', zone: 'us-central1-a', network: 'vpc-prod' } },
-        { id: 'instance-web-02', resourceType: 'google_compute_instance', name: 'web-prod-02', provider: 'gcp', properties: { machineType: 'e2-standard-4', zone: 'us-central1-b', network: 'vpc-prod' } },
-        { id: 'gke-cluster', resourceType: 'google_container_cluster', name: 'gke-prod', provider: 'gcp', properties: { initialNodeCount: '3', nodeLocation: 'us-central1-a,us-central1-b' } },
-      ],
-    },
-    {
-      name: 'Networking',
-      provider: 'gcp',
-      icon: 'Globe',
-      resources: [
-        { id: 'vpc-prod', resourceType: 'google_compute_network', name: 'vpc-prod', provider: 'gcp', properties: { autoCreateSubnetworks: 'false', routingMode: 'REGIONAL' } },
-        { id: 'subnet-web', resourceType: 'google_compute_subnetwork', name: 'subnet-web', provider: 'gcp', properties: { ipCidrRange: '10.0.1.0/24', region: 'us-central1' } },
-        { id: 'subnet-app', resourceType: 'google_compute_subnetwork', name: 'subnet-app', provider: 'gcp', properties: { ipCidrRange: '10.0.2.0/24', region: 'us-central1' } },
-        { id: 'fw-web', resourceType: 'google_compute_firewall', name: 'fw-allow-web', provider: 'gcp', properties: { allowedProtocol: 'tcp:80,tcp:443', network: 'vpc-prod' } },
-        { id: 'lb-http', resourceType: 'google_compute_forwarding_rule', name: 'lb-http-prod', provider: 'gcp', properties: { loadBalancingScheme: 'EXTERNAL', portRange: '80-443' } },
-      ],
-    },
-    {
-      name: 'Storage',
-      provider: 'gcp',
-      icon: 'HardDrive',
-      resources: [
-        { id: 'gcs-logs', resourceType: 'google_storage_bucket', name: 'prod-logs-bucket', provider: 'gcp', properties: { location: 'US-CENTRAL1', storageClass: 'STANDARD' } },
-        { id: 'gcs-backup', resourceType: 'google_storage_bucket', name: 'prod-backup-bucket', provider: 'gcp', properties: { location: 'US-CENTRAL1', storageClass: 'NEARLINE' } },
-      ],
-    },
-    {
-      name: 'Database',
-      provider: 'gcp',
-      icon: 'Database',
-      resources: [
-        { id: 'sql-main', resourceType: 'google_sql_database_instance', name: 'pg-prod-main', provider: 'gcp', properties: { databaseVersion: 'POSTGRES_16', tier: 'db-custom-4-15360' } },
-        { id: 'redis-cache', resourceType: 'google_redis_instance', name: 'redis-prod-cache', provider: 'gcp', properties: { memorySizeGb: '8', tier: 'STANDARD_HA' } },
-      ],
-    },
-  ],
-}
-
 function getGroupIcon(name: string) {
   const iconName = {
     Compute: Server,
@@ -328,24 +187,15 @@ export function ImportInfraDialog({ open, onOpenChange }: ImportInfraDialogProps
     setScanResult(null)
     setSelectedResourceIds(new Set())
 
-    const mockData = providerMockData[selectedProvider]
-    if (!mockData) {
-      setError('Provedor não suportado para scan.')
-      setScanning(false)
-      return
-    }
-
-    const totalGroups = mockData.length
+    const totalGroups = 0
     for (let i = 0; i < totalGroups; i++) {
       await new Promise(r => setTimeout(r, 400 + Math.random() * 600))
       setScanProgress(Math.round(((i + 1) / totalGroups) * 100))
     }
 
     await new Promise(r => setTimeout(r, 500))
-    setScanResult(mockData)
-    const allIds = new Set<string>()
-    mockData.forEach(g => g.resources.forEach(r => allIds.add(r.id)))
-    setSelectedResourceIds(allIds)
+    setScanResult([])
+    setSelectedResourceIds(new Set())
     setScanning(false)
   }, [selectedProvider])
 
@@ -374,24 +224,11 @@ export function ImportInfraDialog({ open, onOpenChange }: ImportInfraDialogProps
     setError('')
     try {
       await new Promise(r => setTimeout(r, 1500))
-      const parsed: ImportedResource[] = [
-        { id: 'vpc-main', provider: 'aws', resourceType: 'aws_vpc', name: 'main-vpc', properties: { cidr_block: '10.0.0.0/16' }, groupName: 'Networking' },
-        { id: 'subnet-a', provider: 'aws', resourceType: 'aws_subnet', name: 'main-subnet-a', properties: { cidr_block: '10.0.1.0/24', vpc_id: 'vpc-main' }, groupName: 'Networking' },
-        { id: 'subnet-b', provider: 'aws', resourceType: 'aws_subnet', name: 'main-subnet-b', properties: { cidr_block: '10.0.2.0/24', vpc_id: 'vpc-main' }, groupName: 'Networking' },
-        { id: 'igw-main', provider: 'aws', resourceType: 'aws_internet_gateway', name: 'main-igw', properties: { vpc_id: 'vpc-main' }, groupName: 'Networking' },
-        { id: 'sg-web', provider: 'aws', resourceType: 'aws_security_group', name: 'web-sg', properties: { vpc_id: 'vpc-main' }, groupName: 'Security' },
-        { id: 'sg-db', provider: 'aws', resourceType: 'aws_security_group', name: 'db-sg', properties: { vpc_id: 'vpc-main' }, groupName: 'Security' },
-        { id: 'ec2-web', provider: 'aws', resourceType: 'aws_instance', name: 'web-01', properties: { instance_type: 't3.medium', subnet_id: 'subnet-a' }, groupName: 'Compute' },
-        { id: 'ec2-app', provider: 'aws', resourceType: 'aws_instance', name: 'app-01', properties: { instance_type: 't3.small', subnet_id: 'subnet-a' }, groupName: 'Compute' },
-        { id: 'rds-main', provider: 'aws', resourceType: 'aws_db_instance', name: 'main-db', properties: { engine: 'postgres', allocated_storage: '100' }, groupName: 'Database' },
-        { id: 's3-logs', provider: 'aws', resourceType: 'aws_s3_bucket', name: 'logs-bucket', properties: { acl: 'private' }, groupName: 'Storage' },
-        { id: 's3-backup', provider: 'aws', resourceType: 'aws_s3_bucket', name: 'backup-bucket', properties: { acl: 'private' }, groupName: 'Storage' },
-        { id: 'alb-main', provider: 'aws', resourceType: 'aws_lb', name: 'main-alb', properties: { scheme: 'internet-facing' }, groupName: 'Networking' },
-      ]
+      const parsed: ImportedResource[] = []
       setStateParseResult(parsed)
       const allIds = new Set(parsed.map(r => r.id))
       setSelectedResourceIds(allIds)
-      setStateFileWarnings(['2 recursos ignorados (data sources)', '1 recurso com estado orphan detectado'])
+      setStateFileWarnings([])
     } catch {
       setError('Erro ao processar o arquivo de estado.')
     } finally {

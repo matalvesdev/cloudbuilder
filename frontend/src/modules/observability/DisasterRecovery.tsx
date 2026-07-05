@@ -54,60 +54,6 @@ const STATUS_CONFIG: Record<DrStatus, { label: string; bg: string; text: string;
   degraded: { label: 'DR Degradado', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: ShieldAlert },
 }
 
-function generateMockDrConfig(): DRConfig {
-  return {
-    id: crypto.randomUUID(),
-    environmentId: 'default',
-    primaryRegion: 'us-east-1',
-    secondaryRegion: 'us-west-2',
-    replicationResources: [
-      { type: 'rds', sourceName: 'app-db', targetName: 'app-db-replica', status: 'active' },
-      { type: 's3', sourceName: 'app-storage', targetName: 'app-storage-dr', status: 'active' },
-      { type: 'route53', sourceName: 'app.example.com', targetName: 'app-dr.example.com', status: 'active' },
-    ],
-    rto_seconds: 300,
-    rpo_seconds: 60,
-    autoTestSchedule: 'monthly',
-    status: 'active',
-    lastTestDate: new Date(Date.now() - 7 * 86400000).toISOString(),
-    complianceStatus: 'compliant',
-    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
-  }
-}
-
-function generateMockTestResults(configId: string): DRTestResult[] {
-  return [
-    {
-      id: crypto.randomUUID(),
-      configId,
-      testedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-      rto_actual: 47,
-      rpo_actual: 32,
-      status: 'success',
-      details: [
-        'DNS propagation completed in 12s',
-        'RDS read replica promoted in 23s',
-        'Application health check passed in 12s',
-      ],
-      duration_seconds: 47,
-    },
-    {
-      id: crypto.randomUUID(),
-      configId,
-      testedAt: new Date(Date.now() - 37 * 86400000).toISOString(),
-      rto_actual: 52,
-      rpo_actual: 45,
-      status: 'success',
-      details: [
-        'DNS propagation completed in 14s',
-        'RDS read replica promoted in 28s',
-        'Application health check passed in 10s',
-      ],
-      duration_seconds: 52,
-    },
-  ]
-}
-
 const FAILOVER_STEPS: FailoverSimulationStep[] = [
   { step: 1, name: 'Verificando saúde da região primária', status: 'pending', duration_seconds: 3 },
   { step: 2, name: 'Promovendo réplica de leitura RDS', status: 'pending', duration_seconds: 8 },
@@ -597,7 +543,7 @@ export function DisasterRecovery() {
   const [testResults, setTestResults] = useState<DRTestResult[]>(() => {
     if (!config) return []
     const stored = localStorage.getItem('cloudbuilder-dr-tests')
-    return stored ? JSON.parse(stored) : generateMockTestResults(config.id)
+    return stored ? JSON.parse(stored) : []
   })
   const [showSetup, setShowSetup] = useState(!config)
   const [isSimulating, setIsSimulating] = useState(false)

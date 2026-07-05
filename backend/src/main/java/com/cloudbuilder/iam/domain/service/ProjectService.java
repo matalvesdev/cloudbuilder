@@ -3,6 +3,7 @@ package com.cloudbuilder.iam.domain.service;
 import com.cloudbuilder.iam.domain.model.Project;
 import com.cloudbuilder.iam.domain.port.OrganizationRepository;
 import com.cloudbuilder.iam.domain.port.ProjectRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +16,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final OrganizationRepository organizationRepository;
 
-    public ProjectService(ProjectRepository projectRepository,
+    public ProjectService(@Qualifier("iamProjectRepository") ProjectRepository projectRepository,
                           OrganizationRepository organizationRepository) {
         this.projectRepository = projectRepository;
         this.organizationRepository = organizationRepository;
@@ -66,7 +67,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<Project> searchProjects(String organizationId, String query) {
-        return projectRepository.findByNameContainingIgnoreCase(organizationId, query);
+        return projectRepository.findByOrganizationIdAndNameContainingIgnoreCase(organizationId, query);
     }
 
     public void deleteProject(String id) {

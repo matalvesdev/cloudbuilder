@@ -63,8 +63,20 @@ export function listUsers(): Promise<User[]> {
   return api.get('/iam/users')
 }
 
-export function listUsersByTenant(tenantId: string): Promise<User[]> {
-  return api.get(`/iam/users?tenantId=${tenantId}`)
+export interface TenantUserInfo {
+  id: string
+  userId: string
+  name: string
+  email: string
+  enabled: boolean
+  roleId: string
+  roleName: string
+  status: string
+  joinedAt: string
+}
+
+export function listUsersByTenant(tenantId: string): Promise<TenantUserInfo[]> {
+  return api.get(`/iam/tenants/${tenantId}/users`)
 }
 
 export function getUser(id: string): Promise<User> {
@@ -75,8 +87,8 @@ export function createUser(user: { name: string; email: string; password: string
   return api.post('/iam/users', user)
 }
 
-export function listRoles(): Promise<Role[]> {
-  return api.get('/iam/roles')
+export function listRoles(tenantId?: string): Promise<Role[]> {
+  return api.get(tenantId ? `/iam/tenants/${tenantId}/roles` : '/iam/roles')
 }
 
 export function createRole(role: Omit<Role, 'id'>): Promise<Role> {
@@ -129,6 +141,17 @@ export function revokeSession(id: string): Promise<void> {
 
 export function getPermissionMatrix(): Promise<PermissionMatrixEntry[]> {
   return api.get('/iam/permission-matrix')
+}
+
+export interface UserPermissionsDTO {
+  tenantId: string
+  roleId: string
+  roleName: string
+  permissions: string[]
+}
+
+export function getUserPermissions(userId: string): Promise<UserPermissionsDTO[]> {
+  return api.get(`/iam/users/${userId}/permissions`)
 }
 
 export const iamApi = {

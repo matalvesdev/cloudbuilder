@@ -30,7 +30,14 @@ public class SecretManager {
     private final String encryptionKey;
 
     public SecretManager() {
-        this.encryptionKey = System.getenv().getOrDefault("CLOUDBUILDER_ENCRYPTION_KEY", "cloudbuilder-default-dev-key");
+        String key = System.getenv("CLOUDBUILDER_ENCRYPTION_KEY");
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException(
+                "CLOUDBUILDER_ENCRYPTION_KEY environment variable is required. " +
+                "Generate with: node -e \"console.log(require('crypto').randomBytes(64).toString('base64'))\""
+            );
+        }
+        this.encryptionKey = key;
     }
 
     /**

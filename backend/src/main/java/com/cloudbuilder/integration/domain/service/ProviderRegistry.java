@@ -10,7 +10,7 @@ import java.util.Optional;
  * ProviderRegistry: Central registry of all available integration providers.
  * Maps provider IDs to their metadata and capabilities.
  */
-@Service
+@Service("integrationProviderRegistry")
 public class ProviderRegistry {
 
     public record ProviderInfo(
