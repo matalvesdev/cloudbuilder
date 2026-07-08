@@ -13,7 +13,7 @@ env:
   # ── Java / Node / Go ─────────────────────────────────────────────────────
   JAVA_VERSION: '21'
   NODE_VERSION: '22'
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.23'
 
   # ── Docker Registry (GitHub Container Registry) ──────────────────────────
   DOCKER_REGISTRY: ghcr.io

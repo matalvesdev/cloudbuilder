@@ -108,7 +108,6 @@
 │       ├── multiregion/   ✅ Complete (21 files) — Region, DisasterRecovery, DRTest, RegionHealth + services + controller
 │       ├── tenant/        ✅ Complete (9 files) — Project, ProjectMember + service + controller
 │       ├── audit/         ✅ Complete (5 files) — AuditEvent, AuditService, AuditController
-│       ├── apm/           ✅ Complete (5 files) — Traces, Spans, APMSnapshot, AlertDTO + APMController
 │       ├── metrics/       ✅ Complete (6 files) — MetricPoint, MetricsSnapshot, ResourceMetrics + service + controller
 │       ├── codeanalysis/  ✅ Complete (4 files) — CodeAnalyzerService + CodeAnalysisController
 │       ├── docs/          ✅ Complete (6 files) — DocScannerService + AutoDocService + DocsController + domain models + DTOs
@@ -244,7 +243,6 @@
 | GET/POST                | `/api/v1/git/**`                              | Git          |
 | GET/POST                | `/api/v1/github/**`                           | GitHub       |
 | GET/POST                | `/api/v1/projects/**`                         | Tenant       |
-| GET/POST                | `/api/v1/apm/**`                              | APM          |
 | POST                    | `/api/v1/code-analysis/**`                    | CodeAnalysis |
 
 ## Go Engine Conventions
@@ -514,6 +512,43 @@ Full details at `docs/roadmap/12-month-roadmap.md`
   - **Docker**: Added `SPRING_FLYWAY_ENABLED=true`, `SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect` to docker-compose.yml backend env.
   - **Verification**: 61 tables, 17/17 migrations success, zero UUID id columns remain. Auth login ✅, Canvas CRUD ✅ (version column working), Cost ✅, Observe ✅, Platform ✅, Audit ✅ (with tenantId path variable). Backend health UP.
   - **Pre-existing issues (not migration-related)**: OutboxSweeper `TransactionRequiredException` (needs `@Transactional`), frontend healthcheck shows unhealthy despite backend responding.
+
+- **Session 2026-07-07 — Phase 6: 5 Missing Infrastructure Pieces (Git Write, Reverse Import, Cost Estimate, Observe Auto-Register, Webhook Drift)**: ✅ Complete
+  - **Piece 1 — GitWriterService**: `GitHubApiClient.java` extended with `put()`/`post()` HTTP helpers + `createOrUpdateFile()`, `createPullRequest()`, `createBranch()`, `getDefaultBranchSha()`, `getFileSha()`. Created `GitWriterService.java` (domain/service) that writes generated .tf files to connected GitHub repos via direct commit or feature branch + PR flow. `GitWriteRequest.java`/`GitWriteResponse.java` DTOs. `POST /api/v1/git/write` endpoint in `GitController.java`.
+  - **Piece 2 — Reverse Import (GitHub → Canvas)**: Created `GitHubImportService.java` — recursively discovers `.tf`/`.tfvars` files via `GitHubApiClient.listContents()`, parses with `TerraformImportService`, deduplicates resources, generates `CanvasDesign.DesignNode`/`DesignEdge` objects in 3-column grid layout. `GET /api/v1/git/repositories/{id}/import` endpoint.
+  - **Piece 3 — TerraformCostEstimator**: Created `TerraformCostEstimator.java` with ~100 built-in pricing entries across AWS/Azure/GCP/K8s (80+ resource types). `estimateFromResourceTypes()` persists `CostScenario` via `CostScenarioService`; `getEstimatePreview()` returns tiered min/avg/max breakdown without persisting. `POST /api/v1/cost/estimate/preview` and `POST /api/v1/cost/estimate` endpoints.
+  - **Piece 4 — Observe Auto-Register**: Created `TerraformResourceObserver.java` — `@EventListener` for `GitPushEvent`, fetches .tf files from connected repo, extracts 48 resource types (AWS/Azure/GCP/K8s), maps to friendly names, auto-creates `ServiceHealth` entries via `HealthCheckService.recordHealth()` with 5-min re-registration skip.
+  - **Piece 5 — Webhook Drift**: Created `PushDriftDetector.java` — `@EventListener` for `GitPushEvent`, fetches .tf state, builds minimal Terraform state JSON, triggers `DriftDetectionService.detectDrift()`, publishes `DriftDetectedEvent` for SSE streaming.
+  - **Total changes**: 8 new files, 2 modified files (GitHubApiClient.java, GitController.java, CostController.java). Backend `mvn compile` 0 errors. Frontend `npx tsc --noEmit` 0 errors.
+
+- **Session 2026-07-07 — FAANg Flow Test: Login → Diagrama → Terraform → Deploy**: ✅ Complete
+  - **Flow test via API REST**: Executou o pipeline completo do CloudBuilder, 9/9 etapas operacionais:
+    1. POST `/api/v1/auth/login` — Login DevAuth (JWT) ✅
+    2. POST `/api/v1/canvases` — Canvas "Teste Fluxo Completo" criado ✅
+    3. POST `/api/v1/canvases/{id}/nodes` — Node 1 (S3 Bucket) adicionado ✅
+    4. POST `/api/v1/canvases/{id}/nodes` — Node 2 (S3 Bucket) adicionado ✅
+    5. POST `/api/v1/canvases/{id}/edges` — Edge entre buckets criada ✅
+    6. POST `/api/v1/canvases/{id}/validate` — Validação WARNINGS (connectionCompatibility) ✅
+    7. POST `/api/v1/canvases/{id}/generate` — Terraform gerado (main.tf, variables.tf, outputs.tf, providers.tf, versions.tf) ✅
+    8. POST `/api/v1/canvases/{id}/generate/plan` — DeployPlan criado (status: planned) ✅
+    9. POST `/api/v1/canvases/{id}/generate/plan/{planId}/apply` — Plan applied (status: applied, appliedAt preenchido) ✅
+  - **Bugs encontrados e registrados no failure_memory.md**:
+    - 🔴 Terraform code com properties vazias (bucket = "", Name = "") — properties JSON não é parseado pelo gerador
+    - 🟡 Serialização circular na API (Canvas → Node → Canvas → Node...) — falta @JsonBackReference nos DTOs
+    - 🟡 Canvas list endpoint sem paginação/template — GET /api/v1/canvases retorna vazio sem query params
+    - 🟡 AddNodeRequest sem campo label — frontend envia label mas DTO não aceita
+  - **Memory**: failure_memory.md atualizado com 4 novos padrões de falha. decision_memory.md + progress_memory.md atualizados.
+
+- **Session 2026-07-08 — Bug Fixes: 4 Bugs do Flow Test Corrigidos e Verificados**: ✅ Complete
+  - **Bug 1 — Terraform properties vazias**: `CodeGeneratorService.generateCode()` agora enriquece o mapa de properties com `id`/`name`/`environment` antes do `renderTemplate()`. `Name` e `Environment` agora são populados (estavam `""`). Código verificado em `CodeGeneratorService.java` L42-45.
+  - **Bug 2 — Serialização circular (Jackson)**: Adicionado `@JsonManagedReference("canvas-nodes")` em `Canvas.canvasNodes`, `@JsonBackReference("canvas-nodes")` em `CanvasNode.canvas`. Resposta da API reduziu de 118KB+ para 717 bytes. Verificado via GET /api/v1/canvases/{id}.
+  - **Bug 3 — Canvas list retornava vazio**: `CanvasController.listCanvases()` agora usa `TenantContext.getTenantId()` para chamar `canvasRepository.findByTenantId(tenantId, pageable)`. Adicionado método ao repositório. List retorna 2 canvases.
+  - **Bug 4 — AddNodeRequest sem label**: Adicionado campo `label` ao `AddNodeRequest` (DTO), `CanvasService.addNode()`, entidade `CanvasNode` (coluna + getter/setter), e migration `V38__add_label_to_canvas_nodes.sql`. Label "Meu Bucket S3" persiste corretamente via API.
+  - **Verificação**: `mvn test` 734/734 pass ✅, `mvn compile` ✅, E2E via API REST (login → canvas → node com label → list → generate Terraform → validate) ✅.
+  - **Arquivos alterados**: `CodeGeneratorService.java`, `Canvas.java`, `CanvasNode.java`, `CanvasEdge.java`, `CanvasController.java`, `CanvasService.java`, `CanvasRepository.java`, `AddNodeRequest.java`, `V38__add_label_to_canvas_nodes.sql`.
+  - **Cobertura de testes**: `CodeGeneratorServiceTest` 19/19 ✅, `CanvasServiceTest` 4/4 ✅, suite completa 734/734 ✅.
+  - **Ambiente de verificação**: Backend rodando com H2 + dev profile + Flyway disabled + ddl-auto=update. PostgreSQL nativo (Windows, port 5432) indisponível para E2E (problema pré-existente de migração V37 vs `iam_users` com `ddl-auto=none`).
+  - **Memory**: progress_memory.md atualizado. failure_memory.md atualizado com contexto das correções.
 
 ## Installed Plugins
 
