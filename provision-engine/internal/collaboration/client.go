@@ -40,8 +40,10 @@ type UserInfo struct {
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	ID   string
-	User UserInfo
+	ID       string
+	TenantID string
+	Roles    []string
+	User     UserInfo
 
 	conn       *websocket.Conn
 	server     *Server

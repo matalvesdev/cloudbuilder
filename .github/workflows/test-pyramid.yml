@@ -199,14 +199,12 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Frontend Audit
         run: cd frontend && npm audit --audit-level=high
-        continue-on-error: true
       - name: OWASP ZAP Baseline
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: http://localhost:8080
           rules_file_name: 'tests/security/zap-baseline.yaml'
           fail_action: false
-        continue-on-error: true
 
   # ═══════════════════════════════════════════════════════════════
   # Layer 10: Chaos Tests — nightly only

@@ -41,8 +41,7 @@ jobs:
       - name: Test
         run: cd backend && ./mvnw test -q
       - name: Security audit (dependencies)
-        run: cd backend && ./mvnw org.owasp:dependency-check-maven:check -q || echo "Dependency check warnings found"
-        continue-on-error: true
+        run: cd backend && ./mvnw org.owasp:dependency-check-maven:check -q
       - name: Package
         run: cd backend && ./mvnw package -DskipTests -q
 
@@ -68,8 +67,7 @@ jobs:
       - name: Build (Vite)
         run: cd frontend && npm run build
       - name: Security audit (npm)
-        run: cd frontend && npm audit --audit-level=high || echo "Audit warnings found (some may require manual review)"
-        continue-on-error: true
+        run: cd frontend && npm audit --audit-level=high
 
   provision-engine:
     name: Provision Engine (Go)

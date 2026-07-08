@@ -17,8 +17,10 @@ const (
 
 // Server manages WebSocket connections and collaborative rooms.
 type Server struct {
-	addr     string
-	upgrader websocket.Upgrader
+	addr       string
+	jwtSecret  []byte
+	allowOrigin func(r *http.Request) bool
+	upgrader   websocket.Upgrader
 
 	mu      sync.RWMutex
 	rooms   map[string]*Room
@@ -26,18 +28,42 @@ type Server struct {
 }
 
 // NewServer creates a new collaboration WebSocket server.
-func NewServer(addr string) *Server {
-	return &Server{
-		addr: addr,
-		upgrader: websocket.Upgrader{
-			ReadBufferSize:  4096,
-			WriteBufferSize: 4096,
-			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins in dev
-			},
+// Pass jwtSecret=nil to disable authentication (dev mode).
+func NewServer(addr string, opts ...ServerOption) *Server {
+	s := &Server{
+		addr:      addr,
+		jwtSecret: nil,
+		allowOrigin: func(r *http.Request) bool {
+			return true // default: allow all (dev mode)
 		},
 		rooms:   make(map[string]*Room),
 		clients: make(map[*Client]bool),
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	s.upgrader = websocket.Upgrader{
+		ReadBufferSize:  4096,
+		WriteBufferSize: 4096,
+		CheckOrigin:     s.allowOrigin,
+	}
+	return s
+}
+
+// ServerOption configures the collaboration server.
+type ServerOption func(*Server)
+
+// WithJWTSecret enables JWT authentication on WebSocket connections.
+func WithJWTSecret(secret []byte) ServerOption {
+	return func(s *Server) {
+		s.jwtSecret = secret
+	}
+}
+
+// WithCheckOrigin sets a custom origin validation function.
+func WithCheckOrigin(fn func(r *http.Request) bool) ServerOption {
+	return func(s *Server) {
+		s.allowOrigin = fn
 	}
 }
 
@@ -47,12 +73,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/ws/", s.handleWebSocket) // Path-based room: /ws/{roomId}
 	mux.HandleFunc("/health", s.handleHealth)
 
-	log.Printf("[collaboration] WebSocket server starting on %s/ws/{roomId}", s.addr)
+	log.Printf("[collaboration] WebSocket server starting on %s/ws/{roomId} (auth=%v)",
+		s.addr, s.jwtSecret != nil)
 	return http.ListenAndServe(s.addr, mux)
 }
 
 // handleWebSocket upgrades HTTP to WebSocket with path-based room id.
 // Path format: /ws/{roomId} — e.g. /ws/canvas:abc123
+// Authentication: JWT via ?token= query param or Authorization: Bearer header.
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	var roomID string
@@ -64,18 +92,56 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Authenticate if JWT secret is configured
+	var clientID, userName, tenantID string
+	var roles []string
+
+	if s.jwtSecret != nil {
+		token, err := ExtractTokenFromRequest(
+			r.URL.Query().Get("token"),
+			r.Header.Get("Authorization"),
+		)
+		if err != nil {
+			http.Error(w, FormatClaimsError(err), http.StatusUnauthorized)
+			return
+		}
+
+		claims, err := ValidateJWT(token, s.jwtSecret)
+		if err != nil {
+			http.Error(w, FormatClaimsError(err), http.StatusUnauthorized)
+			return
+		}
+
+		clientID = claims.Sub
+		userName = claims.Name
+		tenantID = claims.TenantID
+		roles = claims.Roles
+
+		if clientID == "" {
+			clientID = generateID()
+		}
+		if userName == "" {
+			userName = fmt.Sprintf("User-%s", clientID[:min(6, len(clientID))])
+		}
+	} else {
+		// Dev mode: no auth, generate random ID
+		clientID = generateID()
+		userName = fmt.Sprintf("User-%s", clientID[:6])
+	}
+
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("[collaboration] upgrade error: %v", err)
 		return
 	}
 
-	clientID := generateID()
 	client := &Client{
-		ID: clientID,
+		ID:       clientID,
+		TenantID: tenantID,
+		Roles:    roles,
 		User: UserInfo{
 			ID:     clientID,
-			Name:   fmt.Sprintf("User-%s", clientID[:6]),
+			Name:   userName,
 			Avatar: "U",
 			Status: "online",
 		},
@@ -92,7 +158,8 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	s.JoinRoom(client, roomID)
 
-	log.Printf("[collaboration] client %s connected to room %s from %s", clientID, roomID, r.RemoteAddr)
+	log.Printf("[collaboration] client %s (%s) connected to room %s from %s",
+		clientID, userName, roomID, r.RemoteAddr)
 
 	// Broadcast presence to room
 	presence, _ := json.Marshal(map[string]interface{}{

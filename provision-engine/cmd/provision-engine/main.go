@@ -28,6 +28,7 @@ var (
 	grpcPort        = "50051"
 	healthPort      = "50052"
 	collabPort      = "8765"
+	jwtSecret       = ""
 	logLevel        = "info"
 	kafkaEnabled    = false
 	kafkaBrokers    = "localhost:9092"
@@ -58,6 +59,7 @@ func init() {
 	rootCmd.Flags().BoolVar(&kafkaEnabled, "kafka", false, "Enable Kafka event egress to Java backend")
 	rootCmd.Flags().StringVar(&kafkaBrokers, "kafka-brokers", "localhost:9092", "Comma-separated Kafka broker addresses")
 	collabCmd.Flags().StringVarP(&collabPort, "port", "p", "8765", "WebSocket server port")
+	collabCmd.Flags().StringVar(&jwtSecret, "jwt-secret", "", "JWT secret for auth (or set JWT_SECRET env)")
 	rootCmd.AddCommand(collabCmd)
 }
 
@@ -137,7 +139,22 @@ func startServer() {
 
 func startCollabServer() {
 	addr := fmt.Sprintf(":%s", collabPort)
-	server := collaboration.NewServer(addr)
+
+	// Resolve JWT secret: flag > env var > nil (dev mode, no auth)
+	secret := jwtSecret
+	if secret == "" {
+		secret = os.Getenv("JWT_SECRET")
+	}
+
+	var opts []collaboration.ServerOption
+	if secret != "" {
+		opts = append(opts, collaboration.WithJWTSecret([]byte(secret)))
+		log.Printf("Collaboration server: JWT authentication enabled")
+	} else {
+		log.Printf("Collaboration server: WARNING — no JWT secret, authentication disabled (dev mode)")
+	}
+
+	server := collaboration.NewServer(addr, opts...)
 
 	go func() {
 		log.Printf("Collaboration WebSocket server listening on %s/ws", addr)

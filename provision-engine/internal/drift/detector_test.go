@@ -150,3 +150,110 @@ func TestDetectDrift_EmptyDesign(t *testing.T) {
 		t.Fatal("expected drift when state has resources not in design")
 	}
 }
+
+func TestDetectDrift_PropertyModified(t *testing.T) {
+	stateJSON := `{
+		"version": 4,
+		"resources": [
+			{
+				"type":"aws_instance",
+				"name":"web",
+				"instances":[{
+					"status":"running",
+					"attributes":{"instance_type":"t3.large","ami":"ami-123"}
+				}]
+			}
+		]
+	}`
+	designJSON := `[
+		{"id":"web","resourceType":"aws_instance","provider":"aws","properties":{"instance_type":"t3.medium","ami":"ami-123"}}
+	]`
+
+	report, err := DetectDrift(stateJSON, designJSON)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !report.HasDrift {
+		t.Fatal("expected property drift to be detected")
+	}
+	if len(report.Resources) != 1 {
+		t.Fatalf("expected 1 drifted resource, got %d", len(report.Resources))
+	}
+	r := report.Resources[0]
+	if r.ChangeType != "modified" {
+		t.Errorf("expected change type 'modified', got '%s'", r.ChangeType)
+	}
+	if len(r.Changes) != 1 {
+		t.Fatalf("expected 1 property change, got %d", len(r.Changes))
+	}
+	if r.Changes[0].Property != "instance_type" {
+		t.Errorf("expected property 'instance_type', got '%s'", r.Changes[0].Property)
+	}
+	if r.Changes[0].Expected != "t3.medium" {
+		t.Errorf("expected 't3.medium', got '%s'", r.Changes[0].Expected)
+	}
+	if r.Changes[0].Actual != "t3.large" {
+		t.Errorf("expected 't3.large', got '%s'", r.Changes[0].Actual)
+	}
+	if report.Summary.Modified != 1 {
+		t.Errorf("expected summary.modified=1, got %d", report.Summary.Modified)
+	}
+}
+
+func TestDetectDrift_NoPropertyDrift(t *testing.T) {
+	stateJSON := `{
+		"version": 4,
+		"resources": [
+			{
+				"type":"aws_instance",
+				"name":"web",
+				"instances":[{
+					"status":"running",
+					"attributes":{"instance_type":"t3.medium","ami":"ami-123","cidr":"10.0.0.0/16"}
+				}]
+			}
+		]
+	}`
+	designJSON := `[
+		{"id":"web","resourceType":"aws_instance","provider":"aws","properties":{"instance_type":"t3.medium","ami":"ami-123"}}
+	]`
+
+	report, err := DetectDrift(stateJSON, designJSON)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if report.HasDrift {
+		t.Errorf("expected no drift, got %d resources", len(report.Resources))
+	}
+}
+
+func TestDetectDrift_SummaryCounts(t *testing.T) {
+	stateJSON := `{
+		"version": 4,
+		"resources": [
+			{"type":"aws_vpc","name":"vpc-1","instances":[{"attributes":{"cidr":"10.0.0.0/16"}}]},
+			{"type":"aws_s3_bucket","name":"extra","instances":[{}]}
+		]
+	}`
+	designJSON := `[
+		{"id":"vpc-1","resourceType":"aws_vpc","provider":"aws","properties":{"cidr":"10.1.0.0/16"}},
+		{"id":"new-bucket","resourceType":"aws_s3_bucket","provider":"aws","properties":{}}
+	]`
+
+	report, err := DetectDrift(stateJSON, designJSON)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if !report.HasDrift {
+		t.Fatal("expected drift")
+	}
+	if report.Summary.Added != 1 {
+		t.Errorf("expected summary.added=1, got %d", report.Summary.Added)
+	}
+	if report.Summary.Removed != 1 {
+		t.Errorf("expected summary.removed=1, got %d", report.Summary.Removed)
+	}
+	if report.Summary.Modified != 1 {
+		t.Errorf("expected summary.modified=1, got %d", report.Summary.Modified)
+	}
+}

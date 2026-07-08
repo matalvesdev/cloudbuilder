@@ -44,7 +44,6 @@ jobs:
             -DfailBuildOnCVSS=7 \
             -Dformat=HTML \
             -q
-        continue-on-error: true
 
       - name: Upload OWASP Report
         uses: actions/upload-artifact@v4
@@ -75,7 +74,6 @@ jobs:
 
       - name: npm Audit (high severity)
         run: cd frontend && npm audit --audit-level=high
-        continue-on-error: true
 
   # ═════════════════════════════════════════════════════════════════════════
   # Trivy Filesystem Scan — Backend + Frontend source code
@@ -158,4 +156,3 @@ jobs:
       - name: Run govulncheck
         working-directory: ./provision-engine
         run: govulncheck ./...
-        continue-on-error: true
