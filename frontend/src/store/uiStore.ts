@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import { featureFlagsApi, type FeatureFlagDTO } from '@/api/featureFlags'
 import { getToken } from '@/api/client'
 
-type ModuleId = 'canvas' | 'provisioning' | 'observability' | 'finops' | 'platform' | 'ai' | 'security' | 'dashboard' | 'docs' | 'settings' | 'workspace' | 'projects' | 'notifications' | 'billing';
+type ModuleId = 'canvas' | 'provisioning' | 'observability' | 'finops' | 'platform' | 'ai' | 'security' | 'dashboard' | 'docs' | 'settings' | 'workspace' | 'projects' | 'notifications' | 'billing' | 'multiregion' | 'sso';
 type PanelTab = 'palette' | 'properties' | 'validation';
 export type SettingsTab = 'credentials' | 'environments' | 'repositories' | 'multitenant' | 'profile' | 'system' | 'organization' | 'workspaces' | 'teams' | 'members' | 'permissions' | 'git-providers' | 'integrations' | 'security' | 'billing' | 'notifications' | 'audit' | 'api-tokens' | 'ssh-keys' | 'ai-settings';
 
@@ -69,7 +69,7 @@ export const useUiStore = create<UiState>()(
         if (!token) return
         set({ flagsLoading: true })
         try {
-          const flags = await featureFlagsApi.getFlags()
+          const flags = await featureFlagsApi.listFlags()
           const flagMap: Record<string, FeatureFlagDTO> = {}
           for (const flag of flags) {
             flagMap[flag.flagKey] = flag
@@ -101,9 +101,9 @@ export const useUiStore = create<UiState>()(
         if (moduleFlag !== undefined) {
           return moduleFlag.enabled
         }
-        // Default to true for known modules without explicit flags
+        // Default to true for all known modules
         if (flagKey.startsWith('module.')) {
-          return flagKey === 'module.iam' ? false : true
+          return true
         }
         return false
       },

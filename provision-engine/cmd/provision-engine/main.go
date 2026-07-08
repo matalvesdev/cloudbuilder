@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	grpcserver "github.com/cloudbuilder/provision-engine/internal/api/grpc"
@@ -23,6 +26,7 @@ import (
 
 var (
 	grpcPort        = "50051"
+	healthPort      = "50052"
 	collabPort      = "8765"
 	logLevel        = "info"
 	kafkaEnabled    = false
@@ -49,6 +53,7 @@ var collabCmd = &cobra.Command{
 
 func init() {
 	rootCmd.Flags().StringVarP(&grpcPort, "port", "p", "50051", "gRPC server port")
+	rootCmd.Flags().StringVar(&healthPort, "health-port", "50052", "HTTP health check server port")
 	rootCmd.Flags().StringVarP(&logLevel, "log-level", "l", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().BoolVar(&kafkaEnabled, "kafka", false, "Enable Kafka event egress to Java backend")
 	rootCmd.Flags().StringVar(&kafkaBrokers, "kafka-brokers", "localhost:9092", "Comma-separated Kafka broker addresses")
@@ -79,6 +84,11 @@ func startServer() {
 	pb.RegisterProvisionServiceServer(grpcServer, grpcserver.NewProvisionServerWithKafka(kp))
 	reflection.Register(grpcServer)
 
+	// Register gRPC health service (standard health checking protocol)
+	healthSrv := health.NewServer()
+	grpc_health_v1.RegisterHealthServer(grpcServer, healthSrv)
+	healthSrv.SetServingStatus("provision.ProvisionService", grpc_health_v1.HealthCheckResponse_SERVING)
+
 	go func() {
 		log.Printf("Provision Engine gRPC server listening on :%s (kafka=%v)", grpcPort, kafkaEnabled)
 		if err := grpcServer.Serve(lis); err != nil {
@@ -86,10 +96,41 @@ func startServer() {
 		}
 	}()
 
+	// HTTP health endpoint for Docker/container health checks
+	httpHealth := &http.Server{
+		Addr: fmt.Sprintf(":%s", healthPort),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/health" {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, `{"status":"UP","service":"provision-engine","grpc_port":"%s"}`, grpcPort)
+		}),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+
+	go func() {
+		log.Printf("Provision Engine HTTP health endpoint listening on :%s/health", healthPort)
+		if err := httpHealth.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start HTTP health server: %v", err)
+		}
+	}()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
+
+	// Graceful shutdown: mark as NOT_SERVING before stopping
+	healthSrv.SetServingStatus("provision.ProvisionService", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	httpHealth.Shutdown(ctx)
+
 	grpcServer.GracefulStop()
 	kp.Close()
 }

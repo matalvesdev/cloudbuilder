@@ -45,4 +45,11 @@ public class TopicRouter {
     public String resolveTopic(PlatformEvent event) {
         return resolveTopic(event.getEventType());
     }
+
+    /**
+     * Resolve the Kafka topic by event type name (used by OutboxSweeper).
+     */
+    public String resolveTopicByName(String eventType) {
+        return resolveTopic(eventType);
+    }
 }

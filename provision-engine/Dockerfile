@@ -38,6 +38,6 @@ COPY --from=build /app/provision-engine .
 # Switch to non-root user
 USER cloudbuilder
 
-EXPOSE 50051
+EXPOSE 50051 50052
 
 ENTRYPOINT ["/app/provision-engine"]

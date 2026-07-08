@@ -12,8 +12,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * Configures async event publishing so that @EventListener methods
  * run in separate threads and do not block the publisher.
  *
- * Also enables @Scheduled for the OutboxSweeper (transactional outbox
- * retry + cleanup) and any future event-infrastructure scheduled tasks.
+ * Also enables @Scheduled for:
+ * - OutboxSweeper: retries PENDING entries every 30s, cleans up PROCESSED entries >24h
+ * - Any future event-infrastructure scheduled tasks
  */
 @Configuration
 @EnableAsync

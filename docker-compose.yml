@@ -99,15 +99,16 @@ services:
     container_name: cloudbuilder-provision-engine
     ports:
       - "50051:50051"
+      - "50052:50052"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:50051/ || exit 0"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:50052/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     deploy:
       resources:
         limits:
@@ -156,6 +157,8 @@ services:
       - frontend_dist:/usr/share/nginx/html:ro
     depends_on:
       backend:
+        condition: service_healthy
+      frontend:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]

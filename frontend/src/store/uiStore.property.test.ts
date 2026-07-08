@@ -6,7 +6,7 @@ import type { FeatureFlagDTO } from '@/api/featureFlags'
 // Mock the API module to prevent real HTTP calls
 vi.mock('@/api/featureFlags', () => ({
   featureFlagsApi: {
-    getFlags: vi.fn().mockResolvedValue([]),
+    listFlags: vi.fn().mockResolvedValue([]),
     refreshCache: vi.fn().mockResolvedValue(undefined),
   },
 }))
@@ -16,13 +16,13 @@ function makeFlag(overrides: Partial<FeatureFlagDTO> & Pick<FeatureFlagDTO, 'fla
   return {
     id: overrides.id ?? crypto.randomUUID(),
     flagKey: overrides.flagKey,
+    flagType: 'BOOLEAN',
     enabled: overrides.enabled,
-    tenantId: overrides.tenantId ?? null,
-    configJson: overrides.configJson ?? null,
-    description: overrides.description ?? null,
+    tenantId: overrides.tenantId ?? '',
+    valueJson: '{}',
+    description: overrides.description ?? '',
     createdAt: overrides.createdAt ?? new Date().toISOString(),
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),
-    resolved: overrides.resolved ?? false,
   }
 }
 
@@ -47,17 +47,13 @@ describe('uiStore.isEnabled() — property-based', () => {
   const moduleKeys = ['finops', 'platform', 'ai', 'security', 'security']
   const featureKeys = ['what-if-cost', 'preview-workflow', 'max-users']
 
-  it('module.iam defaults to false when no flag is set', () => {
-    expect(useUiStore.getState().isEnabled('module.iam')).toBe(false)
+  it('module.iam defaults to true when no flag is set', () => {
+    expect(useUiStore.getState().isEnabled('module.iam')).toBe(true)
   })
 
-  it('known module keys without explicit flag default to true (except iam)', () => {
-    for (const key of ['module.cost', 'module.platform', 'module.aiops', 'module.audit', 'module.dashboard']) {
-      if (key === 'module.iam') {
-        expect(useUiStore.getState().isEnabled(key)).toBe(false)
-      } else {
-        expect(useUiStore.getState().isEnabled(key)).toBe(true)
-      }
+  it('known module keys without explicit flag default to true', () => {
+    for (const key of ['module.cost', 'module.platform', 'module.aiops', 'module.audit', 'module.iam', 'module.dashboard']) {
+      expect(useUiStore.getState().isEnabled(key)).toBe(true)
     }
   })
 

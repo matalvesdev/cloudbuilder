@@ -49,4 +49,21 @@ public class KafkaEventPublisher {
             return CompletableFuture.failedFuture(e);
         }
     }
+
+    /**
+     * Publish a raw JSON payload to the appropriate Kafka topic.
+     * Used by OutboxSweeper to re-publish persisted events without deserialization.
+     */
+    public CompletableFuture<SendResult<String, String>> publishRaw(
+            String eventType, String eventId, String payload) {
+        try {
+            String topic = topicRouter.resolveTopicByName(eventType);
+
+            log.debug("Publishing raw event {} to topic {}", eventType, topic);
+            return kafkaTemplate.send(topic, eventId, payload);
+        } catch (Exception e) {
+            log.error("Failed to publish raw event: {}", eventType, e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
 }

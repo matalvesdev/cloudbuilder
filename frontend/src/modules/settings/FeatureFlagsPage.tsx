@@ -21,7 +21,7 @@ const defaultFlags = [
   { key: 'module.platform', label: 'Módulo Plataforma', desc: 'Habilitar módulo de Plataforma' },
   { key: 'module.aiops', label: 'Módulo AIOps', desc: 'Habilitar módulo AIOps' },
   { key: 'module.audit', label: 'Módulo Auditoria', desc: 'Habilitar módulo de Auditoria' },
-  { key: 'module.iam', label: 'Módulo IAM', desc: 'Habilitar módulo IAM (stub)' },
+  { key: 'module.iam', label: 'Módulo IAM', desc: 'Habilitar módulo IAM (identidade, papéis, permissões)' },
   { key: 'feature.what-if-cost', label: 'What-if Custos', desc: 'Cenários what-if de custos' },
   { key: 'feature.preview-workflow', label: 'Preview Workflow', desc: 'Preview de deploy workflow' },
   { key: 'config.max-users', label: 'Limite de Usuários', desc: 'Limite máximo de usuários por tenant' },
@@ -40,7 +40,7 @@ export function FeatureFlagsPage() {
 
   const loadFlags = useCallback(async () => {
     try {
-      const flags = await featureFlagsApi.getFlags()
+      const flags = await featureFlagsApi.listFlags()
       setLocalFlags(flags)
     } catch {
       // uiStore already has flags, use those
@@ -78,7 +78,7 @@ export function FeatureFlagsPage() {
   const handleUpdateConfig = async (flag: FeatureFlagDTO) => {
     if (!isAdmin) return
     try {
-      const req: UpdateFlagRequest = { configJson: configValue }
+      const req: UpdateFlagRequest = { valueJson: configValue }
       const updated = await featureFlagsApi.updateFlag(flag.id, req)
       setLocalFlags((prev) =>
         prev.map((f) => (f.id === flag.id ? updated : f))
@@ -206,7 +206,7 @@ export function FeatureFlagsPage() {
                           <code className="text-xs font-mono font-bold text-brand-navy">
                             {flag.flagKey}
                           </code>
-                          {flag.resolved && (
+                          {flag.tenantId && (
                             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                               tenant
                             </span>
@@ -225,11 +225,11 @@ export function FeatureFlagsPage() {
                               Global
                             </span>
                           )}
-                          {flag.configJson && (
+                          {flag.valueJson && (
                             <button
                               onClick={() => {
                                 setEditingConfig(editingConfig === flag.id ? null : flag.id)
-                                setConfigValue(flag.configJson ?? '')
+                                setConfigValue(flag.valueJson ?? '')
                               }}
                               className="text-[10px] font-medium text-ice-blue-600 hover:text-brand-navy transition-colors"
                               disabled={!isAdmin}
