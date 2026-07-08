@@ -44,8 +44,8 @@ func TestAwsVpcTemplate(t *testing.T) {
 		ID:   "vpc1",
 		Name: "Main VPC",
 		Properties: map[string]interface{}{
-			"cidr": "10.0.0.0/16",
-			"name": "main",
+			"cidr_block": "10.0.0.0/16",
+			"name":       "main",
 		},
 	}
 
@@ -90,9 +90,9 @@ func TestAwsSubnetTemplate(t *testing.T) {
 		ID:   "sub1",
 		Name: "Public Subnet",
 		Properties: map[string]interface{}{
-			"cidr":   "10.0.1.0/24",
-			"vpcId":  "vpc1",
-			"public": true,
+			"cidr_block":              "10.0.1.0/24",
+			"vpc_id":                  "vpc1",
+			"map_public_ip_on_launch": true,
 		},
 	}
 
@@ -120,8 +120,8 @@ func TestAwsSubnetTemplate_PrivateDefault(t *testing.T) {
 		ID:   "sub1",
 		Name: "Private Subnet",
 		Properties: map[string]interface{}{
-			"cidr":  "10.0.2.0/24",
-			"vpcId": "vpc1",
+			"cidr_block": "10.0.2.0/24",
+			"vpc_id":     "vpc1",
 		},
 	}
 
@@ -170,8 +170,8 @@ func TestAwsInstanceTemplate(t *testing.T) {
 		ID:   "web1",
 		Name: "Web Server",
 		Properties: map[string]interface{}{
-			"ami":          "ami-12345",
-			"instanceType": "t3.large",
+			"ami":           "ami-12345",
+			"instance_type": "t3.large",
 		},
 	}
 
@@ -216,7 +216,7 @@ func TestAwsS3BucketTemplate(t *testing.T) {
 		ID:   "bucket1",
 		Name: "Assets",
 		Properties: map[string]interface{}{
-			"bucketName": "my-assets",
+			"bucket":     "my-assets",
 			"versioning": true,
 		},
 	}
@@ -235,7 +235,7 @@ func TestAwsS3BucketTemplate(t *testing.T) {
 	if !contains(result, "aws_s3_bucket_versioning") {
 		t.Error("expected versioning resource")
 	}
-	if !contains(result, "true") {
+	if !contains(result, "Enabled") {
 		t.Error("expected Enabled versioning")
 	}
 }
@@ -315,35 +315,27 @@ func TestGetBoolProp_Missing(t *testing.T) {
 	}
 }
 
-func TestGetParentVPCID_Exists(t *testing.T) {
-	node := model.DesignNode{Properties: map[string]interface{}{"vpcId": "vpc-custom"}}
-	result := getParentVPCID(node)
+func TestGetParentID_Exists(t *testing.T) {
+	node := model.DesignNode{Properties: map[string]interface{}{"vpc_id": "vpc-custom"}}
+	result := getParentID(node, "vpc_id", "vpc", "aws_vpc")
 	if result != "vpc-custom" {
-		t.Errorf("getParentVPCID() = %q, want %q", result, "vpc-custom")
+		t.Errorf("getParentID() = %q, want %q", result, "vpc-custom")
 	}
 }
 
-func TestGetParentVPCID_Default(t *testing.T) {
+func TestGetParentID_Default(t *testing.T) {
 	node := model.DesignNode{Properties: map[string]interface{}{}}
-	result := getParentVPCID(node)
+	result := getParentID(node, "vpc_id", "vpc", "aws_vpc")
 	if result != "main" {
-		t.Errorf("getParentVPCID() = %q, want %q", result, "main")
+		t.Errorf("getParentID() = %q, want %q", result, "main")
 	}
 }
 
-func TestGetParentSubnetID_Exists(t *testing.T) {
-	node := model.DesignNode{Properties: map[string]interface{}{"subnetId": "sub-custom"}}
-	result := getParentSubnetID(node)
-	if result != "sub-custom" {
-		t.Errorf("getParentSubnetID() = %q, want %q", result, "sub-custom")
-	}
-}
-
-func TestGetParentSecurityGroupID_Exists(t *testing.T) {
-	node := model.DesignNode{Properties: map[string]interface{}{"securityGroupId": "sg-custom"}}
-	result := getParentSecurityGroupID(node)
-	if result != "sg-custom" {
-		t.Errorf("getParentSecurityGroupID() = %q, want %q", result, "sg-custom")
+func TestGetParentID_Legacy(t *testing.T) {
+	node := model.DesignNode{Properties: map[string]interface{}{"vpcId": "vpc-legacy"}}
+	result := getParentID(node, "vpc_id", "vpc", "aws_vpc")
+	if result != "vpc-legacy" {
+		t.Errorf("getParentID() = %q, want %q", result, "vpc-legacy")
 	}
 }
 

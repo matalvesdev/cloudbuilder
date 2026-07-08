@@ -9,9 +9,8 @@ import type { TeamMember } from '@/types/collaboration.types'
  * Architecture:
  *   Local state ──JSON──→ WebSocket ──JSON──→ Remote peers
  *
- * Since the collaboration server is a stub (not yet deployed), this
- * implementation keeps the full WebSocket lifecycle but removes the
- * Yjs dependency entirely.
+ * The Go collaboration server (provision-engine/internal/collaboration/)
+ * handles room management, JWT auth, and message broadcast.
  */
 
 type SyncDocCallback = (

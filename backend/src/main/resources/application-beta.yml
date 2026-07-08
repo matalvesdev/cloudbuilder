@@ -1,0 +1,29 @@
+# CloudBuilder Beta Profile
+# Used for beta testing with real authentication and PostgreSQL
+# Inherits from application.yml defaults, overrides security settings
+
+spring:
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+cloudbuilder:
+  security:
+    jwt-access-token-expiration: 86400000   # 24 hours (generous for beta)
+    jwt-refresh-token-expiration: 604800000  # 7 days
+    cors-allowed-origins: "*"
+  sso:
+    enabled: false
+  ai:
+    provider: rule-based
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.cloudbuilder: INFO
+    org.springframework.security: WARN

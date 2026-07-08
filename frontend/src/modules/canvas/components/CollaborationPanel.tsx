@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useCollaborationStore } from '@/store/collaborationStore'
 import { useCanvasStore } from '@/store/canvasStore'
+import { useAuthStore } from '@/store/authStore'
 import { collaborationManager } from '@/services/collaborationManager'
 import type { TeamMember, TeamMemberRole, VersionEntry } from '@/types/collaboration.types'
 
@@ -60,11 +61,16 @@ const STATUS_DOT: Record<string, string> = {
 function CompartilharSection() {
   const { teamMembers, inviteMember, removeMember, generateShareLink } = useCollaborationStore()
   const { canvasId, canvasName } = useCanvasStore()
+  const { user } = useAuthStore()
   const [inviteEmail, setInviteEmail] = useState('')
   const [copied, setCopied] = useState(false)
-  const [serverUrl, setServerUrl] = useState(
-    () => import.meta.env.VITE_COLLAB_WS_URL || 'ws://localhost:8765',
-  )
+  const [serverUrl, setServerUrl] = useState(() => {
+    const envUrl = import.meta.env.VITE_COLLAB_WS_URL
+    if (envUrl) return envUrl
+    // Derive from current page: ws://hostname:8765
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${proto}//${window.location.hostname}:8765`
+  })
   const [connected, setConnected] = useState(false)
   const [showConnect, setShowConnect] = useState(false)
 
@@ -81,11 +87,13 @@ function CompartilharSection() {
       collaborationManager.stop()
       setConnected(false)
     } else {
-      const userId = `user-${Date.now().toString(36)}`
+      const userId = user?.id || `user-${Date.now().toString(36)}`
+      const userName = user?.name || 'Usuário'
+      const userInitial = userName.charAt(0).toUpperCase()
       collaborationManager.start(
         canvasId || 'design-atual',
         serverUrl,
-        { id: userId, name: 'Você', avatar: 'V' },
+        { id: userId, name: userName, avatar: userInitial },
       )
       setConnected(true)
     }
@@ -264,6 +272,7 @@ function ComentariosSection() {
     setSelectedCommentNodeId,
   } = useCollaborationStore()
   const { nodes, selectedNode } = useCanvasStore()
+  const { user } = useAuthStore()
   const [newComment, setNewComment] = useState('')
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null)
 
@@ -285,7 +294,10 @@ function ComentariosSection() {
 
   const handleSend = () => {
     if (!newComment.trim()) return
-    addComment(activeNodeId, 'current-user', 'Você', 'V', newComment.trim())
+    const authorId = user?.id || 'anonymous'
+    const authorName = user?.name || 'Usuário'
+    const authorInitial = authorName.charAt(0).toUpperCase()
+    addComment(activeNodeId, authorId, authorName, authorInitial, newComment.trim())
     setNewComment('')
   }
 

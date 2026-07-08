@@ -64,8 +64,8 @@ func TestGenerate_WithAwsInstance(t *testing.T) {
 				Provider: model.ProviderAWS,
 				Type:     "aws_instance",
 				Properties: map[string]interface{}{
-					"ami":          "ami-12345",
-					"instanceType": "t3.large",
+					"ami":           "ami-12345",
+					"instance_type": "t3.large",
 				},
 			},
 		},
@@ -97,7 +97,7 @@ func TestGenerate_WithAwsS3Bucket(t *testing.T) {
 				Provider: model.ProviderAWS,
 				Type:     "aws_s3_bucket",
 				Properties: map[string]interface{}{
-					"bucketName": "my-assets",
+					"bucket":     "my-assets",
 					"versioning": true,
 				},
 			},

@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
     container_name: cloudbuilder-backend
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-beta}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cloudbuilder
       SPRING_DATASOURCE_USERNAME: cloudbuilder
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-cloudbuilder}
@@ -117,6 +117,34 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
+    networks:
+      - frontend-net
+
+  collab-server:
+    build:
+      context: ./provision-engine
+      dockerfile: Dockerfile
+    container_name: cloudbuilder-collab
+    command: ["collab-server", "--port", "8765", "--jwt-secret", "${JWT_SECRET:?ERRO - Defina JWT_SECRET no .env}"]
+    ports:
+      - "8765:8765"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8765/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     networks:
       - frontend-net
 
