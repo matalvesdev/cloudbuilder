@@ -1,0 +1,52 @@
+services:
+  # PostgreSQL Database
+  - type: pgsql
+    name: cloudbuilder-db
+    plan: free
+    ipAllowList: []
+
+  # Backend (Spring Boot)
+  - type: web
+    name: cloudbuilder-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: beta
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: cloudbuilder-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: cloudbuilder-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: cloudbuilder-db
+          property: password
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: none
+      - key: SPRING_JPA_DATABASE_PLATFORM
+        value: org.hibernate.dialect.PostgreSQLDialect
+      - key: SPRING_FLYWAY_ENABLED
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLOUDBUILDER_ENCRYPTION_KEY
+        generateValue: true
+    plan: free
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+
+  # Frontend (Static Site via Nginx)
+  - type: web
+    name: cloudbuilder-frontend
+    runtime: static
+    staticPublishPath: ./frontend/dist
+    buildCommand: cd frontend && npm ci && npm run build
+    envVars:
+      - key: VITE_API_URL
+        value: /api/v1
+    plan: free
+    autoDeploy: true
