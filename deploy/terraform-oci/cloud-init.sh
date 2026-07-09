@@ -87,12 +87,13 @@ if [ ! -f "/opt/cloudbuilder/.env" ]; then
     JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
     ENCRYPTION_KEY=$(openssl rand -base64 64 | tr -d '\n')
     DB_PASSWORD=$(openssl rand -base64 32 | tr -d '\n')
+    JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
 
     cat > /opt/cloudbuilder/.env << ENVEOF
 # CloudBuilder Beta — Auto-generated $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-JWT_SECRET=${JWT_SECRET}
-CLOUDBUILDER_ENCRYPTION_KEY=${ENCRYPTION_KEY}
-DB_PASSWORD=${DB_PASSWORD}
+JWT_SECRET=$JWT_SECRET
+CLOUDBUILDER_ENCRYPTION_KEY=$ENCRYPTION_KEY
+DB_PASSWORD=$DB_PASSWORD
 SPRING_PROFILES_ACTIVE=beta
 ENVEOF
 
