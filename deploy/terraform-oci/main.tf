@@ -1,4 +1,4 @@
-# CloudBuilder — Oracle Cloud Free Tier (uses existing VCN)
+# CloudBuilder — Oracle Cloud (uses existing cs2-vcn)
 
 variable "tenancy_ocid" {
   type = string
@@ -30,21 +30,6 @@ variable "ssh_public_key" {
   default = ""
 }
 
-variable "instance_shape" {
-  type    = string
-  default = "VM.Standard.A1.Flex"
-}
-
-variable "ocpus" {
-  type    = number
-  default = 4
-}
-
-variable "memory_in_gbs" {
-  type    = number
-  default = 24
-}
-
 data "oci_identity_availability_domains" "ads" {
   compartment_id = var.compartment_ocid
 }
@@ -53,7 +38,7 @@ data "oci_core_images" "ubuntu" {
   compartment_id           = var.compartment_ocid
   operating_system         = "Canonical Ubuntu"
   operating_system_version = "22.04"
-  shape                    = var.instance_shape
+  shape                    = "VM.Standard.A1.Flex"
   sort_by                  = "TIMECREATED"
   sort_order               = "DESC"
 }
@@ -68,17 +53,14 @@ locals {
   ssh_private_key = var.ssh_public_key == "" ? tls_private_key.ssh[0].private_key_openssh : ""
   image_id        = data.oci_core_images.ubuntu.images[0].id
   ad              = data.oci_identity_availability_domains.ads.availability_domains[0].name
+  vcn_id          = "ocid1.vcn.oc1.sa-saopaulo-1.amaaaaaa5m3zpcaaqxj7e2zejw7zvvijphcfickjr4ump565b32s4vgwtrnq"
+  subnet_id       = "ocid1.subnet.oc1.sa-saopaulo-1.aaaaaaaaisggstck3t2lb4qhwnwlrqheram6dcgrb22vq37rwe2ybn2r4hna"
 }
 
-resource "oci_core_vcn" "cloudbuilder" {
-  compartment_id = var.compartment_ocid
-  display_name   = "cs2-vcn"
-  cidr_blocks    = ["10.0.0.0/16"]
-}
-
+# Security list for CloudBuilder (allows all needed ports)
 resource "oci_core_security_list" "cloudbuilder" {
   compartment_id = var.compartment_ocid
-  vcn_id         = oci_core_vcn.cloudbuilder.id
+  vcn_id         = local.vcn_id
   display_name   = "cloudbuilder-sl"
 
   ingress_security_rules {
@@ -131,16 +113,6 @@ resource "oci_core_security_list" "cloudbuilder" {
     }
   }
 
-  ingress_security_rules {
-    protocol    = 17
-    source      = "0.0.0.0/0"
-    source_type = "CIDR_BLOCK"
-    udp_options {
-      min = 8765
-      max = 8765
-    }
-  }
-
   egress_security_rules {
     protocol         = "all"
     destination      = "0.0.0.0/0"
@@ -148,24 +120,26 @@ resource "oci_core_security_list" "cloudbuilder" {
   }
 }
 
+# New subnet with CloudBuilder security list
 resource "oci_core_subnet" "cloudbuilder" {
   compartment_id      = var.compartment_ocid
-  vcn_id              = oci_core_vcn.cloudbuilder.id
+  vcn_id              = local.vcn_id
   display_name        = "cloudbuilder-subnet"
   availability_domain = local.ad
-  cidr_block          = "10.0.10.0/24"
+  cidr_block          = "10.0.20.0/24"
   security_list_ids   = [oci_core_security_list.cloudbuilder.id]
 }
 
+# ARM Instance (4 OCPU, 24GB — Always Free)
 resource "oci_core_instance" "cloudbuilder" {
   compartment_id      = var.compartment_ocid
   availability_domain = local.ad
   display_name        = "cloudbuilder-beta"
-  shape               = var.instance_shape
+  shape               = "VM.Standard.A1.Flex"
 
   shape_config {
-    ocpus         = var.ocpus
-    memory_in_gbs = var.memory_in_gbs
+    ocpus         = 4
+    memory_in_gbs = 24
   }
 
   source_details {
