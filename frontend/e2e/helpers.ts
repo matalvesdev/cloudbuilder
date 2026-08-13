@@ -1,117 +1,94 @@
 import { test, expect, Page } from '@playwright/test'
 
 /**
- * Setup auth + mock API responses via fetch override in addInitScript.
- * Also injects CSS to keep dropdown menus always visible for reliable nav.
+ * Playwright helpers — SEM MOCKS. Todos os testes usam backend real
+ * rodando em http://localhost:8080 com profile dev (H2).
+ *
+ * Uso:
+ *   import { prepareApp, login, navigateTo } from './helpers'
+ *
+ *   test('meu teste', async ({ page }) => {
+ *     await prepareApp(page)
+ *     await login(page)
+ *     await navigateTo(page, 'Design', 'Infraestrutura')
+ *     // ... assertions contra backend real
+ *   })
  */
-export async function setupApp(page: Page, mocks: Record<string, unknown> = {}) {
-  const initCode = `
-    // Auth + env tokens
-    localStorage.setItem('cloudbuilder-auth-token', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXYifQ.fake')
-    localStorage.setItem('cloudbuilder-refresh-token', 'fake-refresh')
-    localStorage.setItem('cloudbuilder-active-tenant-id', 'tenant-1')
-    localStorage.setItem('cloudbuilder-active-environment', 'env-1')
-    // Skip onboarding (zustand/persist key)
+
+/** Tempo limite generoso para operações contra backend real */
+export const API_TIMEOUT = 30000
+
+/**
+ * Prepara a página limpando localStorage e pulando onboarding.
+ * NÃO injeta mocks de fetch — todas as chamadas vão para o backend real.
+ */
+export async function prepareApp(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.clear()
     localStorage.setItem('cloudbuilder-onboarding-storage', JSON.stringify({
       state: { progress: { stage: 'skipped', completedSteps: [] }, repoConfig: null, tourCompleted: false, hasSeenWelcome: true },
       version: 0,
     }))
+    localStorage.setItem('cloudbuilder-active-tenant-id', 'dev-tenant')
+  })
+}
 
-    // Mock user for /auth/me
-    const mockUser = JSON.stringify({
-      id: 'dev-user', name: 'Desenvolvedor',
-      email: 'dev@cloudbuilder.com', roles: ['admin']
+/**
+ * Faz login via formulário — o DevAuthController aceita qualquer email/senha.
+ * Deve ser chamado após prepareApp().
+ */
+export async function login(page: Page, email = 'dev@cloudbuilder.com', password = 'qualquer') {
+  await page.goto('/', { waitUntil: 'networkidle' })
+
+  // Verifica que estamos na página de login
+  await expect(page.locator('h1:has-text("CloudBuilder")').first()).toBeVisible({ timeout: 10000 })
+
+  // Preenche formulário
+  const emailInput = page.locator('input[type="email"]')
+  const passwordInput = page.locator('input[type="password"]')
+  await expect(emailInput).toBeVisible({ timeout: 5000 })
+
+  await emailInput.fill(email)
+  await passwordInput.fill(password)
+
+  // Clica em "Entrar"
+  const submitButton = page.locator('button[type="submit"]:has-text("Entrar")')
+  await expect(submitButton).toBeEnabled({ timeout: 5000 })
+  await submitButton.click()
+
+  // Aguarda navegação para o app — o breadcrumb "Dashboard" indica sucesso
+  await expect(page.locator('text=Dashboard').first()).toBeVisible({ timeout: API_TIMEOUT })
+}
+
+/**
+ * Navega para um módulo via nav.
+ * Grupo dropdown se tiver >1 item, botão direto se for único.
+ * @param moduleLabel Rótulo visível do módulo (ex: "Design", "Custos")
+ * @param groupLabel Rótulo do grupo dropdown (ex: "Infraestrutura", "Operações")
+ */
+export async function navigateTo(page: Page, moduleLabel: string, groupLabel?: string) {
+  if (groupLabel) {
+    // Abre o dropdown do grupo
+    const groupBtn = page.locator('nav button', { hasText: groupLabel })
+    await expect(groupBtn.first()).toBeVisible({ timeout: 10000 })
+    await groupBtn.first().hover()
+
+    // Espera o menu aparecer e clica no item
+    await page.waitForTimeout(500)
+    const menuItem = page.locator('nav [class*="rounded-xl"][class*="shadow-lg"] button', { hasText: moduleLabel })
+    await expect(menuItem.first()).toBeVisible({ timeout: 5000 }).catch(async () => {
+      // Fallback: tenta dar click direto no botão do grupo e depois no item
+      await groupBtn.first().click()
+      await page.waitForTimeout(300)
     })
-
-    // Mock data for endpoints
-    const mocks = ${JSON.stringify(mocks)}
-
-    // Intercept fetch calls
-    const origFetch = window.fetch.bind(window)
-    window.fetch = async (input, init) => {
-      const url = typeof input === 'string' ? input : input.url || ''
-
-      // Auth endpoints
-      if (url.includes('/api/v1/auth/me') || url.includes('/api/v1/auth/login') || url.includes('/api/v1/auth/refresh')) {
-        return new Response(mockUser, {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
-      }
-
-      // Mock data endpoints
-      for (const [path, data] of Object.entries(mocks)) {
-        if (url.includes(path)) {
-          return new Response(JSON.stringify(data), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          })
-        }
-      }
-
-      return origFetch(input, init)
-    }
-
-    // Inject CSS to force dropdown menus always visible — avoids hover timing issues
-    const style = document.createElement('style')
-    style.textContent = '.relative.group > .absolute { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; transform: none !important; }'
-    document.head.appendChild(style)
-  `
-
-  await page.addInitScript(initCode)
-}
-
-/**
- * Navigate to a module using the top nav bar.
- * Dropdowns are always visible thanks to CSS injection — just click the button directly.
- */
-export async function goToModule(page: Page, navLabel: string) {
-  await page.goto('/')
-  await expect(page.locator('nav').first()).toBeVisible({ timeout: 15000 })
-
-  // Map test labels to actual nav button text
-  const labelMap: Record<string, string[]> = {
-    'Auditoria': ['Auditoria', 'Segurança'],
-    'IAM': ['IAM', 'Segurança'],
-    'Config': ['Config', 'Configurações', 'Flags'],
-    'Observar': ['Observar', 'Observabilidade'],
-    'Design': ['Design', 'Canvas'],
+    await menuItem.first().click()
+  } else {
+    // Botão direto na nav
+    const btn = page.locator('nav button', { hasText: moduleLabel })
+    await expect(btn.first()).toBeVisible({ timeout: 10000 })
+    await btn.first().click()
   }
-  const candidates = labelMap[navLabel] || [navLabel]
 
-  await page.evaluate((labels: string[]) => {
-    const all = Array.from(document.querySelectorAll('nav button'))
-    for (const label of labels) {
-      const target = all.find(b => b.textContent?.trim() === label)
-      if (target) { (target as HTMLElement).click(); return }
-    }
-    // Fallback partial match
-    for (const label of labels) {
-      const partial = all.find(b => b.textContent?.includes(label))
-      if (partial) { (partial as HTMLElement).click(); return }
-    }
-  }, candidates)
-
-  await page.waitForTimeout(3000)
-}
-
-/**
- * Get the module title based on module name for assertion.
- */
-export function getModuleTitle(moduleId: string): string {
-  const titles: Record<string, string> = {
-    dashboard: 'Dashboard',
-    design: 'Design',
-    provision: 'Provisionar',
-    observe: 'Observabilidade',
-    cost: 'Custos e Otimizações',
-    platform: 'Plataforma',
-    aiops: 'AIOps',
-    audit: 'Auditoria',
-    iam: 'IAM',
-    docs: 'Documentação',
-    settings: 'Configurações',
-    analytics: 'Análises',
-  }
-  return titles[moduleId] || moduleId
+  // Aguarda renderização do módulo
+  await page.waitForTimeout(2000)
 }

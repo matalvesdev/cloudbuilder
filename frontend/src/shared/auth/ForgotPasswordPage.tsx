@@ -1,31 +1,40 @@
-import { useState, FormEvent } from 'react'
-import { Cloud, ArrowLeft, Loader2, AlertCircle, Mail, CheckCircle2 } from 'lucide-react'
-import { forgotPassword } from '@/api/auth'
+import { useState, FormEvent } from "react";
+import {
+  Cloud,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  Mail,
+  CheckCircle2,
+} from "lucide-react";
+import { forgotPassword } from "@/api/auth";
 
 interface ForgotPasswordPageProps {
-  onSwitchToLogin: () => void
+  onSwitchToLogin: () => void;
 }
 
-export function ForgotPasswordPage({ onSwitchToLogin }: ForgotPasswordPageProps) {
-  const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [sent, setSent] = useState(false)
+export function ForgotPasswordPage({
+  onSwitchToLogin,
+}: ForgotPasswordPageProps) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!email.trim()) return
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    if (!email.trim()) return;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await forgotPassword(email.trim())
-      setSent(true)
+      const res = await forgotPassword(email.trim());
+      setSent(true);
     } catch (err: any) {
-      setError(err?.message || 'Erro ao solicitar redefinição de senha.')
+      setError(err?.message || "Erro ao solicitar redefinição de senha.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="h-screen w-screen flex bg-slate-50">
@@ -39,9 +48,12 @@ export function ForgotPasswordPage({ onSwitchToLogin }: ForgotPasswordPageProps)
           <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-6 ring-1 ring-white/20">
             <Cloud className="h-8 w-8 text-brand-lime" />
           </div>
-          <h1 className="text-3xl font-display font-bold text-white mb-3">CloudBuilder</h1>
+          <h1 className="text-3xl font-display font-bold text-white mb-3">
+            CloudBuilder
+          </h1>
           <p className="text-base text-slate-300 leading-relaxed">
-            Redefina sua senha para continuar projetando e provisionando infraestrutura em nuvem.
+            Redefina sua senha para continuar projetando e provisionando
+            infraestrutura em nuvem.
           </p>
         </div>
       </div>
@@ -66,9 +78,12 @@ export function ForgotPasswordPage({ onSwitchToLogin }: ForgotPasswordPageProps)
                     <ArrowLeft className="w-3.5 h-3.5" />
                     Voltar ao login
                   </button>
-                  <h2 className="text-lg font-display font-bold text-brand-navy">Redefinir senha</h2>
+                  <h2 className="text-lg font-display font-bold text-brand-navy">
+                    Redefinir senha
+                  </h2>
                   <p className="text-sm text-slate-400 mt-1">
-                    Digite seu email e enviaremos instruções para redefinir sua senha.
+                    Digite seu email e enviaremos instruções para redefinir sua
+                    senha.
                   </p>
                 </div>
 
@@ -120,10 +135,14 @@ export function ForgotPasswordPage({ onSwitchToLogin }: ForgotPasswordPageProps)
                   <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center mx-auto mb-4 ring-1 ring-green-200">
                     <CheckCircle2 className="w-8 h-8 text-green-500" />
                   </div>
-                  <h2 className="text-lg font-display font-bold text-brand-navy">Email enviado!</h2>
+                  <h2 className="text-lg font-display font-bold text-brand-navy">
+                    Email enviado!
+                  </h2>
                   <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-                    Se o email <strong className="text-brand-navy">{email}</strong> estiver cadastrado, 
-                    você receberá instruções para redefinir sua senha em alguns minutos.
+                    Se o email{" "}
+                    <strong className="text-brand-navy">{email}</strong> estiver
+                    cadastrado, você receberá instruções para redefinir sua
+                    senha em alguns minutos.
                   </p>
                   <p className="text-xs text-slate-300 mt-3">
                     Não recebeu? Verifique sua caixa de spam ou tente novamente.
@@ -147,5 +166,5 @@ export function ForgotPasswordPage({ onSwitchToLogin }: ForgotPasswordPageProps)
         </div>
       </div>
     </div>
-  )
+  );
 }

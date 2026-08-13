@@ -7,10 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,11 +15,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * SSE endpoint that streams all PlatformEvents to authenticated frontend clients.
@@ -42,7 +36,7 @@ import java.util.stream.Collectors;
 public class EventStreamController {
 
     private static final Logger log = LoggerFactory.getLogger(EventStreamController.class);
-    private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final Map<String, Subscription> subscriptions = new ConcurrentHashMap<>();
     private final JwtTokenProvider jwtTokenProvider;
 
     public EventStreamController(JwtTokenProvider jwtTokenProvider) {
@@ -56,43 +50,27 @@ public class EventStreamController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token inválido ou ausente");
         }
 
-        // Configura o contexto de segurança para o restante do pipeline
         var userId = jwtTokenProvider.getUserId(token);
-        var roles = jwtTokenProvider.getRoles(token);
         var tenantId = jwtTokenProvider.getTenantId(token);
-        if (tenantId != null) {
-            com.cloudbuilder.shared.security.TenantContext.setTenantId(tenantId);
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Token sem organização ativa");
         }
-        var authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
-                .collect(Collectors.toList());
-        var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         var emitter = new SseEmitter(Long.MAX_VALUE);
         String id = java.util.UUID.randomUUID().toString();
-        emitters.put(id, emitter);
+        subscriptions.put(id, new Subscription(tenantId, emitter));
 
-        emitter.onCompletion(() -> {
-            emitters.remove(id);
-            SecurityContextHolder.clearContext();
-        });
-        emitter.onTimeout(() -> {
-            emitters.remove(id);
-            SecurityContextHolder.clearContext();
-        });
-        emitter.onError(e -> {
-            emitters.remove(id);
-            SecurityContextHolder.clearContext();
-        });
+        emitter.onCompletion(() -> subscriptions.remove(id));
+        emitter.onTimeout(() -> subscriptions.remove(id));
+        emitter.onError(e -> subscriptions.remove(id));
 
-        log.info("SSE client connected: {} (user: {})", id, userId);
+        log.info("SSE client connected: {} (user: {}, tenant: {})", id, userId, tenantId);
         return emitter;
     }
 
     @EventListener
     public void onPlatformEvent(PlatformEvent event) {
-        if (emitters.isEmpty()) return;
+        if (subscriptions.isEmpty()) return;
 
         var sseEvent = SseEmitter.event()
             .name(event.getEventType())
@@ -105,22 +83,27 @@ public class EventStreamController {
             ));
 
         var dead = new java.util.ArrayList<String>();
-        emitters.forEach((id, emitter) -> {
+        subscriptions.forEach((id, subscription) -> {
+            if (!Objects.equals(subscription.tenantId(), event.getTenantId())) {
+                return;
+            }
             try {
-                emitter.send(sseEvent);
+                subscription.emitter().send(sseEvent);
             } catch (IOException e) {
                 dead.add(id);
-                emitter.completeWithError(e);
+                subscription.emitter().completeWithError(e);
             }
         });
-        dead.forEach(emitters::remove);
+        dead.forEach(subscriptions::remove);
     }
 
     @GetMapping("/health")
     public Map<String, Object> health() {
         return Map.of(
-            "connections", emitters.size(),
+            "connections", subscriptions.size(),
             "status", "active"
         );
     }
+
+    private record Subscription(String tenantId, SseEmitter emitter) {}
 }

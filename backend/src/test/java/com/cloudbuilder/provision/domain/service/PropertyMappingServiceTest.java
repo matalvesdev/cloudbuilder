@@ -1,8 +1,11 @@
 package com.cloudbuilder.provision.domain.service;
 
+import com.cloudbuilder.provision.domain.port.ProviderAdapter;
+import com.cloudbuilder.provision.domain.port.ProviderRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -13,7 +16,94 @@ class PropertyMappingServiceTest {
 
     @BeforeEach
     void setUp() {
-        mappingService = new PropertyMappingService();
+        // Create a ProviderAdapter that knows about aws_vpc, aws_instance, aws_subnet,
+        // azurerm_virtual_network, google_compute_instance, and kubernetes_deployment
+        var adapter = new ProviderAdapter() {
+            @Override public String getProviderType() { return "aws"; }
+            @Override public String getDisplayName() { return "AWS"; }
+            @Override public List<String> getSupportedResourceTypes() {
+                return List.of("aws_vpc", "aws_subnet", "aws_instance");
+            }
+            @Override public String mapToComponentId(String resourceType) {
+                return switch (resourceType) {
+                    case "aws_vpc" -> "aws-vpc";
+                    case "aws_subnet" -> "aws-subnet";
+                    case "aws_instance" -> "aws-ec2";
+                    default -> resourceType;
+                };
+            }
+            @Override public Map<String, String> getPropertySchema(String resourceType) {
+                return switch (resourceType) {
+                    case "aws_vpc" -> Map.of(
+                        "id", "ID",
+                        "cidr_block", "CIDR Block",
+                        "instance_tenancy", "Tenancy",
+                        "enable_dns_support", "DNS Support"
+                    );
+                    case "aws_instance" -> Map.of(
+                        "id", "ID",
+                        "instance_type", "Instance Type",
+                        "tags.Name", "Name"
+                    );
+                    default -> Map.of();
+                };
+            }
+            @Override public boolean supports(String resourceType) {
+                return getSupportedResourceTypes().contains(resourceType);
+            }
+            @Override public String getTerraformProviderSource() { return "hashicorp/aws"; }
+            @Override public String getTerraformVersionConstraint() { return "~> 5.0"; }
+        };
+
+        var azureAdapter = new ProviderAdapter() {
+            @Override public String getProviderType() { return "azure"; }
+            @Override public String getDisplayName() { return "Azure"; }
+            @Override public List<String> getSupportedResourceTypes() {
+                return List.of("azurerm_virtual_network");
+            }
+            @Override public String mapToComponentId(String resourceType) {
+                return "azure-vnet";
+            }
+            @Override public Map<String, String> getPropertySchema(String resourceType) { return Map.of(); }
+            @Override public boolean supports(String resourceType) {
+                return getSupportedResourceTypes().contains(resourceType);
+            }
+            @Override public String getTerraformProviderSource() { return "hashicorp/azurerm"; }
+            @Override public String getTerraformVersionConstraint() { return "~> 3.0"; }
+        };
+
+        var gcpAdapter = new ProviderAdapter() {
+            @Override public String getProviderType() { return "gcp"; }
+            @Override public String getDisplayName() { return "GCP"; }
+            @Override public List<String> getSupportedResourceTypes() {
+                return List.of("google_compute_instance");
+            }
+            @Override public String mapToComponentId(String resourceType) { return "gcp-vm"; }
+            @Override public Map<String, String> getPropertySchema(String resourceType) { return Map.of(); }
+            @Override public boolean supports(String resourceType) {
+                return getSupportedResourceTypes().contains(resourceType);
+            }
+            @Override public String getTerraformProviderSource() { return "hashicorp/google"; }
+            @Override public String getTerraformVersionConstraint() { return "~> 5.0"; }
+        };
+
+        var k8sAdapter = new ProviderAdapter() {
+            @Override public String getProviderType() { return "k8s"; }
+            @Override public String getDisplayName() { return "Kubernetes"; }
+            @Override public List<String> getSupportedResourceTypes() {
+                return List.of("kubernetes_deployment");
+            }
+            @Override public String mapToComponentId(String resourceType) { return "k8s-deploy"; }
+            @Override public Map<String, String> getPropertySchema(String resourceType) { return Map.of(); }
+            @Override public boolean supports(String resourceType) {
+                return getSupportedResourceTypes().contains(resourceType);
+            }
+            @Override public String getTerraformProviderSource() { return "hashicorp/kubernetes"; }
+            @Override public String getTerraformVersionConstraint() { return "~> 2.0"; }
+        };
+
+        var providerRegistry = new ProviderRegistry(List.of(adapter, azureAdapter, gcpAdapter, k8sAdapter));
+        mappingService = new PropertyMappingService(providerRegistry);
     }
 
     @Test

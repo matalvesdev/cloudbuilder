@@ -1,5 +1,6 @@
 package com.cloudbuilder.iam.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -57,6 +58,7 @@ public class User {
 
     public String getId() { return id; }
     public String getEmail() { return email; }
+    @JsonIgnore
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getName() { return name; }

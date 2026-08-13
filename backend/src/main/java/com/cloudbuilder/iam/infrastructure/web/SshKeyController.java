@@ -5,6 +5,7 @@ import com.cloudbuilder.iam.domain.service.SshKeyService;
 import com.cloudbuilder.shared.security.TenantContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -23,9 +24,19 @@ public class SshKeyController {
         this.sshKeyService = sshKeyService;
     }
 
+    private static String resolveUserId(Authentication auth) {
+        if (auth == null) return null;
+        Object principal = auth.getPrincipal();
+        if (principal instanceof UserDetails ud) return ud.getUsername();
+        if (principal instanceof String s) return s;
+        return principal != null ? principal.toString() : null;
+    }
+
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listKeys(@AuthenticationPrincipal UserDetails user) {
-        List<SshKey> keys = sshKeyService.listKeys(user.getUsername());
+    public ResponseEntity<List<Map<String, Object>>> listKeys(Authentication auth) {
+        String userId = resolveUserId(auth);
+        if (userId == null) return ResponseEntity.status(401).build();
+        List<SshKey> keys = sshKeyService.listKeys(userId);
         List<Map<String, Object>> result = keys.stream().map(k -> Map.<String, Object>of(
             "id", k.getId(),
             "name", k.getName(),
@@ -39,8 +50,10 @@ public class SshKeyController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> addKey(
-            @AuthenticationPrincipal UserDetails user,
+            Authentication auth,
             @RequestBody Map<String, String> request) {
+        String userId = resolveUserId(auth);
+        if (userId == null) return ResponseEntity.status(401).build();
         String name = request.getOrDefault("name", "SSH Key");
         String publicKey = request.get("publicKey");
         if (publicKey == null || publicKey.isBlank()) {
@@ -48,7 +61,7 @@ public class SshKeyController {
         }
 
         String tenantId = TenantContext.getTenantId();
-        SshKey key = sshKeyService.addKey(user.getUsername(), tenantId, name, publicKey);
+        SshKey key = sshKeyService.addKey(userId, tenantId, name, publicKey);
 
         return ResponseEntity.ok(Map.<String, Object>of(
             "id", key.getId(),
@@ -60,8 +73,10 @@ public class SshKeyController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteKey(@PathVariable String id, @AuthenticationPrincipal UserDetails user) {
-        sshKeyService.deleteKey(id, user.getUsername());
+    public ResponseEntity<Void> deleteKey(@PathVariable String id, Authentication auth) {
+        String userId = resolveUserId(auth);
+        if (userId == null) return ResponseEntity.status(401).build();
+        sshKeyService.deleteKey(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,4 +1,4 @@
-export type ProjectRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type ProjectRole = "owner" | "admin" | "member" | "viewer";
 
 export interface Project {
   id: string;
@@ -25,10 +25,15 @@ export interface InviteRequest {
 }
 
 export const ROLE_LABELS: Record<ProjectRole, string> = {
-  owner: 'Proprietário',
-  admin: 'Administrador',
-  member: 'Membro',
-  viewer: 'Visualizador',
+  owner: "Proprietário",
+  admin: "Administrador",
+  member: "Membro",
+  viewer: "Visualizador",
 };
 
-export const ROLE_HIERARCHY: ProjectRole[] = ['viewer', 'member', 'admin', 'owner'];
+export const ROLE_HIERARCHY: ProjectRole[] = [
+  "viewer",
+  "member",
+  "admin",
+  "owner",
+];

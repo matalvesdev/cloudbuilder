@@ -14,15 +14,22 @@ export {
   type FeatureFlagDTO,
   type CreateFlagRequest,
   type UpdateFlagRequest,
-} from '@/api/featureFlags'
+} from "@/api/featureFlags";
 
 // Re-export uiStore flag logic
-import { useUiStore as _useUiStore } from '@/store/uiStore'
-export const useUiStore = _useUiStore
+import { useUiStore as _useUiStore } from "@/store/uiStore";
+export const useUiStore = _useUiStore;
 
 // Convenience hook for checking if a flag is enabled
 export function useFeatureFlags() {
-  const { isEnabled, fetchFlags, refreshFlags, featureFlags, flagsLoaded, flagsLoading } = useUiStore()
+  const {
+    isEnabled,
+    fetchFlags,
+    refreshFlags,
+    featureFlags,
+    flagsLoaded,
+    flagsLoading,
+  } = useUiStore();
 
   return {
     isEnabled,
@@ -31,5 +38,5 @@ export function useFeatureFlags() {
     featureFlags,
     flagsLoaded,
     flagsLoading,
-  }
+  };
 }

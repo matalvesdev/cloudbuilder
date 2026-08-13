@@ -1,5 +1,7 @@
 package com.cloudbuilder.git.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -104,6 +106,7 @@ public class ConnectedRepository {
         this.defaultBranch = defaultBranch;
     }
 
+    @JsonIgnore
     public String getAccessToken() {
         return accessToken;
     }

@@ -51,6 +51,12 @@ public class SessionService {
         return sessionRepository.findByToken(token);
     }
 
+    @Transactional(readOnly = true)
+    public Session getSession(String sessionId) {
+        return sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Sessão não encontrada: " + sessionId));
+    }
+
     /**
      * Get all active sessions for a user.
      */
@@ -81,8 +87,7 @@ public class SessionService {
      * Terminate a specific session (logout).
      */
     public void terminateSession(String sessionId) {
-        var session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+        var session = getSession(sessionId);
         session.terminate();
         sessionRepository.save(session);
         log.info("Session {} terminated", sessionId);

@@ -62,11 +62,15 @@ public class RemediationService {
         remediationRepository.save(action);
 
         try {
-            // In a real implementation, this would execute the actual remediation
-            // e.g., restart service, scale resources, run script
-            String result = simulateExecute(action);
+            // Em produção, a execução efetiva exigiria integração com a infraestrutura
+            // (ex.: restart de serviço, scale de recursos, execução de script via cloud provider).
+            // Sem conexão real com a infra, registramos a ação como executada com o status atual.
+            String result = "Ação registrada: " + action.getDescription()
+                    + " — Tipo: " + action.getActionType()
+                    + " — Status: " + action.getStatus()
+                    + " — Execução real requer integração com cloud provider";
             action.markCompleted(result);
-            log.info("Remediation action {} executed successfully by {}", actionId, executedBy);
+            log.info("Remediation action {} registered by {} (real execution requires cloud provider integration)", actionId, executedBy);
         } catch (Exception e) {
             action.markFailed(e.getMessage());
             log.error("Remediation action {} failed: {}", actionId, e.getMessage());
@@ -131,14 +135,4 @@ public class RemediationService {
         return remediationRepository.save(action);
     }
 
-    /**
-     * Simulate execution of a remediation action.
-     * In production, this would trigger actual infrastructure operations.
-     */
-    private String simulateExecute(RemediationAction action) {
-        return "Ação executada: " + action.getDescription()
-                + " — Tipo: " + action.getActionType()
-                + " — Status: concluído com sucesso em "
-                + java.time.LocalDateTime.now().toString();
-    }
 }

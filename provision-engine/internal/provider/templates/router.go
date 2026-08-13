@@ -1,11 +1,19 @@
 package templates
 
-import "github.com/cloudbuilder/provision-engine/internal/model"
+import (
+	"sync"
+
+	"github.com/cloudbuilder/provision-engine/internal/model"
+)
+
+var (
+	templateCache     map[model.ProviderType]map[string]ResourceTemplate
+	templateCacheOnce sync.Once
+)
 
 // GetTemplate returns the appropriate template function for a given provider and resource type.
 func GetTemplate(provider model.ProviderType, resourceType string) (ResourceTemplate, bool) {
-	// Build the provider→template map lazily from each provider's registry.
-	all := allTemplates()
+	all := getTemplates()
 
 	tmpl, ok := all[provider]
 	if !ok {
@@ -16,12 +24,15 @@ func GetTemplate(provider model.ProviderType, resourceType string) (ResourceTemp
 	return fn, found
 }
 
-// allTemplates aggregates resource templates from every supported provider.
-func allTemplates() map[model.ProviderType]map[string]ResourceTemplate {
-	return map[model.ProviderType]map[string]ResourceTemplate{
-		model.ProviderAWS:   awsTemplates(),
-		model.ProviderAZURE: azureTemplates(),
-		model.ProviderGCP:   gcpTemplates(),
-		model.ProviderK8s:   k8sTemplates(),
-	}
+// getTemplates returns the cached template map, building it once on first call.
+func getTemplates() map[model.ProviderType]map[string]ResourceTemplate {
+	templateCacheOnce.Do(func() {
+		templateCache = map[model.ProviderType]map[string]ResourceTemplate{
+			model.ProviderAWS:   awsTemplates(),
+			model.ProviderAZURE: azureTemplates(),
+			model.ProviderGCP:   gcpTemplates(),
+			model.ProviderK8s:   k8sTemplates(),
+		}
+	})
+	return templateCache
 }

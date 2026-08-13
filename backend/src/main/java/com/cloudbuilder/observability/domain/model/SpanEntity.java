@@ -40,7 +40,7 @@ public class SpanEntity {
     @Column(length = 16)
     private String status;
 
-    @Column(columnDefinition = "JSONB DEFAULT '{}'")
+    @Column(columnDefinition = "TEXT DEFAULT '{}'")
     private String tags;
 
     public SpanEntity() {}

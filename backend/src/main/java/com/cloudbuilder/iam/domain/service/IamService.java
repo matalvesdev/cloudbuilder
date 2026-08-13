@@ -2,6 +2,9 @@ package com.cloudbuilder.iam.domain.service;
 
 import com.cloudbuilder.iam.domain.model.*;
 import com.cloudbuilder.iam.domain.port.*;
+import com.cloudbuilder.shared.security.TenantContext;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,23 +20,26 @@ public class IamService {
     private final TenantUserRepository tenantUserRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public IamService(UserRepository userRepository,
                       TenantRepository tenantRepository,
                       TenantUserRepository tenantUserRepository,
                       RoleRepository roleRepository,
-                      PermissionRepository permissionRepository) {
+                      PermissionRepository permissionRepository,
+                      PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.tenantRepository = tenantRepository;
         this.tenantUserRepository = tenantUserRepository;
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // --- Users ---
 
-    public User createUser(String name, String email, String passwordHash) {
-        var user = new User(email, passwordHash, name);
+    public User createUser(String name, String email, String password) {
+        var user = new User(email, passwordEncoder.encode(password), name);
         return userRepository.save(user);
     }
 
@@ -61,6 +67,7 @@ public class IamService {
 
     @Transactional(readOnly = true)
     public List<TenantUserInfoDTO> listUsersByTenant(String tenantId) {
+        requireCurrentTenant(tenantId);
         var tenantUsers = tenantUserRepository.findByTenantId(tenantId);
         return tenantUsers.stream().map(tu -> {
             var user = userRepository.findById(tu.getUserId()).orElse(null);
@@ -108,7 +115,8 @@ public class IamService {
         String roleId, String roleName, String status, java.time.LocalDateTime joinedAt
     ) {}
 
-    public TenantUser createUserInTenant(String tenantId, String name, String email, String passwordHash, String roleId) {
+    public TenantUser createUserInTenant(String tenantId, String name, String email, String password, String roleId) {
+        requireCurrentTenant(tenantId);
         // Validate tenant exists
         getTenant(tenantId);
 
@@ -129,7 +137,7 @@ public class IamService {
             }
         } else {
             // Create new user
-            var user = createUser(name, email, passwordHash);
+            var user = createUser(name, email, password);
             userId = user.getId();
         }
 
@@ -139,12 +147,18 @@ public class IamService {
     }
 
     public void removeUserFromTenant(String tenantId, String userId) {
+        requireCurrentTenant(tenantId);
         var tu = tenantUserRepository.findByTenantIdAndUserId(tenantId, userId)
             .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado neste tenant"));
         tenantUserRepository.delete(tu);
     }
 
     public void assignRole(String tenantId, String userId, String roleId) {
+        requireCurrentTenant(tenantId);
+        var role = getRole(roleId);
+        if (!tenantId.equals(role.getTenantId())) {
+            throw new AccessDeniedException("A role não pertence ao tenant ativo");
+        }
         var tu = tenantUserRepository.findByTenantIdAndUserId(tenantId, userId)
             .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado no tenant"));
         tu.setRoleId(roleId);
@@ -154,6 +168,7 @@ public class IamService {
     // --- Roles ---
 
     public Role createRole(String tenantId, String name, String description) {
+        requireCurrentTenant(tenantId);
         var existing = roleRepository.findByTenantIdAndName(tenantId, name);
         if (existing.isPresent()) {
             throw new IllegalArgumentException("Role já existe neste tenant: " + name);
@@ -164,13 +179,16 @@ public class IamService {
 
     @Transactional(readOnly = true)
     public List<Role> listRolesByTenant(String tenantId) {
+        requireCurrentTenant(tenantId);
         return roleRepository.findByTenantId(tenantId);
     }
 
     @Transactional(readOnly = true)
     public Role getRole(String id) {
-        return roleRepository.findById(id)
+        var role = roleRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Role não encontrada: " + id));
+        requireCurrentTenant(role.getTenantId());
+        return role;
     }
 
     public void deleteRole(String id) {
@@ -206,7 +224,10 @@ public class IamService {
     }
 
     public void deletePermission(String id) {
-        permissionRepository.deleteById(id);
+        var permission = permissionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Permissão não encontrada: " + id));
+        getRole(permission.getRoleId());
+        permissionRepository.delete(permission);
     }
 
     @Transactional(readOnly = true)
@@ -241,6 +262,16 @@ public class IamService {
     @Transactional(readOnly = true)
     public List<Tenant> listTenants() {
         return tenantRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Tenant> listTenantsForUser(String userId) {
+        return tenantUserRepository.findByUserId(userId).stream()
+                .map(TenantUser::getTenantId)
+                .distinct()
+                .map(tenantRepository::findById)
+                .flatMap(Optional::stream)
+                .toList();
     }
 
     public Tenant createTenant(String name, String slug) {
@@ -283,4 +314,11 @@ public class IamService {
     }
 
     public record UserPermissionsDTO(String tenantId, String roleId, String roleName, Set<String> permissions) {}
+
+    private static void requireCurrentTenant(String requestedTenantId) {
+        String currentTenantId = TenantContext.getTenantId();
+        if (currentTenantId != null && !currentTenantId.equals(requestedTenantId)) {
+            throw new AccessDeniedException("O recurso não pertence ao tenant ativo");
+        }
+    }
 }

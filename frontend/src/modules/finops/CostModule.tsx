@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
 import {
   DollarSign,
   TrendingUp,
@@ -21,19 +21,19 @@ import {
   BarChart3,
   Plus,
   PlusCircle,
-} from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { useCostStore } from '@/store/costStore'
-import { useCanvasStore } from '@/store/canvasStore'
-import { useUiStore } from '@/store/uiStore'
-import { WhatIfCost } from './WhatIfCost'
-import { BudgetComparisonView } from './BudgetComparisonView'
-import { CostAnomaliesView } from './CostAnomaliesView'
-import { cn } from '@/lib/utils'
-import { ProtectedAction } from '@/components/ProtectedContent'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useCostStore } from "@/store/costStore";
+import { useCanvasStore } from "@/store/canvasStore";
+import { useUiStore } from "@/store/uiStore";
+import { WhatIfCost } from "./WhatIfCost";
+import { BudgetComparisonView } from "./BudgetComparisonView";
+import { CostAnomaliesView } from "./CostAnomaliesView";
+import { cn } from "@/lib/utils";
+import { ProtectedAction } from "@/components/ProtectedContent";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -42,16 +42,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   LineChart,
   Line,
@@ -62,66 +62,98 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
-} from 'recharts'
-import { useCostForecastStore } from '@/store/costForecastStore'
-import type { OptimizationSuggestion, ProviderType, BudgetAlert, CostForecast } from '@/types/cost.types'
+} from "recharts";
+import { useCostForecastStore } from "@/store/costForecastStore";
+import type {
+  OptimizationSuggestion,
+  ProviderType,
+  BudgetAlert,
+  CostForecast,
+} from "@/types/cost.types";
 
-const providerConfig: Record<ProviderType, { label: string; barColor: string; badge: string }> = {
-  aws: { label: 'AWS', barColor: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' },
-  azure: { label: 'Azure', barColor: 'bg-blue-600', badge: 'bg-blue-100 text-blue-700' },
-  gcp: { label: 'GCP', barColor: 'bg-blue-500', badge: 'bg-green-100 text-green-700' },
-  vercel: { label: 'Vercel', barColor: 'bg-neutral-900', badge: 'bg-neutral-100 text-neutral-700' },
-  supabase: { label: 'Supabase', barColor: 'bg-emerald-500', badge: 'bg-emerald-100 text-emerald-700' },
-  render: { label: 'Render', barColor: 'bg-teal-500', badge: 'bg-teal-100 text-teal-700' },
-}
+const providerConfig: Record<
+  ProviderType,
+  { label: string; barColor: string; badge: string }
+> = {
+  aws: {
+    label: "AWS",
+    barColor: "bg-orange-500",
+    badge: "bg-orange-100 text-orange-700",
+  },
+  azure: {
+    label: "Azure",
+    barColor: "bg-blue-600",
+    badge: "bg-blue-100 text-blue-700",
+  },
+  gcp: {
+    label: "GCP",
+    barColor: "bg-blue-500",
+    badge: "bg-green-100 text-green-700",
+  },
+  vercel: {
+    label: "Vercel",
+    barColor: "bg-neutral-900",
+    badge: "bg-neutral-100 text-neutral-700",
+  },
+  supabase: {
+    label: "Supabase",
+    barColor: "bg-emerald-500",
+    badge: "bg-emerald-100 text-emerald-700",
+  },
+  render: {
+    label: "Render",
+    barColor: "bg-teal-500",
+    badge: "bg-teal-100 text-teal-700",
+  },
+};
 
 const serviceConfig: Record<string, { label: string; icon: typeof Server }> = {
-  compute: { label: 'Compute', icon: Server },
-  storage: { label: 'Armazenamento', icon: HardDrive },
-  database: { label: 'Banco de Dados', icon: Database },
-  network: { label: 'Rede', icon: Network },
-  outros: { label: 'Outros', icon: Package },
-}
+  compute: { label: "Compute", icon: Server },
+  storage: { label: "Armazenamento", icon: HardDrive },
+  database: { label: "Banco de Dados", icon: Database },
+  network: { label: "Rede", icon: Network },
+  outros: { label: "Outros", icon: Package },
+};
 
 const severityConfig = {
-  high: { label: 'Alta', class: 'bg-red-100 text-red-700' },
-  medium: { label: 'Média', class: 'bg-amber-100 text-amber-700' },
-  low: { label: 'Baixa', class: 'bg-slate-100 text-slate-600' },
-}
+  high: { label: "Alta", class: "bg-red-100 text-red-700" },
+  medium: { label: "Média", class: "bg-amber-100 text-amber-700" },
+  low: { label: "Baixa", class: "bg-slate-100 text-slate-600" },
+};
 
 function formatCurrency(value: number): string {
-  return `US$ ${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  return `US$ ${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function formatSavings(value: number): string {
-  return `US$ ${value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}/mês`
+  return `US$ ${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}/mês`;
 }
 
 function NewBudgetDialog() {
-  const { addBudget } = useCostForecastStore()
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [budgetAmount, setBudgetAmount] = useState('')
-  const [period, setPeriod] = useState('Mensal')
-  const [warningThreshold, setWarningThreshold] = useState('80')
-  const [criticalThreshold, setCriticalThreshold] = useState('95')
+  const { addBudget } = useCostForecastStore();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [budgetAmount, setBudgetAmount] = useState("");
+  const [period, setPeriod] = useState("Mensal");
+  const [warningThreshold, setWarningThreshold] = useState("80");
+  const [criticalThreshold, setCriticalThreshold] = useState("95");
 
   function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name || !budgetAmount) return
+    e.preventDefault();
+    if (!name || !budgetAmount) return;
     addBudget({
       name,
       budgetAmount: parseFloat(budgetAmount),
       period,
       warningThreshold: parseInt(warningThreshold, 10),
       criticalThreshold: parseInt(criticalThreshold, 10),
-    })
-    setName('')
-    setBudgetAmount('')
-    setPeriod('Mensal')
-    setWarningThreshold('80')
-    setCriticalThreshold('95')
-    setOpen(false)
+    });
+    setName("");
+    setBudgetAmount("");
+    setPeriod("Mensal");
+    setWarningThreshold("80");
+    setCriticalThreshold("95");
+    setOpen(false);
   }
 
   return (
@@ -134,14 +166,21 @@ function NewBudgetDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md rounded-3xl">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-brand-navy font-display">Novo Orçamento</DialogTitle>
+          <DialogTitle className="text-lg font-bold text-brand-navy font-display">
+            Novo Orçamento
+          </DialogTitle>
           <DialogDescription className="text-sm text-slate-500">
             Defina um orçamento para monitorar seus gastos
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="budget-name" className="text-sm font-medium text-slate-700">Nome do Orçamento</Label>
+            <Label
+              htmlFor="budget-name"
+              className="text-sm font-medium text-slate-700"
+            >
+              Nome do Orçamento
+            </Label>
             <Input
               id="budget-name"
               value={name}
@@ -152,7 +191,12 @@ function NewBudgetDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="budget-amount" className="text-sm font-medium text-slate-700">Valor do Orçamento (US$)</Label>
+            <Label
+              htmlFor="budget-amount"
+              className="text-sm font-medium text-slate-700"
+            >
+              Valor do Orçamento (US$)
+            </Label>
             <Input
               id="budget-amount"
               type="number"
@@ -166,9 +210,17 @@ function NewBudgetDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="budget-period" className="text-sm font-medium text-slate-700">Período</Label>
+            <Label
+              htmlFor="budget-period"
+              className="text-sm font-medium text-slate-700"
+            >
+              Período
+            </Label>
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger id="budget-period" className="rounded-xl border-slate-200">
+              <SelectTrigger
+                id="budget-period"
+                className="rounded-xl border-slate-200"
+              >
                 <SelectValue placeholder="Selecione o período" />
               </SelectTrigger>
               <SelectContent>
@@ -180,7 +232,12 @@ function NewBudgetDialog() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="warning-threshold" className="text-sm font-medium text-slate-700">Alerta (%)</Label>
+              <Label
+                htmlFor="warning-threshold"
+                className="text-sm font-medium text-slate-700"
+              >
+                Alerta (%)
+              </Label>
               <Input
                 id="warning-threshold"
                 type="number"
@@ -192,7 +249,12 @@ function NewBudgetDialog() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="critical-threshold" className="text-sm font-medium text-slate-700">Crítico (%)</Label>
+              <Label
+                htmlFor="critical-threshold"
+                className="text-sm font-medium text-slate-700"
+              >
+                Crítico (%)
+              </Label>
               <Input
                 id="critical-threshold"
                 type="number"
@@ -222,44 +284,49 @@ function NewBudgetDialog() {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function navigateToDesign(resourceName: string) {
-  const { nodes } = useCanvasStore.getState()
-  const match = nodes.find(
-    (n) => n.data?.label?.toLowerCase().includes(resourceName.toLowerCase())
-  )
+  const { nodes } = useCanvasStore.getState();
+  const match = nodes.find((n) =>
+    n.data?.label?.toLowerCase().includes(resourceName.toLowerCase()),
+  );
   if (match) {
-    useCanvasStore.getState().setSelectedNode(match.id)
+    useCanvasStore.getState().setSelectedNode(match.id);
   }
-  useUiStore.getState().setActiveModule('canvas')
+  useUiStore.getState().setActiveModule("canvas");
 }
 
 function formatShortDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
 function ForecastSection() {
-  const { forecasts, forecastsLoading, fetchForecasts } = useCostForecastStore()
-  const [initialLoad, setInitialLoad] = useState(true)
-  const envId = localStorage.getItem('cloudbuilder-active-environment') || 'default'
+  const { forecasts, forecastsLoading, fetchForecasts } =
+    useCostForecastStore();
+  const [initialLoad, setInitialLoad] = useState(true);
+  const envId =
+    localStorage.getItem("cloudbuilder-active-environment") || "default";
 
   useEffect(() => {
     if (forecasts.length === 0) {
-      fetchForecasts(envId).finally(() => setInitialLoad(false))
+      fetchForecasts(envId).finally(() => setInitialLoad(false));
     } else {
-      setInitialLoad(false)
+      setInitialLoad(false);
     }
-  }, [forecasts.length, fetchForecasts, envId])
+  }, [forecasts.length, fetchForecasts, envId]);
 
   if (forecastsLoading && initialLoad) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-3xl border border-slate-100 card-shadow p-4 text-center space-y-2">
+            <div
+              key={i}
+              className="bg-white rounded-3xl border border-slate-100 card-shadow p-4 text-center space-y-2"
+            >
               <Skeleton className="h-3 w-16 mx-auto" />
               <Skeleton className="h-6 w-24 mx-auto" />
             </div>
@@ -270,7 +337,7 @@ function ForecastSection() {
           <Skeleton className="h-[300px] w-full rounded-xl" />
         </div>
       </div>
-    )
+    );
   }
 
   if (forecasts.length === 0) {
@@ -278,58 +345,72 @@ function ForecastSection() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-brand-navy font-display">Previsão de Custos</h2>
-            <p className="text-sm text-slate-400">Estimativa de gastos para os próximos 30 dias</p>
+            <h2 className="text-lg font-bold text-brand-navy font-display">
+              Previsão de Custos
+            </h2>
+            <p className="text-sm text-slate-400">
+              Estimativa de gastos para os próximos 30 dias
+            </p>
           </div>
         </div>
         <div className="rounded-2xl bg-slate-50 border border-slate-100 p-12 text-center">
           <BarChart3 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <p className="text-sm font-medium text-slate-500">Nenhum dado de previsão disponível</p>
+          <p className="text-sm font-medium text-slate-500">
+            Nenhum dado de previsão disponível
+          </p>
           <p className="text-xs text-slate-400 mt-1">
             Os dados aparecerão aqui após alguns dias de coleta
           </p>
         </div>
       </div>
-    )
+    );
   }
 
-  const latest = forecasts[forecasts.length - 1]
-  const earliest = forecasts[0]
-  const totalProjected = forecasts.reduce((s, f) => s + f.predictedAmount, 0)
-  const trendPct = earliest.predictedAmount > 0
-    ? ((latest.predictedAmount - earliest.predictedAmount) / earliest.predictedAmount * 100).toFixed(1)
-    : '0.0'
-  const isUp = parseFloat(trendPct) >= 0
+  const latest = forecasts[forecasts.length - 1];
+  const earliest = forecasts[0];
+  const totalProjected = forecasts.reduce((s, f) => s + f.predictedAmount, 0);
+  const trendPct =
+    earliest.predictedAmount > 0
+      ? (
+          ((latest.predictedAmount - earliest.predictedAmount) /
+            earliest.predictedAmount) *
+          100
+        ).toFixed(1)
+      : "0.0";
+  const isUp = parseFloat(trendPct) >= 0;
 
   const chartData = forecasts.map((f) => ({
     date: formatShortDate(f.forecastDate),
     predicted: f.predictedAmount,
     lower: f.lowerBound,
     upper: f.upperBound,
-  }))
+  }));
 
   interface CustomTooltipProps {
-    active?: boolean
-    payload?: Array<{ name: string; value: number; color: string }>
-    label?: string
+    active?: boolean;
+    payload?: Array<{ name: string; value: number; color: string }>;
+    label?: string;
   }
 
   function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-    if (!active || !payload || payload.length === 0) return null
+    if (!active || !payload || payload.length === 0) return null;
     return (
       <div className="bg-white border border-slate-200 rounded-2xl shadow-xl p-4 space-y-1.5 text-sm">
         <p className="font-semibold text-brand-navy mb-1">{label}</p>
         {payload.map((entry, idx) => (
           <p key={idx} className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
             <span className="text-slate-500">{entry.name}:</span>
             <span className="font-semibold text-slate-700">
-              US$ {entry.value.toLocaleString('en-US')}
+              US$ {entry.value.toLocaleString("en-US")}
             </span>
           </p>
         ))}
       </div>
-    )
+    );
   }
 
   return (
@@ -337,28 +418,53 @@ function ForecastSection() {
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Projeção Atual</p>
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            Projeção Atual
+          </p>
           <p className="text-xl font-bold text-brand-navy">
-            US$ {latest.predictedAmount.toLocaleString('en-US')}
+            US$ {latest.predictedAmount.toLocaleString("en-US")}
           </p>
         </div>
         <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Total Projetado</p>
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            Total Projetado
+          </p>
           <p className="text-xl font-bold text-brand-navy">
-            US$ {totalProjected.toLocaleString('en-US')}
+            US$ {totalProjected.toLocaleString("en-US")}
           </p>
         </div>
         <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tendência</p>
-          <div className={cn('text-xl font-bold flex items-center justify-center gap-1', isUp ? 'text-red-600' : 'text-green-600')}>
-            {isUp ? '+' : ''}{trendPct}%
-            <TrendingUp className={cn('w-5 h-5', !isUp && 'rotate-180')} />
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            Tendência
+          </p>
+          <div
+            className={cn(
+              "text-xl font-bold flex items-center justify-center gap-1",
+              isUp ? "text-red-600" : "text-green-600",
+            )}
+          >
+            {isUp ? "+" : ""}
+            {trendPct}%
+            <TrendingUp className={cn("w-5 h-5", !isUp && "rotate-180")} />
           </div>
         </div>
         <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-4 text-center space-y-1">
-          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Variação Média</p>
+          <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            Variação Média
+          </p>
           <p className="text-xl font-bold text-brand-navy">
-            ±{((forecasts.reduce((s, f) => s + (f.upperBound - f.lowerBound), 0) / forecasts.length / 2) / latest.predictedAmount * 100).toFixed(1)}%
+            ±
+            {(
+              (forecasts.reduce(
+                (s, f) => s + (f.upperBound - f.lowerBound),
+                0,
+              ) /
+                forecasts.length /
+                2 /
+                latest.predictedAmount) *
+              100
+            ).toFixed(1)}
+            %
           </p>
         </div>
       </div>
@@ -367,37 +473,41 @@ function ForecastSection() {
       <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6">
         <div className="flex items-center gap-2 mb-6">
           <span className="w-2 h-2 rounded-full bg-brand-lime" />
-          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Previsão Diária</h2>
+          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            Previsão Diária
+          </h2>
         </div>
         <ResponsiveContainer width="100%" height={340}>
-          <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
+          >
             <defs>
               <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#0a1128" stopOpacity={0.15} />
                 <stop offset="95%" stopColor="#0a1128" stopOpacity={0.01} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e2e8f0"
+              vertical={false}
+            />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
               tickLine={false}
               axisLine={false}
               interval={4}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => `US$${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Area
-              type="monotone"
-              dataKey="upper"
-              stroke="none"
-              fill="none"
-            />
+            <Area type="monotone" dataKey="upper" stroke="none" fill="none" />
             <Area
               type="monotone"
               dataKey="lower"
@@ -411,7 +521,7 @@ function ForecastSection() {
               strokeWidth={2.5}
               fill="none"
               dot={false}
-              activeDot={{ r: 5, fill: '#0a1128' }}
+              activeDot={{ r: 5, fill: "#0a1128" }}
             />
             <Line
               type="monotone"
@@ -441,8 +551,13 @@ function ForecastSection() {
             <span className="text-xs text-slate-500">Previsão</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-0.5 bg-brand-navy/30" style={{ borderTop: '2px dashed rgba(10,17,40,0.3)' }} />
-            <span className="text-xs text-slate-500">Intervalo de Confiança</span>
+            <div
+              className="w-6 h-0.5 bg-brand-navy/30"
+              style={{ borderTop: "2px dashed rgba(10,17,40,0.3)" }}
+            />
+            <span className="text-xs text-slate-500">
+              Intervalo de Confiança
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-3 bg-brand-navy/15 rounded" />
@@ -451,7 +566,7 @@ function ForecastSection() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function ConfirmationModal({
@@ -459,16 +574,21 @@ function ConfirmationModal({
   onConfirm,
   onClose,
 }: {
-  opt: OptimizationSuggestion
-  onConfirm: () => void
-  onClose: () => void
+  opt: OptimizationSuggestion;
+  onConfirm: () => void;
+  onClose: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-5 shadow-2xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-brand-navy font-display">Confirmar Otimização</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 transition-colors">
+          <h3 className="text-lg font-bold text-brand-navy font-display">
+            Confirmar Otimização
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-slate-100 transition-colors"
+          >
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
@@ -477,12 +597,21 @@ function ConfirmationModal({
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
             <Server className="w-5 h-5 text-brand-navy shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-brand-navy">{opt.resourceName}</p>
+              <p className="text-sm font-semibold text-brand-navy">
+                {opt.resourceName}
+              </p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', providerConfig[opt.provider].badge)}>
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                    providerConfig[opt.provider].badge,
+                  )}
+                >
                   {providerConfig[opt.provider].label}
                 </span>
-                <span className="text-xs text-slate-400">{opt.resourceType}</span>
+                <span className="text-xs text-slate-400">
+                  {opt.resourceType}
+                </span>
               </div>
             </div>
           </div>
@@ -494,18 +623,30 @@ function ConfirmationModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-2xl bg-red-50 border border-red-100 p-4 text-center">
-              <p className="text-xs text-red-600 font-medium mb-1">Custo Atual</p>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(opt.currentCost)}</p>
+              <p className="text-xs text-red-600 font-medium mb-1">
+                Custo Atual
+              </p>
+              <p className="text-xl font-bold text-red-600">
+                {formatCurrency(opt.currentCost)}
+              </p>
             </div>
             <div className="rounded-2xl bg-green-50 border border-green-100 p-4 text-center">
-              <p className="text-xs text-green-600 font-medium mb-1">Custo Otimizado</p>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(opt.estimatedCost)}</p>
+              <p className="text-xs text-green-600 font-medium mb-1">
+                Custo Otimizado
+              </p>
+              <p className="text-xl font-bold text-green-600">
+                {formatCurrency(opt.estimatedCost)}
+              </p>
             </div>
           </div>
 
           <div className="rounded-2xl bg-brand-navy p-4 text-center">
-            <p className="text-xs text-white/70 font-medium mb-1">Economia Mensal</p>
-            <p className="text-2xl font-bold text-brand-lime">{formatSavings(opt.savings)}</p>
+            <p className="text-xs text-white/70 font-medium mb-1">
+              Economia Mensal
+            </p>
+            <p className="text-2xl font-bold text-brand-lime">
+              {formatSavings(opt.savings)}
+            </p>
             <p className="text-xs text-white/50 mt-1">
               {opt.savingsPercent}% de redução
             </p>
@@ -519,7 +660,7 @@ function ConfirmationModal({
           >
             Cancelar
           </button>
-          <ProtectedAction roles={['admin', 'editor']}>
+          <ProtectedAction roles={["admin", "editor"]}>
             <button
               onClick={onConfirm}
               className="flex-1 py-2.5 px-4 rounded-xl bg-brand-navy text-sm font-bold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
@@ -531,32 +672,32 @@ function ConfirmationModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function OptimizationCard({
   opt,
   onOptimize,
 }: {
-  opt: OptimizationSuggestion
-  onOptimize: (id: string) => void
+  opt: OptimizationSuggestion;
+  onOptimize: (id: string) => void;
 }) {
-  const pctWidth = Math.min((opt.savings / opt.currentCost) * 100, 100)
+  const pctWidth = Math.min((opt.savings / opt.currentCost) * 100, 100);
 
   return (
     <div
       className={cn(
-        'rounded-2xl border p-4 transition-all',
+        "rounded-2xl border p-4 transition-all",
         opt.applied
-          ? 'border-green-200 bg-green-50/50'
-          : 'border-slate-100 bg-white card-shadow hover:shadow-md'
+          ? "border-green-200 bg-green-50/50"
+          : "border-slate-100 bg-white card-shadow hover:shadow-md",
       )}
     >
       <div className="flex items-start gap-4">
         <div
           className={cn(
-            'rounded-xl p-2.5 shrink-0',
-            opt.applied ? 'bg-green-100' : 'bg-ice-blue'
+            "rounded-xl p-2.5 shrink-0",
+            opt.applied ? "bg-green-100" : "bg-ice-blue",
           )}
         >
           {opt.applied ? (
@@ -570,27 +711,45 @@ function OptimizationCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-brand-navy">{opt.resourceName}</p>
-                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', providerConfig[opt.provider].badge)}>
+                <p className="text-sm font-semibold text-brand-navy">
+                  {opt.resourceName}
+                </p>
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                    providerConfig[opt.provider].badge,
+                  )}
+                >
                   {providerConfig[opt.provider].label}
                 </span>
-                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', severityConfig[opt.severity].class)}>
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                    severityConfig[opt.severity].class,
+                  )}
+                >
                   {severityConfig[opt.severity].label}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">{opt.resourceType} · {opt.suggestion}</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {opt.resourceType} · {opt.suggestion}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-4 text-sm">
             <div>
               <span className="text-slate-400">Atual: </span>
-              <span className="font-semibold text-slate-700">{formatCurrency(opt.currentCost)}</span>
+              <span className="font-semibold text-slate-700">
+                {formatCurrency(opt.currentCost)}
+              </span>
             </div>
             <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
             <div>
               <span className="text-slate-400">Otimizado: </span>
-              <span className="font-semibold text-green-600">{formatCurrency(opt.estimatedCost)}</span>
+              <span className="font-semibold text-green-600">
+                {formatCurrency(opt.estimatedCost)}
+              </span>
             </div>
             <div className="ml-auto flex items-center gap-2">
               <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-lg">
@@ -617,46 +776,59 @@ function OptimizationCard({
               Ir para Design
             </button>
           ) : (
-          <ProtectedAction roles={['admin', 'editor']}>
-            <button
-              onClick={() => onOptimize(opt.id)}
-              className="py-2 px-4 rounded-xl bg-brand-navy text-xs font-bold text-white hover:opacity-90 transition-opacity"
-            >
-              Otimizar
-            </button>
-          </ProtectedAction>
+            <ProtectedAction roles={["admin", "editor"]}>
+              <button
+                onClick={() => onOptimize(opt.id)}
+                className="py-2 px-4 rounded-xl bg-brand-navy text-xs font-bold text-white hover:opacity-90 transition-opacity"
+              >
+                Otimizar
+              </button>
+            </ProtectedAction>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function OverviewContent() {
-  const { costHistory, costSummary, optimizations, applyOptimization, loading } = useCostStore()
-  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const {
+    costHistory,
+    costSummary,
+    optimizations,
+    applyOptimization,
+    loading,
+  } = useCostStore();
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const confirmingOpt = confirmingId
-    ? optimizations.find((o) => o.id === confirmingId) ?? null
-    : null
+    ? (optimizations.find((o) => o.id === confirmingId) ?? null)
+    : null;
 
-  const pendingCount = optimizations.filter((o) => !o.applied).length
+  const pendingCount = optimizations.filter((o) => !o.applied).length;
   const totalSavings = optimizations
     .filter((o) => !o.applied)
-    .reduce((s, o) => s + o.savings, 0)
+    .reduce((s, o) => s + o.savings, 0);
 
-  const maxHistory = Math.max(...costHistory.map((m) => m.total))
-  const latestTotal = costHistory[costHistory.length - 1].total
-  const prevTotal = costHistory[costHistory.length - 2]?.total ?? latestTotal
-  const changePct = ((latestTotal - prevTotal) / prevTotal * 100).toFixed(1)
-  const isUp = parseFloat(changePct) >= 0
+  const maxHistory = Math.max(1, ...costHistory.map((m) => m.total));
+  const latestTotal =
+    costHistory[costHistory.length - 1]?.total ?? costSummary.totalMonthly ?? 0;
+  const prevTotal = costHistory[costHistory.length - 2]?.total ?? latestTotal;
+  const changePct =
+    prevTotal === 0
+      ? "0.0"
+      : (((latestTotal - prevTotal) / prevTotal) * 100).toFixed(1);
+  const isUp = parseFloat(changePct) >= 0;
 
-  const providerTotal = Object.values(costSummary.byProvider).reduce((a, b) => a + b, 0)
+  const providerTotal = Object.values(costSummary.byProvider).reduce(
+    (a, b) => a + b,
+    0,
+  );
 
   function handleConfirm() {
     if (confirmingId) {
-      applyOptimization(confirmingId)
-      setConfirmingId(null)
+      applyOptimization(confirmingId);
+      setConfirmingId(null);
     }
   }
 
@@ -664,8 +836,16 @@ function OverviewContent() {
     <>
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <Card title="Custo Mensal" value={formatCurrency(costSummary.totalMonthly)} icon={DollarSign} />
-        <Card title="Economia Potencial" value={formatSavings(totalSavings)} icon={Wallet} />
+        <Card
+          title="Custo Mensal"
+          value={formatCurrency(costSummary.totalMonthly)}
+          icon={DollarSign}
+        />
+        <Card
+          title="Economia Potencial"
+          value={formatSavings(totalSavings)}
+          icon={Wallet}
+        />
         <Card
           title="Otimizações"
           value={`${pendingCount} disponíveis`}
@@ -673,7 +853,7 @@ function OverviewContent() {
         />
         <Card
           title="vs Mês Anterior"
-          value={`${isUp ? '+' : ''}${changePct}%`}
+          value={`${isUp ? "+" : ""}${changePct}%`}
           icon={isUp ? TrendingUp : TrendingDown}
         />
       </div>
@@ -683,34 +863,43 @@ function OverviewContent() {
         <div className="col-span-2 bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-brand-lime" />
-            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Tendência Mensal</h2>
+            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+              Tendência Mensal
+            </h2>
           </div>
           <div className="flex items-end gap-3 h-44 pt-2">
             {costHistory.map((m, i) => {
-              const pct = (m.total / maxHistory) * 100
-              const isCurrent = i === costHistory.length - 1
+              const pct = (m.total / maxHistory) * 100;
+              const isCurrent = i === costHistory.length - 1;
               return (
-                <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                <div
+                  key={m.month}
+                  className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end"
+                >
                   <span className="text-[10px] font-semibold text-slate-500">
                     {formatCurrency(m.total)}
                   </span>
                   <div
                     className={cn(
-                      'w-full rounded-t-lg transition-all duration-300',
-                      isCurrent ? 'bg-brand-navy' : 'bg-slate-200 hover:bg-slate-300'
+                      "w-full rounded-t-lg transition-all duration-300",
+                      isCurrent
+                        ? "bg-brand-navy"
+                        : "bg-slate-200 hover:bg-slate-300",
                     )}
-                    style={{ height: `${pct}%`, minHeight: '8px' }}
+                    style={{ height: `${pct}%`, minHeight: "8px" }}
                   />
                   <span
                     className={cn(
-                      'text-xs font-medium',
-                      isCurrent ? 'text-brand-navy font-bold' : 'text-slate-400'
+                      "text-xs font-medium",
+                      isCurrent
+                        ? "text-brand-navy font-bold"
+                        : "text-slate-400",
                     )}
                   >
                     {m.month}
                   </span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -718,11 +907,15 @@ function OverviewContent() {
         <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-brand-lime" />
-            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Por Provedor</h2>
+            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+              Por Provedor
+            </h2>
           </div>
 
           <div className="flex h-3 rounded-full overflow-hidden">
-            {(Object.entries(costSummary.byProvider) as [ProviderType, number][]).map(([provider, value]) => (
+            {(
+              Object.entries(costSummary.byProvider) as [ProviderType, number][]
+            ).map(([provider, value]) => (
               <div
                 key={provider}
                 className={providerConfig[provider].barColor}
@@ -732,23 +925,37 @@ function OverviewContent() {
           </div>
 
           <div className="space-y-3 pt-1">
-            {(Object.entries(costSummary.byProvider) as [ProviderType, number][]).map(([provider, value]) => {
-              const pct = ((value / providerTotal) * 100).toFixed(0)
+            {(
+              Object.entries(costSummary.byProvider) as [ProviderType, number][]
+            ).map(([provider, value]) => {
+              const pct = ((value / providerTotal) * 100).toFixed(0);
               return (
                 <div key={provider} className="flex items-center gap-3">
-                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium min-w-[52px] text-center', providerConfig[provider].badge)}>
+                  <span
+                    className={cn(
+                      "text-xs px-2 py-0.5 rounded-full font-medium min-w-[52px] text-center",
+                      providerConfig[provider].badge,
+                    )}
+                  >
                     {providerConfig[provider].label}
                   </span>
                   <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className={cn('h-full rounded-full', providerConfig[provider].barColor)}
+                      className={cn(
+                        "h-full rounded-full",
+                        providerConfig[provider].barColor,
+                      )}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-xs font-semibold text-slate-600 w-16 text-right">{formatCurrency(value)}</span>
-                  <span className="text-xs text-slate-400 w-10 text-right">{pct}%</span>
+                  <span className="text-xs font-semibold text-slate-600 w-16 text-right">
+                    {formatCurrency(value)}
+                  </span>
+                  <span className="text-xs text-slate-400 w-10 text-right">
+                    {pct}%
+                  </span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -758,24 +965,38 @@ function OverviewContent() {
       <div className="bg-white rounded-3xl card-shadow border border-slate-100 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-brand-lime" />
-          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Custos por Serviço</h2>
+          <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+            Custos por Serviço
+          </h2>
         </div>
         <div className="grid grid-cols-5 gap-4">
-          {(Object.entries(costSummary.byService) as [string, number][]).map(([key, value]) => {
-            const config = serviceConfig[key] ?? { label: key, icon: Package }
-            const Icon = config.icon
-            const pct = ((value / costSummary.totalMonthly) * 100).toFixed(0)
-            return (
-              <div key={key} className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center space-y-2">
-                <div className="inline-flex p-2.5 rounded-xl bg-white card-shadow">
-                  <Icon className="w-5 h-5 text-brand-navy" />
+          {(Object.entries(costSummary.byService) as [string, number][]).map(
+            ([key, value]) => {
+              const config = serviceConfig[key] ?? {
+                label: key,
+                icon: Package,
+              };
+              const Icon = config.icon;
+              const pct = ((value / costSummary.totalMonthly) * 100).toFixed(0);
+              return (
+                <div
+                  key={key}
+                  className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center space-y-2"
+                >
+                  <div className="inline-flex p-2.5 rounded-xl bg-white card-shadow">
+                    <Icon className="w-5 h-5 text-brand-navy" />
+                  </div>
+                  <p className="text-xs font-medium text-slate-500">
+                    {config.label}
+                  </p>
+                  <p className="text-lg font-bold text-brand-navy">
+                    {formatCurrency(value)}
+                  </p>
+                  <p className="text-[10px] text-slate-400">{pct}% do total</p>
                 </div>
-                <p className="text-xs font-medium text-slate-500">{config.label}</p>
-                <p className="text-lg font-bold text-brand-navy">{formatCurrency(value)}</p>
-                <p className="text-[10px] text-slate-400">{pct}% do total</p>
-              </div>
-            )
-          })}
+              );
+            },
+          )}
         </div>
       </div>
 
@@ -784,19 +1005,23 @@ function OverviewContent() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-brand-lime" />
-            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">Otimizações Disponíveis</h2>
+            <h2 className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+              Otimizações Disponíveis
+            </h2>
           </div>
           <Badge variant="outline" className="text-xs">
             {totalSavings > 0
               ? `${formatSavings(totalSavings)} em economia potencial`
-              : 'Nenhuma pendente'}
+              : "Nenhuma pendente"}
           </Badge>
         </div>
 
         {optimizations.length === 0 ? (
           <div className="py-12 text-center text-slate-400">
             <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-green-400" />
-            <p className="text-sm font-medium">Todas as otimizações foram aplicadas</p>
+            <p className="text-sm font-medium">
+              Todas as otimizações foram aplicadas
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -819,38 +1044,55 @@ function OverviewContent() {
         />
       )}
     </>
-  )
+  );
 }
 
 export function CostModule() {
-  const { loading } = useCostStore()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [initialLoad, setInitialLoad] = useState(true)
-  const { fetchCostData } = useCostStore()
+  const { loading } = useCostStore();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [initialLoad, setInitialLoad] = useState(true);
+  const { fetchCostData } = useCostStore();
 
   useEffect(() => {
-    fetchCostData().finally(() => setInitialLoad(false))
-  }, [fetchCostData])
+    fetchCostData().finally(() => setInitialLoad(false));
+  }, [fetchCostData]);
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-brand-navy font-display">Custos e Otimizações</h1>
-            <p className="text-sm text-slate-400">Monitore gastos e aplique otimizações nos recursos</p>
+            <h1 className="text-2xl font-bold text-brand-navy font-display">
+              Custos e Otimizações
+            </h1>
+            <p className="text-sm text-slate-400">
+              Monitore gastos e aplique otimizações nos recursos
+            </p>
           </div>
         </div>
-        <div className={cn(
-          "flex items-center gap-2 text-xs rounded-xl px-4 py-2 border transition-colors",
-          loading ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-slate-50 text-slate-400 border-slate-100"
-        )}>
-          <div className={cn("w-2 h-2 rounded-full", loading ? "bg-amber-500 animate-pulse" : "bg-green-500")} />
-          {loading ? 'Atualizando dados...' : 'Dados conectados à API'}
+        <div
+          className={cn(
+            "flex items-center gap-2 text-xs rounded-xl px-4 py-2 border transition-colors",
+            loading
+              ? "bg-amber-50 text-amber-600 border-amber-200"
+              : "bg-slate-50 text-slate-400 border-slate-100",
+          )}
+        >
+          <div
+            className={cn(
+              "w-2 h-2 rounded-full",
+              loading ? "bg-amber-500 animate-pulse" : "bg-green-500",
+            )}
+          />
+          {loading ? "Atualizando dados..." : "Dados conectados à API"}
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="bg-slate-100">
           <TabsTrigger value="overview" className="gap-2">
             <PieChart className="h-4 w-4" />
@@ -878,8 +1120,11 @@ export function CostModule() {
           {loading && initialLoad ? (
             <div className="space-y-6">
               <div className="grid grid-cols-4 gap-4">
-                {[1,2,3,4].map((i) => (
-                  <div key={i} className="rounded-3xl bg-white border border-slate-100 card-shadow p-5 space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="rounded-3xl bg-white border border-slate-100 card-shadow p-5 space-y-3"
+                  >
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-8 w-32" />
                   </div>
@@ -889,7 +1134,7 @@ export function CostModule() {
                 <div className="col-span-2 rounded-3xl bg-white border border-slate-100 card-shadow p-6">
                   <Skeleton className="h-4 w-32 mb-6" />
                   <div className="flex items-end gap-3 h-44">
-                    {[1,2,3,4,5,6].map((i) => (
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
                       <Skeleton key={i} className="flex-1 h-24 rounded-t-lg" />
                     ))}
                   </div>
@@ -897,7 +1142,7 @@ export function CostModule() {
                 <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
                   <Skeleton className="h-4 w-24 mb-6" />
                   <Skeleton className="h-3 w-full mb-4" />
-                  {[1,2,3].map((i) => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center gap-3 mb-3">
                       <Skeleton className="h-5 w-12 rounded-full" />
                       <Skeleton className="flex-1 h-2" />
@@ -909,8 +1154,11 @@ export function CostModule() {
               <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
                 <Skeleton className="h-4 w-32 mb-6" />
                 <div className="grid grid-cols-5 gap-4">
-                  {[1,2,3,4,5].map((i) => (
-                    <div key={i} className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center space-y-2"
+                    >
                       <Skeleton className="h-10 w-10 rounded-xl mx-auto" />
                       <Skeleton className="h-3 w-16 mx-auto" />
                       <Skeleton className="h-6 w-20 mx-auto" />
@@ -921,8 +1169,11 @@ export function CostModule() {
               <div className="rounded-3xl bg-white border border-slate-100 card-shadow p-6">
                 <Skeleton className="h-4 w-40 mb-6" />
                 <div className="space-y-3">
-                  {[1,2,3].map((i) => (
-                    <div key={i} className="rounded-2xl border border-slate-100 p-4">
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl border border-slate-100 p-4"
+                    >
                       <div className="flex items-center gap-4">
                         <Skeleton className="h-10 w-10 rounded-xl" />
                         <div className="flex-1 space-y-2">
@@ -963,5 +1214,5 @@ export function CostModule() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

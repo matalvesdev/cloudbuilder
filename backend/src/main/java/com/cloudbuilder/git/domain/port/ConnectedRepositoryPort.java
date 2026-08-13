@@ -10,6 +10,8 @@ public interface ConnectedRepositoryPort {
 
     Optional<ConnectedRepository> findById(String id);
 
+    Optional<ConnectedRepository> findByFullName(String fullName);
+
     List<ConnectedRepository> findAll();
 
     void deleteById(String id);

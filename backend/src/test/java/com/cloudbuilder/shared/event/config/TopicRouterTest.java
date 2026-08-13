@@ -11,20 +11,7 @@ class TopicRouterTest {
 
     @BeforeEach
     void setUp() {
-        router = new TopicRouter(
-            "cost.events",
-            "deployment.events",
-            "observability.events",
-            "ai.events",
-            "canvas.events",
-            "provisioning.events",
-            "security.events",
-            "identity.events",
-            "audit.events",
-            "policy.events",
-            "notification.events",
-            "system.events"
-        );
+        router = new TopicRouter();
     }
 
     @Test
@@ -33,38 +20,23 @@ class TopicRouterTest {
     }
 
     @Test
-    void resolveTopic_CostOptimization() {
-        assertEquals("cost.events", router.resolveTopic("cost.optimization.applied"));
-    }
-
-    @Test
     void resolveTopic_DeploymentStarted() {
         assertEquals("deployment.events", router.resolveTopic("deployment.started"));
     }
 
     @Test
-    void resolveTopic_DeploymentCompleted() {
-        assertEquals("deployment.events", router.resolveTopic("deployment.completed"));
-    }
-
-    @Test
     void resolveTopic_DriftDetected() {
-        assertEquals("observability.events", router.resolveTopic("drift.detected"));
+        assertEquals("drift.events", router.resolveTopic("drift.detected"));
     }
 
     @Test
     void resolveTopic_HealthCheck() {
-        assertEquals("observability.events", router.resolveTopic("health.check"));
+        assertEquals("health.events", router.resolveTopic("health.check"));
     }
 
     @Test
     void resolveTopic_IncidentCreated() {
-        assertEquals("ai.events", router.resolveTopic("incident.created"));
-    }
-
-    @Test
-    void resolveTopic_AiopsAnalysis() {
-        assertEquals("ai.events", router.resolveTopic("aiops.analysis.complete"));
+        assertEquals("incident.events", router.resolveTopic("incident.created"));
     }
 
     @Test
@@ -73,28 +45,8 @@ class TopicRouterTest {
     }
 
     @Test
-    void resolveTopic_TerraformPlan() {
-        assertEquals("canvas.events", router.resolveTopic("terraform.plan.complete"));
-    }
-
-    @Test
-    void resolveTopic_SecurityScan() {
-        assertEquals("security.events", router.resolveTopic("security.scan.complete"));
-    }
-
-    @Test
-    void resolveTopic_IdentityUserCreated() {
-        assertEquals("identity.events", router.resolveTopic("user.created"));
-    }
-
-    @Test
     void resolveTopic_AuditLogged() {
         assertEquals("audit.events", router.resolveTopic("audit.event.logged"));
-    }
-
-    @Test
-    void resolveTopic_PolicyViolation() {
-        assertEquals("policy.events", router.resolveTopic("policy.violation.detected"));
     }
 
     @Test
@@ -103,22 +55,44 @@ class TopicRouterTest {
     }
 
     @Test
+    void resolveTopic_CredentialEvent() {
+        assertEquals("credential.events", router.resolveTopic("credential.updated"));
+    }
+
+    @Test
+    void resolveTopic_ProvisionEvent() {
+        assertEquals("provision.events", router.resolveTopic("provision.started"));
+    }
+
+    @Test
     void resolveTopic_NullEventType() {
-        assertEquals("system.events", router.resolveTopic(null));
+        assertEquals("platform.events", router.resolveTopic((String) null));
     }
 
     @Test
     void resolveTopic_BlankEventType() {
-        assertEquals("system.events", router.resolveTopic(""));
+        assertEquals("platform.events", router.resolveTopic(""));
     }
 
     @Test
     void resolveTopic_UnknownPrefix() {
-        assertEquals("system.events", router.resolveTopic("unknown.event"));
+        assertEquals("platform.events", router.resolveTopic("unknown.event"));
     }
 
     @Test
     void resolveTopic_SingleSegmentEventType() {
-        assertEquals("cost.events", router.resolveTopic("cost"));
+        // "cost" does not start with "cost.", so it falls through to default
+        assertEquals("platform.events", router.resolveTopic("cost"));
+    }
+
+    @Test
+    void resolveTopic_EventObject() {
+        // Test the PlatformEvent overload
+        var event = new com.cloudbuilder.shared.event.PlatformEvent() {
+            @Override public String getEventType() { return "cost.anomaly"; }
+            @Override public String getTenantId() { return "t1"; }
+            @Override public java.time.Instant getTimestamp() { return java.time.Instant.now(); }
+        };
+        assertEquals("cost.events", router.resolveTopic(event));
     }
 }

@@ -1,30 +1,30 @@
-import { api } from './client'
+import { api } from "./client";
 
 export interface KnowledgeGraphNode {
-  id: string
-  label: string
-  type: string
-  metadata: Record<string, string>
+  id: string;
+  label: string;
+  type: string;
+  metadata: Record<string, string>;
 }
 
 export interface KnowledgeGraphEdge {
-  sourceId: string
-  targetId: string
-  relationship: string
-  metadata: Record<string, string>
+  sourceId: string;
+  targetId: string;
+  relationship: string;
+  metadata: Record<string, string>;
 }
 
 export interface KnowledgeGraphData {
-  nodes: KnowledgeGraphNode[]
-  edges: KnowledgeGraphEdge[]
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
 }
 
 export interface ImpactAnalysis {
-  nodeId: string
-  directDependents: string[]
-  directDependencies: string[]
-  transitiveImpact: string[]
-  impactCount: number
+  nodeId: string;
+  directDependents: string[];
+  directDependencies: string[];
+  transitiveImpact: string[];
+  impactCount: number;
 }
 
 export const knowledgeGraphApi = {
@@ -36,4 +36,4 @@ export const knowledgeGraphApi = {
 
   analyzeImpact: (canvasId: string, nodeId: string): Promise<ImpactAnalysis> =>
     api.get(`/canvases/${canvasId}/knowledge-graph/impact/${nodeId}`),
-}
+};

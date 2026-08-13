@@ -2,6 +2,7 @@ package com.cloudbuilder.shared.event.domain;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * DlqEvent: Dead Letter Queue for failed event processing.
@@ -9,43 +10,43 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "dlq_events", indexes = {
-    @Index(name = "idx_dlq_topic", columnList = "topic"),
-    @Index(name = "idx_dlq_created", columnList = "createdAt")
+    @Index(name = "idx_dlq_events_topic", columnList = "original_topic"),
+    @Index(name = "idx_dlq_events_failed", columnList = "failed_at")
 })
 public class DlqEvent {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @Column(name = "event_id")
     private String eventId;
 
-    @Column(name = "topic", nullable = false)
+    @Column(name = "original_topic", nullable = false)
     private String topic;
 
-    @Column(name = "partition")
+    @Column(name = "original_partition", nullable = false)
     private int partition;
 
-    @Column(name = "offset_val")
+    @Column(name = "original_offset", nullable = false)
     private long offsetVal;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
 
-    @Column(name = "error_message", columnDefinition = "TEXT")
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
     private String errorMessage;
 
     @Column(name = "retry_count")
     private int retryCount;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "failed_at", nullable = false)
     private Instant createdAt;
 
     protected DlqEvent() {}
 
     public DlqEvent(String eventId, String topic, int partition, long offsetVal,
                     String payload, String errorMessage, int retryCount) {
+        this.id = UUID.randomUUID().toString();
         this.eventId = eventId;
         this.topic = topic;
         this.partition = partition;
@@ -56,7 +57,7 @@ public class DlqEvent {
         this.createdAt = Instant.now();
     }
 
-    public Long getId() { return id; }
+    public String getId() { return id; }
     public String getEventId() { return eventId; }
     public String getTopic() { return topic; }
     public int getPartition() { return partition; }

@@ -1,6 +1,7 @@
 package com.cloudbuilder.design.domain.model;
 
 import com.cloudbuilder.shared.kernel.AggregateRoot;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,9 +28,11 @@ public class Canvas extends AggregateRoot {
     @Column(name = "created_by", nullable = false)
     private String createdBy;
 
+    @JsonManagedReference("canvas-nodes")
     @OneToMany(mappedBy = "canvas", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CanvasNode> canvasNodes = new ArrayList<>();
 
+    @JsonManagedReference("canvas-edges")
     @OneToMany(mappedBy = "canvas", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CanvasEdge> canvasEdges = new ArrayList<>();
 

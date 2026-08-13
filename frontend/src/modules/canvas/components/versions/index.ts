@@ -1,2 +1,2 @@
-export { VersionHistoryPanel } from './VersionHistoryPanel'
-export { VersionDiffView } from './VersionDiffView'
+export { VersionHistoryPanel } from "./VersionHistoryPanel";
+export { VersionDiffView } from "./VersionDiffView";

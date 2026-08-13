@@ -1,5 +1,14 @@
-export type ProviderType = 'aws' | 'azure' | 'gcp' | 'k8s' | 'vercel' | 'supabase' | 'render';
-export type ComponentCategory = 'compute' | 'network' | 'storage' | 'database' | 'security' | 'serverless' | 'monitoring' | 'integration';
+export type ProviderType =
+  "aws" | "azure" | "gcp" | "k8s" | "vercel" | "supabase" | "render";
+export type ComponentCategory =
+  | "compute"
+  | "network"
+  | "storage"
+  | "database"
+  | "security"
+  | "serverless"
+  | "monitoring"
+  | "integration";
 
 export interface ComponentDefinition {
   id: string;
@@ -18,7 +27,7 @@ export interface CanvasNodeData {
   provider: ProviderType;
   resourceType: string;
   properties: Record<string, any>;
-  validationStatus: 'VALID' | 'INVALID' | 'PENDING' | 'WARNING';
+  validationStatus: "VALID" | "INVALID" | "PENDING" | "WARNING";
   [key: string]: any;
 }
 

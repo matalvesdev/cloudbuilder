@@ -1,19 +1,57 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { featureFlagsApi, type FeatureFlagDTO } from '@/api/featureFlags'
-import { getToken } from '@/api/client'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { featureFlagsApi, type FeatureFlagDTO } from "@/api/featureFlags";
+import { getToken } from "@/api/client";
 
-type ModuleId = 'canvas' | 'provisioning' | 'observability' | 'finops' | 'platform' | 'ai' | 'security' | 'dashboard' | 'docs' | 'settings' | 'workspace' | 'projects' | 'notifications' | 'billing' | 'multiregion' | 'sso';
-type PanelTab = 'palette' | 'properties' | 'validation';
-export type SettingsTab = 'credentials' | 'environments' | 'repositories' | 'multitenant' | 'profile' | 'system' | 'organization' | 'workspaces' | 'teams' | 'members' | 'permissions' | 'git-providers' | 'integrations' | 'security' | 'billing' | 'notifications' | 'audit' | 'api-tokens' | 'ssh-keys' | 'ai-settings';
+type ModuleId =
+  | "canvas"
+  | "provisioning"
+  | "observability"
+  | "finops"
+  | "platform"
+  | "ai"
+  | "security"
+  | "dashboard"
+  | "docs"
+  | "settings"
+  | "flags"
+  | "workspace"
+  | "projects"
+  | "notifications"
+  | "billing"
+  | "multiregion"
+  | "sso"
+  | "blog";
+type PanelTab = "palette" | "properties" | "validation";
+export type SettingsTab =
+  | "credentials"
+  | "environments"
+  | "repositories"
+  | "multitenant"
+  | "profile"
+  | "system"
+  | "organization"
+  | "workspaces"
+  | "teams"
+  | "members"
+  | "permissions"
+  | "git-providers"
+  | "integrations"
+  | "security"
+  | "billing"
+  | "notifications"
+  | "audit"
+  | "api-tokens"
+  | "ssh-keys"
+  | "ai-settings";
 
 // Map module IDs to their feature flag keys
 const moduleFlagMap: Record<string, string> = {
-  finops: 'module.cost',
-  platform: 'module.platform',
-  ai: 'module.aiops',
-  security: 'module.audit',
-}
+  finops: "module.cost",
+  platform: "module.platform",
+  ai: "module.aiops",
+  security: "module.audit",
+};
 
 interface UiState {
   sidebarOpen: boolean;
@@ -48,16 +86,19 @@ export const useUiStore = create<UiState>()(
       validationPanelOpen: false,
       showVersionPanel: false,
       searchOpen: false,
-      activeTab: 'palette',
-      activeModule: 'canvas',
-      settingsTab: 'credentials',
+      activeTab: "palette",
+      activeModule: "canvas",
+      settingsTab: "credentials",
       featureFlags: {},
       flagsLoaded: false,
       flagsLoading: false,
 
-      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-      togglePropertiesPanel: () => set((state) => ({ propertiesPanelOpen: !state.propertiesPanelOpen })),
-      toggleVersionPanel: () => set((state) => ({ showVersionPanel: !state.showVersionPanel })),
+      toggleSidebar: () =>
+        set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      togglePropertiesPanel: () =>
+        set((state) => ({ propertiesPanelOpen: !state.propertiesPanelOpen })),
+      toggleVersionPanel: () =>
+        set((state) => ({ showVersionPanel: !state.showVersionPanel })),
       toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
       setSearchOpen: (open) => set({ searchOpen: open }),
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -65,56 +106,65 @@ export const useUiStore = create<UiState>()(
       setSettingsTab: (tab) => set({ settingsTab: tab }),
 
       fetchFlags: async () => {
-        const token = getToken()
-        if (!token) return
-        set({ flagsLoading: true })
+        const token = getToken();
+        if (!token) return;
+        set({ flagsLoading: true });
         try {
-          const flags = await featureFlagsApi.listFlags()
-          const flagMap: Record<string, FeatureFlagDTO> = {}
+          const flags = await featureFlagsApi.listFlags();
+          const flagMap: Record<string, FeatureFlagDTO> = {};
           for (const flag of flags) {
-            flagMap[flag.flagKey] = flag
+            flagMap[flag.flagKey] = flag;
           }
-          set({ featureFlags: flagMap, flagsLoaded: true, flagsLoading: false })
+          set({
+            featureFlags: flagMap,
+            flagsLoaded: true,
+            flagsLoading: false,
+          });
         } catch {
-          set({ flagsLoading: false })
+          set({ flagsLoading: false });
         }
       },
 
       refreshFlags: async () => {
         try {
-          await featureFlagsApi.refreshCache()
-          await get().fetchFlags()
+          await featureFlagsApi.refreshCache();
+          await get().fetchFlags();
         } catch {
           // Silently fail on refresh — stale cache is acceptable
         }
       },
 
       isEnabled: (flagKey: string): boolean => {
-        const flags = get().featureFlags
+        const flags = get().featureFlags;
         // Use hasOwnProperty to avoid prototype pollution (e.g. "constructor", "toString")
-        const flag = Object.prototype.hasOwnProperty.call(flags, flagKey) ? flags[flagKey] : undefined
+        const flag = Object.prototype.hasOwnProperty.call(flags, flagKey)
+          ? flags[flagKey]
+          : undefined;
         // Check module-level flag if this is a module key
-        const moduleFlagKey = moduleFlagMap[flagKey]
-        const moduleFlag = flag ?? (moduleFlagKey && Object.prototype.hasOwnProperty.call(flags, moduleFlagKey)
-          ? flags[moduleFlagKey]
-          : undefined)
+        const moduleFlagKey = moduleFlagMap[flagKey];
+        const moduleFlag =
+          flag ??
+          (moduleFlagKey &&
+          Object.prototype.hasOwnProperty.call(flags, moduleFlagKey)
+            ? flags[moduleFlagKey]
+            : undefined);
         if (moduleFlag !== undefined) {
-          return moduleFlag.enabled
+          return moduleFlag.enabled;
         }
         // Default to true for all known modules
-        if (flagKey.startsWith('module.')) {
-          return true
+        if (flagKey.startsWith("module.")) {
+          return true;
         }
-        return false
+        return false;
       },
     }),
     {
-      name: 'cloudbuilder-ui-storage',
+      name: "cloudbuilder-ui-storage",
       partialize: (state) => ({
         activeModule: state.activeModule,
         sidebarOpen: state.sidebarOpen,
         propertiesPanelOpen: state.propertiesPanelOpen,
       }),
-    }
-  )
-)
+    },
+  ),
+);

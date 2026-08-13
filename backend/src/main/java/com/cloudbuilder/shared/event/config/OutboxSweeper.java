@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Transactional Outbox Sweeper (ADR-035).
@@ -69,7 +70,8 @@ public class OutboxSweeper {
                 outboxRepository.save(entry);
 
                 kafkaPublisher.get().publishRaw(
-                        entry.getEventType(), entry.getId(), entry.getPayload());
+                        entry.getEventType(), entry.getId(), entry.getPayload())
+                        .get(10, TimeUnit.SECONDS);
 
                 entry.markProcessed();
                 outboxRepository.save(entry);
@@ -78,6 +80,9 @@ public class OutboxSweeper {
                 log.warn("OutboxSweeper: failed to publish entry {}: {}",
                         entry.getId(), e.getMessage());
                 entry.markFailed(e.getMessage());
+                if (entry.getRetryCount() >= MAX_RETRIES) {
+                    entry.markPermanentlyFailed();
+                }
                 outboxRepository.save(entry);
                 failed++;
             }

@@ -10,7 +10,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "user_notifications", indexes = {
     @Index(name = "idx_notif_user", columnList = "userId"),
-    @Index(name = "idx_notif_read", columnList = "userId,read")
+    @Index(name = "idx_notif_read", columnList = "userId,read_flag")
 })
 public class UserNotification {
 
@@ -35,7 +35,7 @@ public class UserNotification {
     @Column(columnDefinition = "TEXT")
     private String metadata;
 
-    @Column(nullable = false)
+    @Column(name = "read_flag", nullable = false)
     private boolean read = false;
 
     @Column(name = "created_at", nullable = false)

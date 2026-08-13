@@ -4,6 +4,7 @@ import com.cloudbuilder.git.domain.model.ConnectedRepository;
 import com.cloudbuilder.git.domain.model.RepositoryScan;
 import com.cloudbuilder.git.domain.port.ConnectedRepositoryPort;
 import com.cloudbuilder.git.domain.port.RepositoryScanPort;
+import com.cloudbuilder.github.infrastructure.client.GitHubApiClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,9 @@ class GitScannerServiceTest {
     @Mock
     private IaCDetector iacDetector;
 
+    @Mock
+    private GitHubApiClient gitHubApiClient;
+
     private GitScannerService service;
 
     private String repoId;
@@ -46,7 +50,7 @@ class GitScannerServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GitScannerService(repositoryPort, scanPort, iacDetector);
+        service = new GitScannerService(repositoryPort, scanPort, iacDetector, gitHubApiClient);
         repoId = UUID.randomUUID().toString();
         repo = new ConnectedRepository(ConnectedRepository.Provider.GITHUB,
                 "https://github.com/test/repo", "repo", "test/repo",

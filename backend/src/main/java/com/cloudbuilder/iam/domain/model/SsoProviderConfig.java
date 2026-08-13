@@ -1,6 +1,7 @@
 package com.cloudbuilder.iam.domain.model;
 
 import com.cloudbuilder.shared.security.SecretEncryptionConverter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -64,6 +65,7 @@ public class SsoProviderConfig {
     public void setProviderName(String providerName) { this.providerName = providerName; }
     public String getClientId() { return clientId; }
     public void setClientId(String clientId) { this.clientId = clientId; }
+    @JsonIgnore
     public String getClientSecret() { return clientSecret; }
     public void setClientSecret(String clientSecret) { this.clientSecret = clientSecret; }
     public boolean isEnabled() { return enabled; }

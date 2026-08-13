@@ -1,6 +1,7 @@
 package com.cloudbuilder.shared.event;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -21,11 +22,18 @@ public interface PlatformEvent {
     Instant getTimestamp();
 
     /**
-     * Unique event identifier for deduplication (Inbox Pattern).
-     * Default generates a random UUID v4; records can override if needed.
+     * Stable event identifier for deduplication (Inbox Pattern).
+     *
+     * <p>The default is deterministically derived from immutable event metadata,
+     * so repeated calls for the same event return the same value. Event types
+     * that already carry a persisted identifier may override this method.
      */
     default String getEventId() {
-        return UUID.randomUUID().toString();
+        String identity = String.join("|",
+            getEventType(),
+            String.valueOf(getTenantId()),
+            String.valueOf(getTimestamp()));
+        return UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     /**

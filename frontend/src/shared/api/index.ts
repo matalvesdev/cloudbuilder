@@ -17,7 +17,7 @@ export {
   isAuthenticated,
   setLogoutFn,
   getLogoutFn,
-} from '@/api/client'
+} from "@/api/client";
 
 // Re-export types
-export type { ApiError } from '@/api/types'
+export type { ApiError } from "@/api/types";

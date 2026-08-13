@@ -46,7 +46,7 @@ public class DocAutoLinkService {
     }
 
     public void deleteLink(String id) {
-        linkRepository.delete(id);
+        linkRepository.deleteById(id);
     }
 
     public void deleteLinksBySourcePath(String sourcePath) {

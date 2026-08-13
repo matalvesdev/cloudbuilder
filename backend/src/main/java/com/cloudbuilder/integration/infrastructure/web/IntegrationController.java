@@ -5,8 +5,7 @@ import com.cloudbuilder.integration.domain.service.*;
 import com.cloudbuilder.shared.security.TenantContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,7 +33,7 @@ public class IntegrationController {
     // ─── Integrations CRUD ───────────────────────────────────────
 
     @GetMapping
-    public ResponseEntity<List<Integration>> listIntegrations(@AuthenticationPrincipal UserDetails user) {
+    public ResponseEntity<List<Integration>> listIntegrations() {
         String tenantId = TenantContext.getTenantId();
         return ResponseEntity.ok(integrationService.listIntegrations(tenantId));
     }
@@ -48,9 +47,10 @@ public class IntegrationController {
 
     @PostMapping
     public ResponseEntity<IntegrationService.IntegrationResult> createIntegration(
-            @AuthenticationPrincipal UserDetails user,
+            Authentication auth,
             @RequestBody Map<String, String> request) {
         String tenantId = TenantContext.getTenantId();
+        String userId = resolveUserId(auth);
         String name = request.getOrDefault("name", "Integration");
         String providerId = request.get("providerId");
         String category = request.getOrDefault("category", "custom");
@@ -60,8 +60,15 @@ public class IntegrationController {
             return ResponseEntity.badRequest().build();
         }
 
-        var result = integrationService.createIntegration(tenantId, user.getUsername(), name, providerId, category, config);
+        var result = integrationService.createIntegration(tenantId, userId, name, providerId, category, config);
         return ResponseEntity.ok(result);
+    }
+
+    private String resolveUserId(Authentication auth) {
+        if (auth == null) return null;
+        Object principal = auth.getPrincipal();
+        if (principal instanceof String s) return s;
+        return null;
     }
 
     @PostMapping("/{id}/connect")

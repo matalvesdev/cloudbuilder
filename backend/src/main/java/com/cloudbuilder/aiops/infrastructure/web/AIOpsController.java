@@ -1,5 +1,6 @@
 package com.cloudbuilder.aiops.infrastructure.web;
 
+import com.cloudbuilder.aiops.application.dto.CreateIncidentRequest;
 import com.cloudbuilder.aiops.application.dto.DesignTemplateDTO;
 import com.cloudbuilder.aiops.domain.model.Incident;
 import com.cloudbuilder.aiops.domain.model.PostMortem;
@@ -64,7 +65,8 @@ public class AIOpsController {
     }
 
     @PostMapping("/incidents")
-    public ResponseEntity<Incident> createIncident(@RequestBody Incident incident) {
+    public ResponseEntity<Incident> createIncident(@RequestBody CreateIncidentRequest req) {
+        var incident = new Incident(req.environmentId(), req.title(), req.description(), req.severity());
         return ResponseEntity.status(HttpStatus.CREATED).body(aiOpsService.createIncident(incident));
     }
 

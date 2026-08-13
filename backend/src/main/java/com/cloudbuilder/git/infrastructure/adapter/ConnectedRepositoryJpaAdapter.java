@@ -29,6 +29,11 @@ public class ConnectedRepositoryJpaAdapter implements ConnectedRepositoryPort {
     }
 
     @Override
+    public Optional<ConnectedRepository> findByFullName(String fullName) {
+        return springRepo.findByFullName(fullName).map(this::toDomain);
+    }
+
+    @Override
     public List<ConnectedRepository> findAll() {
         return springRepo.findAll().stream().map(this::toDomain).toList();
     }

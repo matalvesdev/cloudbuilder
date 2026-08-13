@@ -3,7 +3,7 @@ package com.cloudbuilder.tenant.domain.service;
 import com.cloudbuilder.tenant.domain.model.Project;
 import com.cloudbuilder.tenant.domain.model.ProjectMember;
 import com.cloudbuilder.tenant.domain.port.ProjectMemberRepository;
-import com.cloudbuilder.tenant.domain.port.ProjectRepository;
+import com.cloudbuilder.tenant.domain.port.TenantProjectRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,10 +13,10 @@ import java.util.Optional;
 @Transactional
 public class ProjectService {
 
-    private final ProjectRepository projectRepository;
+    private final TenantProjectRepository projectRepository;
     private final ProjectMemberRepository memberRepository;
 
-    public ProjectService(ProjectRepository projectRepository,
+    public ProjectService(TenantProjectRepository projectRepository,
                            ProjectMemberRepository memberRepository) {
         this.projectRepository = projectRepository;
         this.memberRepository = memberRepository;

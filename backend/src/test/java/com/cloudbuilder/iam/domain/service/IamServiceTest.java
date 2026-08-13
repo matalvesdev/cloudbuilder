@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +31,8 @@ class IamServiceTest {
     private RoleRepository roleRepository;
     @Mock
     private PermissionRepository permissionRepository;
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     private IamService iamService;
 
@@ -43,7 +47,9 @@ class IamServiceTest {
     @BeforeEach
     void setUp() {
         iamService = new IamService(userRepository, tenantRepository, tenantUserRepository,
-                roleRepository, permissionRepository);
+                roleRepository, permissionRepository, passwordEncoder);
+        lenient().when(passwordEncoder.encode(anyString()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         tenantId = UUID.randomUUID().toString();
         userId = UUID.randomUUID().toString();
@@ -124,7 +130,7 @@ class IamServiceTest {
         var result = iamService.listUsersByTenant(tenantId);
 
         assertEquals(1, result.size());
-        assertEquals(userId, result.get(0).getUserId());
+        assertEquals(userId, result.get(0).userId());
     }
 
     @Test
@@ -143,12 +149,15 @@ class IamServiceTest {
         var result = iamService.listTenantsByUser(userId);
 
         assertEquals(1, result.size());
-        assertEquals(tenantId, result.get(0).getTenantId());
+        assertEquals(tenantId, result.get(0).tenantId());
     }
 
     @Test
     void assignRole_ShouldUpdateRoleId() {
         var newRoleId = UUID.randomUUID().toString();
+        var newRole = new Role(tenantId, "new-role", "New role", false);
+        newRole.setId(newRoleId);
+        when(roleRepository.findById(newRoleId)).thenReturn(Optional.of(newRole));
         when(tenantUserRepository.findByTenantIdAndUserId(tenantId, userId))
                 .thenReturn(Optional.of(tenantUser));
         when(tenantUserRepository.save(any(TenantUser.class))).thenAnswer(i -> i.getArgument(0));
@@ -161,10 +170,14 @@ class IamServiceTest {
 
     @Test
     void assignRole_WhenUserNotInTenant_ShouldThrow() {
+        var newRoleId = UUID.randomUUID().toString();
+        var newRole = new Role(tenantId, "new-role", "New role", false);
+        newRole.setId(newRoleId);
+        when(roleRepository.findById(newRoleId)).thenReturn(Optional.of(newRole));
         when(tenantUserRepository.findByTenantIdAndUserId(any(), any())).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> iamService.assignRole(tenantId, userId, UUID.randomUUID().toString()));
+                () -> iamService.assignRole(tenantId, userId, newRoleId));
     }
 
     // --- Roles ---

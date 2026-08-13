@@ -1,6 +1,7 @@
 package com.cloudbuilder.iam.domain.service;
 
 import com.cloudbuilder.iam.domain.model.UserMfa;
+import com.cloudbuilder.iam.domain.model.MfaSecretCodec;
 import com.cloudbuilder.iam.domain.port.UserMfaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +137,7 @@ public class MfaService {
     private boolean verifyCode(String secret, String code) {
         if (secret == null || code == null) return false;
 
-        byte[] secretBytes = Base64.getDecoder().decode(secret);
+        byte[] secretBytes = MfaSecretCodec.decode(secret);
         long timeWindow = Instant.now().getEpochSecond() / TOTP_TIME_STEP;
 
         // Check current, previous, and next time window (30s × 3 = 90s tolerance)
@@ -201,10 +202,7 @@ public class MfaService {
     }
 
     private static String generateRandomSecret() {
-        SecureRandom random = new SecureRandom();
-        byte[] bytes = new byte[20];
-        random.nextBytes(bytes);
-        return Base64.getEncoder().encodeToString(bytes);
+        return MfaSecretCodec.generate();
     }
 
     private static String generateBackupCodesString() {
@@ -214,8 +212,8 @@ public class MfaService {
             if (i > 0) codes.append(",");
             byte[] codeBytes = new byte[6];
             random.nextBytes(codeBytes);
-            String code = Base64.getEncoder().encodeToString(codeBytes)
-                    .replaceAll("[^A-Za-z0-9]", "").substring(0, 8);
+            String code = HexFormat.of().formatHex(codeBytes)
+                    .substring(0, 8).toUpperCase();
             codes.append(code);
         }
         return codes.toString();

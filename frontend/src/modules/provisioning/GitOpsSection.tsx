@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { cn } from '@/lib/utils'
+import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
 import {
   GitBranch,
   GitCommit,
@@ -18,87 +18,124 @@ import {
   Code2,
   ChevronDown,
   ChevronRight,
-} from 'lucide-react'
-import type { ConnectedRepo } from '@/types/repo.types'
-import { REPO_PROVIDER_LABELS } from '@/types/repo.types'
+} from "lucide-react";
+import type { ConnectedRepo } from "@/types/repo.types";
+import { REPO_PROVIDER_LABELS } from "@/types/repo.types";
 
 // ─── Types ────────────────────────────────────────────────────
 
 export interface GitCommit {
-  id: string
-  hash: string
-  author: string
-  email: string
-  message: string
-  timestamp: string
-  branch: string
-  repoId: string
+  id: string;
+  hash: string;
+  author: string;
+  email: string;
+  message: string;
+  timestamp: string;
+  branch: string;
+  repoId: string;
 }
 
 export interface PipelineRun {
-  id: string
-  repoId: string
-  branch: string
-  commitHash: string
-  status: 'passing' | 'failing' | 'running' | 'pending' | 'unknown'
-  startedAt: string
-  finishedAt: string | null
-  duration: string
-  pipelineName: string
-  pipelineUrl: string | null
-  stages: PipelineStage[]
+  id: string;
+  repoId: string;
+  branch: string;
+  commitHash: string;
+  status: "passing" | "failing" | "running" | "pending" | "unknown";
+  startedAt: string;
+  finishedAt: string | null;
+  duration: string;
+  pipelineName: string;
+  pipelineUrl: string | null;
+  stages: PipelineStage[];
 }
 
 export interface PipelineStage {
-  name: string
-  status: 'passing' | 'failing' | 'running' | 'pending' | 'skipped'
-  duration: string
+  name: string;
+  status: "passing" | "failing" | "running" | "pending" | "skipped";
+  duration: string;
 }
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function PipelineStatusBadge({ status }: { status: PipelineRun['status'] }) {
+function PipelineStatusBadge({ status }: { status: PipelineRun["status"] }) {
   const config = {
-    passing: { icon: CheckCircle2, bg: 'bg-green-50 text-green-700 border-green-200', label: 'Passando' },
-    failing: { icon: XCircle, bg: 'bg-red-50 text-red-700 border-red-200', label: 'Falhando' },
-    running: { icon: Loader2, bg: 'bg-blue-50 text-blue-700 border-blue-200', label: 'Executando' },
-    pending: { icon: Clock, bg: 'bg-slate-50 text-slate-600 border-slate-200', label: 'Pendente' },
-    unknown: { icon: AlertTriangle, bg: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Desconhecido' },
-  }[status]
+    passing: {
+      icon: CheckCircle2,
+      bg: "bg-green-50 text-green-700 border-green-200",
+      label: "Passando",
+    },
+    failing: {
+      icon: XCircle,
+      bg: "bg-red-50 text-red-700 border-red-200",
+      label: "Falhando",
+    },
+    running: {
+      icon: Loader2,
+      bg: "bg-blue-50 text-blue-700 border-blue-200",
+      label: "Executando",
+    },
+    pending: {
+      icon: Clock,
+      bg: "bg-slate-50 text-slate-600 border-slate-200",
+      label: "Pendente",
+    },
+    unknown: {
+      icon: AlertTriangle,
+      bg: "bg-amber-50 text-amber-700 border-amber-200",
+      label: "Desconhecido",
+    },
+  }[status];
 
-  const Icon = config.icon
+  const Icon = config.icon;
 
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border', config.bg)}>
-      <Icon className={cn('w-3 h-3', status === 'running' && 'animate-spin')} />
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
+        config.bg,
+      )}
+    >
+      <Icon className={cn("w-3 h-3", status === "running" && "animate-spin")} />
       {config.label}
     </span>
-  )
+  );
 }
 
 function StageBadge({ stage }: { stage: PipelineStage }) {
   const config = {
-    passing: { icon: CheckCircle2, color: 'text-green-500' },
-    failing: { icon: XCircle, color: 'text-red-500' },
-    running: { icon: Loader2, color: 'text-blue-500' },
-    pending: { icon: Clock, color: 'text-slate-400' },
-    skipped: { icon: AlertTriangle, color: 'text-slate-400' },
-  }[stage.status]
+    passing: { icon: CheckCircle2, color: "text-green-500" },
+    failing: { icon: XCircle, color: "text-red-500" },
+    running: { icon: Loader2, color: "text-blue-500" },
+    pending: { icon: Clock, color: "text-slate-400" },
+    skipped: { icon: AlertTriangle, color: "text-slate-400" },
+  }[stage.status];
 
-  const Icon = config.icon
+  const Icon = config.icon;
 
   return (
     <div className="flex items-center gap-1.5 text-xs">
-      <Icon className={cn('w-3 h-3', config.color, stage.status === 'running' && 'animate-spin')} />
+      <Icon
+        className={cn(
+          "w-3 h-3",
+          config.color,
+          stage.status === "running" && "animate-spin",
+        )}
+      />
       <span className="text-slate-600">{stage.name}</span>
       <span className="text-slate-400 ml-auto">{stage.duration}</span>
     </div>
-  )
+  );
 }
 
-function CommitTimeline({ commits, repoName }: { commits: GitCommit[]; repoName: string }) {
-  const [expanded, setExpanded] = useState(false)
-  const displayCommits = expanded ? commits : commits.slice(0, 5)
+function CommitTimeline({
+  commits,
+  repoName,
+}: {
+  commits: GitCommit[];
+  repoName: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const displayCommits = expanded ? commits : commits.slice(0, 5);
 
   if (commits.length === 0) {
     return (
@@ -106,7 +143,7 @@ function CommitTimeline({ commits, repoName }: { commits: GitCommit[]; repoName:
         <GitCommit className="w-6 h-6 mx-auto mb-2 text-slate-300" />
         Nenhum commit encontrado para {repoName}
       </div>
-    )
+    );
   }
 
   return (
@@ -127,7 +164,9 @@ function CommitTimeline({ commits, repoName }: { commits: GitCommit[]; repoName:
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-semibold text-brand-navy truncate">{commit.message}</p>
+                <p className="text-xs font-semibold text-brand-navy truncate">
+                  {commit.message}
+                </p>
                 <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">
                   {timeAgo(commit.timestamp)}
                 </span>
@@ -137,15 +176,19 @@ function CommitTimeline({ commits, repoName }: { commits: GitCommit[]; repoName:
                   <User className="w-2.5 h-2.5" />
                   <span>{commit.author}</span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-300">{commit.hash}</span>
-                <span className={cn(
-                  'text-[9px] px-1.5 py-0.5 rounded-full font-mono border',
-                  commit.branch === 'main'
-                    ? 'bg-purple-50 text-purple-700 border-purple-200'
-                    : commit.branch.startsWith('feature')
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-slate-50 text-slate-600 border-slate-200'
-                )}>
+                <span className="text-[10px] font-mono text-slate-300">
+                  {commit.hash}
+                </span>
+                <span
+                  className={cn(
+                    "text-[9px] px-1.5 py-0.5 rounded-full font-mono border",
+                    commit.branch === "main"
+                      ? "bg-purple-50 text-purple-700 border-purple-200"
+                      : commit.branch.startsWith("feature")
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-slate-50 text-slate-600 border-slate-200",
+                  )}
+                >
                   {commit.branch}
                 </span>
               </div>
@@ -158,23 +201,31 @@ function CommitTimeline({ commits, repoName }: { commits: GitCommit[]; repoName:
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-1 text-xs font-semibold text-brand-navy hover:text-brand-navy/70 mt-1 ml-9 transition-colors"
         >
-          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          {expanded ? 'Mostrar menos' : `Mostrar mais ${commits.length - 5} commits`}
+          {expanded ? (
+            <ChevronDown className="w-3 h-3" />
+          ) : (
+            <ChevronRight className="w-3 h-3" />
+          )}
+          {expanded
+            ? "Mostrar menos"
+            : `Mostrar mais ${commits.length - 5} commits`}
         </button>
       )}
     </div>
-  )
+  );
 }
 
 function PipelineCard({ pipeline }: { pipeline: PipelineRun }) {
-  const [expandedStages, setExpandedStages] = useState(false)
+  const [expandedStages, setExpandedStages] = useState(false);
 
   return (
     <div className="border border-slate-100 rounded-xl p-4 hover:bg-slate-50/50 transition-colors">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs font-semibold text-brand-navy truncate">{pipeline.pipelineName}</p>
+            <p className="text-xs font-semibold text-brand-navy truncate">
+              {pipeline.pipelineName}
+            </p>
             <PipelineStatusBadge status={pipeline.status} />
           </div>
           <div className="flex items-center gap-2 text-[10px] text-slate-400">
@@ -186,7 +237,9 @@ function PipelineCard({ pipeline }: { pipeline: PipelineRun }) {
               <>
                 <span className="text-slate-300">|</span>
                 <Calendar className="w-2.5 h-2.5" />
-                <span>{new Date(pipeline.finishedAt).toLocaleDateString('pt-BR')}</span>
+                <span>
+                  {new Date(pipeline.finishedAt).toLocaleDateString("pt-BR")}
+                </span>
               </>
             )}
           </div>
@@ -211,7 +264,11 @@ function PipelineCard({ pipeline }: { pipeline: PipelineRun }) {
         onClick={() => setExpandedStages(!expandedStages)}
         className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-brand-navy transition-colors mb-1"
       >
-        {expandedStages ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        {expandedStages ? (
+          <ChevronDown className="w-3 h-3" />
+        ) : (
+          <ChevronRight className="w-3 h-3" />
+        )}
         {pipeline.stages.length} estágios
       </button>
       {expandedStages && (
@@ -222,100 +279,138 @@ function PipelineCard({ pipeline }: { pipeline: PipelineRun }) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'agora'
-  if (mins < 60) return `${mins}min atrás`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h atrás`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d atrás`
-  return new Date(iso).toLocaleDateString('pt-BR')
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "agora";
+  if (mins < 60) return `${mins}min atrás`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h atrás`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d atrás`;
+  return new Date(iso).toLocaleDateString("pt-BR");
 }
 
 // ─── Main Component ──────────────────────────────────────────
 
 interface GitOpsSectionProps {
-  connectedRepos: ConnectedRepo[]
-  className?: string
+  connectedRepos: ConnectedRepo[];
+  className?: string;
 }
 
-export function GitOpsSection({ connectedRepos, className }: GitOpsSectionProps) {
-  const [expandedRepo, setExpandedRepo] = useState<string | null>(null)
+export function GitOpsSection({
+  connectedRepos,
+  className,
+}: GitOpsSectionProps) {
+  const [expandedRepo, setExpandedRepo] = useState<string | null>(null);
 
   const repoData = useMemo(() => {
     return connectedRepos.map((repo) => {
-      const commits: GitCommit[] = []
-      const pipelines: PipelineRun[] = []
-      return { repo, commits, pipelines }
-    })
-  }, [connectedRepos])
+      const commits: GitCommit[] = [];
+      const pipelines: PipelineRun[] = [];
+      return { repo, commits, pipelines };
+    });
+  }, [connectedRepos]);
 
   if (connectedRepos.length === 0) {
     return (
-      <div className={cn('bg-white border border-slate-200 rounded-xl p-6', className)}>
+      <div
+        className={cn(
+          "bg-white border border-slate-200 rounded-xl p-6",
+          className,
+        )}
+      >
         <div className="py-8 text-center">
           <GitBranch className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-brand-navy mb-1">Nenhum repositório conectado</p>
-          <p className="text-xs text-slate-400 mb-4">Conecte repositórios nas Configurações para visualizar commits e pipelines</p>
+          <p className="text-sm font-semibold text-brand-navy mb-1">
+            Nenhum repositório conectado
+          </p>
+          <p className="text-xs text-slate-400 mb-4">
+            Conecte repositórios nas Configurações para visualizar commits e
+            pipelines
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn("space-y-4", className)}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <GitBranch className="w-4 h-4 text-brand-navy" />
           <h3 className="text-sm font-bold text-brand-navy">GitOps</h3>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-ice-blue text-brand-navy font-semibold">
-            {connectedRepos.length} repositório{connectedRepos.length > 1 ? 's' : ''}
+            {connectedRepos.length} repositório
+            {connectedRepos.length > 1 ? "s" : ""}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-slate-400">
-            {repoData.reduce((acc, r) => acc + r.pipelines.filter(p => p.status === 'passing').length, 0)} pipelines ativos
+            {repoData.reduce(
+              (acc, r) =>
+                acc + r.pipelines.filter((p) => p.status === "passing").length,
+              0,
+            )}{" "}
+            pipelines ativos
           </span>
         </div>
       </div>
 
       <div className="space-y-3">
         {repoData.map(({ repo, commits, pipelines }) => {
-          const isExpanded = expandedRepo === repo.id
-          const passingPipelines = pipelines.filter(p => p.status === 'passing').length
-          const failingPipelines = pipelines.filter(p => p.status === 'failing').length
+          const isExpanded = expandedRepo === repo.id;
+          const passingPipelines = pipelines.filter(
+            (p) => p.status === "passing",
+          ).length;
+          const failingPipelines = pipelines.filter(
+            (p) => p.status === "failing",
+          ).length;
 
           return (
-            <div key={repo.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div
+              key={repo.id}
+              className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+            >
               {/* Repo Header */}
               <button
                 onClick={() => setExpandedRepo(isExpanded ? null : repo.id)}
                 className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className={cn(
-                    'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold',
-                    repo.provider === 'github' ? 'bg-gray-900 text-white' :
-                    repo.provider === 'gitlab' ? 'bg-orange-500 text-white' :
-                    'bg-blue-600 text-white'
-                  )}>
-                    {repo.provider === 'github' ? 'GH' : repo.provider === 'gitlab' ? 'GL' : 'BB'}
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
+                      repo.provider === "github"
+                        ? "bg-gray-900 text-white"
+                        : repo.provider === "gitlab"
+                          ? "bg-orange-500 text-white"
+                          : "bg-blue-600 text-white",
+                    )}
+                  >
+                    {repo.provider === "github"
+                      ? "GH"
+                      : repo.provider === "gitlab"
+                        ? "GL"
+                        : "BB"}
                   </div>
                   <div className="text-left">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-brand-navy">{repo.repoName}</p>
+                      <p className="text-sm font-semibold text-brand-navy">
+                        {repo.repoName}
+                      </p>
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
                         {REPO_PROVIDER_LABELS[repo.provider]}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400">{repo.fullName}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {repo.fullName}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -331,7 +426,11 @@ export function GitOpsSection({ connectedRepos, className }: GitOpsSectionProps)
                       </span>
                     )}
                   </div>
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
                 </div>
               </button>
 
@@ -343,17 +442,26 @@ export function GitOpsSection({ connectedRepos, className }: GitOpsSectionProps)
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <GitCommit className="w-3.5 h-3.5 text-brand-navy" />
-                        <span className="text-[11px] font-bold text-brand-navy uppercase tracking-wide">Commits Recentes</span>
-                        <span className="text-[10px] text-slate-400 ml-auto">{commits.length} commits</span>
+                        <span className="text-[11px] font-bold text-brand-navy uppercase tracking-wide">
+                          Commits Recentes
+                        </span>
+                        <span className="text-[10px] text-slate-400 ml-auto">
+                          {commits.length} commits
+                        </span>
                       </div>
-                      <CommitTimeline commits={commits} repoName={repo.repoName} />
+                      <CommitTimeline
+                        commits={commits}
+                        repoName={repo.repoName}
+                      />
                     </div>
 
                     {/* Pipeline History */}
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <GitPullRequest className="w-3.5 h-3.5 text-brand-navy" />
-                        <span className="text-[11px] font-bold text-brand-navy uppercase tracking-wide">Pipelines</span>
+                        <span className="text-[11px] font-bold text-brand-navy uppercase tracking-wide">
+                          Pipelines
+                        </span>
                         <span className="text-[10px] text-slate-400 ml-auto">
                           <RefreshCw className="w-3 h-3 inline mr-1" />
                           Automático
@@ -369,9 +477,9 @@ export function GitOpsSection({ connectedRepos, className }: GitOpsSectionProps)
                 </div>
               )}
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

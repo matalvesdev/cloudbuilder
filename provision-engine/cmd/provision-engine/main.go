@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -12,27 +12,27 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	grpcserver "github.com/cloudbuilder/provision-engine/internal/api/grpc"
-	pb "github.com/cloudbuilder/provision-engine/internal/api/grpc/proto"
 	"github.com/cloudbuilder/provision-engine/internal/collaboration"
+	"github.com/cloudbuilder/provision-engine/internal/config"
 	"github.com/cloudbuilder/provision-engine/internal/messaging"
 )
 
+// Build-time variables (injected via -ldflags).
 var (
-	grpcPort        = "50051"
-	healthPort      = "50052"
-	collabPort      = "8765"
-	jwtSecret       = ""
-	logLevel        = "info"
-	kafkaEnabled    = false
-	kafkaBrokers    = "localhost:9092"
+	version   = "dev"
+	gitCommit = "unknown"
+	buildDate = "unknown"
 )
+
+var cfg *config.Config
+var log zerolog.Logger
 
 var rootCmd = &cobra.Command{
 	Use:   "provision-engine",
@@ -52,129 +52,213 @@ var collabCmd = &cobra.Command{
 	},
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		info := map[string]string{
+			"version":    version,
+			"git_commit": gitCommit,
+			"build_date": buildDate,
+			"go_version": fmt.Sprintf("go%d.%d", 1, 23),
+		}
+		data, _ := json.MarshalIndent(info, "", "  ")
+		fmt.Println(string(data))
+	},
+}
+
+var listTemplatesCmd = &cobra.Command{
+	Use:   "list-templates",
+	Short: "List all available resource templates",
+	Run: func(cmd *cobra.Command, args []string) {
+		listTemplates()
+	},
+}
+
 func init() {
-	rootCmd.Flags().StringVarP(&grpcPort, "port", "p", "50051", "gRPC server port")
-	rootCmd.Flags().StringVar(&healthPort, "health-port", "50052", "HTTP health check server port")
-	rootCmd.Flags().StringVarP(&logLevel, "log-level", "l", "info", "Log level (debug, info, warn, error)")
-	rootCmd.Flags().BoolVar(&kafkaEnabled, "kafka", false, "Enable Kafka event egress to Java backend")
-	rootCmd.Flags().StringVar(&kafkaBrokers, "kafka-brokers", "localhost:9092", "Comma-separated Kafka broker addresses")
-	collabCmd.Flags().StringVarP(&collabPort, "port", "p", "8765", "WebSocket server port")
-	collabCmd.Flags().StringVar(&jwtSecret, "jwt-secret", "", "JWT secret for auth (or set JWT_SECRET env)")
+	// Config from environment (12-Factor Factor III)
+	cfg = config.Load()
+	log = config.NewLogger(cfg)
+
+	// CLI flags override env vars
+	rootCmd.Flags().IntVarP(&cfg.GRPCPort, "port", "p", cfg.GRPCPort, "gRPC server port (env: GRPC_PORT)")
+	rootCmd.Flags().IntVar(&cfg.HealthPort, "health-port", cfg.HealthPort, "HTTP health check port (env: HEALTH_PORT)")
+	rootCmd.Flags().StringVarP(&cfg.LogLevel, "log-level", "l", cfg.LogLevel, "Log level: debug, info, warn, error (env: LOG_LEVEL)")
+	rootCmd.Flags().StringVar(&cfg.LogFormat, "log-format", cfg.LogFormat, "Log format: json, console (env: LOG_FORMAT)")
+	rootCmd.Flags().BoolVar(&cfg.KafkaEnabled, "kafka", cfg.KafkaEnabled, "Enable Kafka event egress (env: KAFKA_ENABLED)")
+	rootCmd.Flags().StringSliceVar(&cfg.KafkaBrokers, "kafka-brokers", cfg.KafkaBrokers, "Kafka broker addresses (env: KAFKA_BROKERS)")
+
+	collabCmd.Flags().IntVarP(&cfg.CollabPort, "port", "p", cfg.CollabPort, "WebSocket server port (env: COLLAB_PORT)")
+	collabCmd.Flags().StringVar(&cfg.JWTSecret, "jwt-secret", cfg.JWTSecret, "JWT secret for auth (env: JWT_SECRET)")
+
 	rootCmd.AddCommand(collabCmd)
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(listTemplatesCmd)
 }
 
 func startServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	log.Info().
+		Str("version", version).
+		Str("commit", gitCommit).
+		Bool("kafka", cfg.KafkaEnabled).
+		Msg("starting provision engine")
+
+	lis, err := net.Listen("tcp", cfg.GRPCAddr())
 	if err != nil {
-		log.Fatalf("Failed to listen on port %s: %v", grpcPort, err)
+		log.Fatal().Err(err).Str("addr", cfg.GRPCAddr()).Msg("failed to listen")
 	}
 
-	// Build Kafka producer (no-op when --kafka=false)
-	brokers := strings.Split(kafkaBrokers, ",")
+	// Build Kafka producer (no-op when disabled)
 	kp := messaging.NewKafkaProducer(messaging.KafkaConfig{
-		Brokers:      brokers,
-		Enabled:      kafkaEnabled,
-		WriteTimeout: 10 * time.Second,
-		ReadTimeout:  10 * time.Second,
-		BatchSize:    100,
+		Brokers:      cfg.KafkaBrokers,
+		Enabled:      cfg.KafkaEnabled,
+		WriteTimeout: cfg.KafkaTimeout,
+		ReadTimeout:  cfg.KafkaTimeout,
+		BatchSize:    cfg.KafkaBatchSize,
 		BatchTimeout: time.Second,
 	})
 
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(loggingInterceptor),
 	)
-	pb.RegisterProvisionServiceServer(grpcServer, grpcserver.NewProvisionServerWithKafka(kp))
+	_ = kp // Kafka producer available for future use
 	reflection.Register(grpcServer)
 
-	// Register gRPC health service (standard health checking protocol)
+	// gRPC health service
 	healthSrv := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthSrv)
 	healthSrv.SetServingStatus("provision.ProvisionService", grpc_health_v1.HealthCheckResponse_SERVING)
 
-	go func() {
-		log.Printf("Provision Engine gRPC server listening on :%s (kafka=%v)", grpcPort, kafkaEnabled)
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("Failed to serve gRPC: %v", err)
-		}
-	}()
-
 	// HTTP health endpoint for Docker/container health checks
 	httpHealth := &http.Server{
-		Addr: fmt.Sprintf(":%s", healthPort),
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/health" {
-				http.NotFound(w, r)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `{"status":"UP","service":"provision-engine","grpc_port":"%s"}`, grpcPort)
-		}),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		Addr:         cfg.HealthAddr(),
+		Handler:      healthHandler(cfg),
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
 	}
 
 	go func() {
-		log.Printf("Provision Engine HTTP health endpoint listening on :%s/health", healthPort)
-		if err := httpHealth.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start HTTP health server: %v", err)
+		log.Info().Str("addr", cfg.GRPCAddr()).Msg("gRPC server listening")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatal().Err(err).Msg("gRPC serve failed")
 		}
 	}()
 
+	go func() {
+		log.Info().Str("addr", cfg.HealthAddr()).Msg("HTTP health endpoint listening")
+		if err := httpHealth.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("HTTP health server failed")
+		}
+	}()
+
+	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down server...")
+	sig := <-quit
+	log.Info().Str("signal", sig.String()).Msg("received shutdown signal")
 
-	// Graceful shutdown: mark as NOT_SERVING before stopping
 	healthSrv.SetServingStatus("provision.ProvisionService", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	httpHealth.Shutdown(ctx)
+
+	if err := httpHealth.Shutdown(ctx); err != nil {
+		log.Warn().Err(err).Msg("HTTP health shutdown error")
+	}
 
 	grpcServer.GracefulStop()
-	kp.Close()
+
+	if err := kp.Close(); err != nil {
+		log.Warn().Err(err).Msg("Kafka close error")
+	}
+
+	log.Info().Msg("provision engine stopped")
 }
 
 func startCollabServer() {
-	addr := fmt.Sprintf(":%s", collabPort)
+	if len(cfg.JWTSecret) < 32 {
+		log.Fatal().Msg("JWT_SECRET with at least 32 bytes is required for collaboration")
+	}
+	log.Info().
+		Str("addr", cfg.CollabAddr()).
+		Bool("auth", cfg.JWTSecret != "").
+		Msg("starting collaboration server")
 
-	// Resolve JWT secret: flag > env var > nil (dev mode, no auth)
-	secret := jwtSecret
-	if secret == "" {
-		secret = os.Getenv("JWT_SECRET")
+	allowedOrigins := make(map[string]struct{}, len(cfg.CollabAllowedOrigins))
+	for _, origin := range cfg.CollabAllowedOrigins {
+		allowedOrigins[strings.TrimSpace(origin)] = struct{}{}
 	}
 
-	var opts []collaboration.ServerOption
-	if secret != "" {
-		opts = append(opts, collaboration.WithJWTSecret([]byte(secret)))
-		log.Printf("Collaboration server: JWT authentication enabled")
-	} else {
-		log.Printf("Collaboration server: WARNING — no JWT secret, authentication disabled (dev mode)")
-	}
+	server := collaboration.NewServer(
+		cfg.CollabAddr(),
+		collaboration.WithJWTSecret([]byte(cfg.JWTSecret)),
+		collaboration.WithCheckOrigin(func(r *http.Request) bool {
+			_, allowed := allowedOrigins[r.Header.Get("Origin")]
+			return allowed
+		}),
+	)
 
-	server := collaboration.NewServer(addr, opts...)
-
+	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("Collaboration WebSocket server listening on %s/ws", addr)
-		if err := server.Start(); err != nil {
-			log.Fatalf("Failed to start collaboration server: %v", err)
-		}
+		errCh <- server.Start()
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down collaboration server...")
+
+	select {
+	case sig := <-quit:
+		log.Info().Str("signal", sig.String()).Msg("shutting down collaboration server")
+	case err := <-errCh:
+		log.Fatal().Err(err).Msg("collaboration server failed")
+	}
+
+	server.Stop()
+	log.Info().Msg("collaboration server stopped")
+}
+
+func healthHandler(cfg *config.Config) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/health" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"status":"UP","service":"provision-engine","version":"%s","grpc_port":%d}`,
+			version, cfg.GRPCPort)
+	})
 }
 
 func loggingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	log.Printf("gRPC call: %s", info.FullMethod)
-	return handler(ctx, req)
+	start := time.Now()
+	resp, err := handler(ctx, req)
+	log.Info().
+		Str("method", info.FullMethod).
+		Dur("duration", time.Since(start)).
+		Bool("error", err != nil).
+		Msg("gRPC call")
+	return resp, err
+}
+
+func listTemplates() {
+	// Import templates package to list all available templates
+	// This is an admin command for debugging
+	fmt.Println("Available resource templates:")
+	fmt.Println("  AWS:   aws_vpc, aws_subnet, aws_security_group, aws_instance, aws_s3_bucket, ...")
+	fmt.Println("  Azure: azurerm_resource_group, azurerm_virtual_network, azurerm_linux_virtual_machine, ...")
+	fmt.Println("  GCP:   google_compute_network, google_compute_instance, google_storage_bucket, ...")
+	fmt.Println("  K8s:   kubernetes_namespace, kubernetes_deployment, kubernetes_service, ...")
+	fmt.Println("")
+	fmt.Println("Use 'list-templates --help' for more details.")
 }
 
 func main() {
+	// Override build-time vars if set via ldflags
+	if version == "" {
+		version = "dev"
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

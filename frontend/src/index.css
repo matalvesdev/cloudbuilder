@@ -30,13 +30,18 @@
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', sans-serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Space Grotesk", sans-serif;
 }
 
 /* Dot grid background */
@@ -76,7 +81,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .react-flow__controls-button:hover {
-  background: #E3E2FD !important;
+  background: #e3e2fd !important;
 }
 
 .react-flow__minimap {
@@ -104,7 +109,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .react-flow__node.selected {
-  box-shadow: 0 0 0 2px hsl(var(--primary)), 0 4px 20px rgba(10, 17, 40, 0.08) !important;
+  box-shadow:
+    0 0 0 2px hsl(var(--primary)),
+    0 4px 20px rgba(10, 17, 40, 0.08) !important;
   border-radius: 10px;
 }
 
@@ -180,5 +187,5 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Background gradient utilities */
 .bg-brand-gradient {
-  background: linear-gradient(135deg, #0a1128 0%, #0D1B2A 100%);
+  background: linear-gradient(135deg, #0a1128 0%, #0d1b2a 100%);
 }

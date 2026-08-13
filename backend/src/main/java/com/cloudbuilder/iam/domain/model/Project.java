@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
-@Entity
-@Table(name = "projects")
+@Entity(name = "IamProject")
+@Table(name = "iam_projects")
 public class Project {
 
     @Id

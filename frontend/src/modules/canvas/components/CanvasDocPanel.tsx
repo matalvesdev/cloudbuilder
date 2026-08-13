@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
-import { FileText, Search, ChevronRight, ChevronDown } from 'lucide-react'
-import { fetchDocTree, fetchDocContent, type DocNode } from '@/api/docs'
+import { useState, useEffect } from "react";
+import { FileText, Search, ChevronRight, ChevronDown } from "lucide-react";
+import { fetchDocTree, fetchDocContent, type DocNode } from "@/api/docs";
 
 interface CanvasDocPanelProps {
-  canvasId?: string
+  canvasId?: string;
 }
 
 /**
@@ -11,26 +11,30 @@ interface CanvasDocPanelProps {
  * Shows a mini tree of docs and renders markdown content.
  */
 export function CanvasDocPanel({ canvasId }: CanvasDocPanelProps) {
-  const [tree, setTree] = useState<DocNode[]>([])
-  const [activeDoc, setActiveDoc] = useState<string | null>(null)
-  const [content, setContent] = useState('')
-  const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [tree, setTree] = useState<DocNode[]>([]);
+  const [activeDoc, setActiveDoc] = useState<string | null>(null);
+  const [content, setContent] = useState("");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchDocTree().then(setTree).catch(() => {})
-  }, [])
+    fetchDocTree()
+      .then(setTree)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (activeDoc) {
-      setLoading(true)
-      fetchDocContent(activeDoc).then(setContent).finally(() => setLoading(false))
+      setLoading(true);
+      fetchDocContent(activeDoc)
+        .then((doc: any) => setContent(doc?.content ?? doc ?? ""))
+        .finally(() => setLoading(false));
     }
-  }, [activeDoc])
+  }, [activeDoc]);
 
   const filteredTree = search
-    ? tree.filter(n => n.name.toLowerCase().includes(search.toLowerCase()))
-    : tree
+    ? tree.filter((n) => n.name.toLowerCase().includes(search.toLowerCase()))
+    : tree;
 
   return (
     <div className="flex h-full">
@@ -42,15 +46,20 @@ export function CanvasDocPanel({ canvasId }: CanvasDocPanelProps) {
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar docs..."
               className="w-full text-xs pl-6 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-md"
             />
           </div>
         </div>
         <div className="px-1 pb-2">
-          {filteredTree.map(node => (
-            <TreeNode key={node.id} node={node} activeDoc={activeDoc} onSelect={setActiveDoc} />
+          {filteredTree.map((node) => (
+            <TreeNode
+              key={node.id}
+              node={node}
+              activeDoc={activeDoc}
+              onSelect={setActiveDoc}
+            />
           ))}
         </div>
       </div>
@@ -59,33 +68,61 @@ export function CanvasDocPanel({ canvasId }: CanvasDocPanelProps) {
         {loading ? (
           <div className="text-xs text-slate-400">Carregando...</div>
         ) : content ? (
-          <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono">{content}</pre>
+          <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono">
+            {content}
+          </pre>
         ) : (
           <div className="text-xs text-slate-400">Selecione um documento</div>
         )}
       </div>
     </div>
-  )
+  );
 }
 
-function TreeNode({ node, activeDoc, onSelect }: { node: DocNode; activeDoc: string | null; onSelect: (path: string) => void }) {
-  const [expanded, setExpanded] = useState(false)
-  const isDir = node.type === 'directory'
+function TreeNode({
+  node,
+  activeDoc,
+  onSelect,
+}: {
+  node: DocNode;
+  activeDoc: string | null;
+  onSelect: (path: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isDir = node.type === "directory";
 
   return (
     <div>
       <button
         className="flex items-center gap-1 w-full text-left px-2 py-1 text-xs rounded hover:bg-slate-100"
-        onClick={() => isDir ? setExpanded(!expanded) : onSelect(node.path)}
+        onClick={() => (isDir ? setExpanded(!expanded) : onSelect(node.path))}
       >
-        {isDir ? (expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />) : <FileText className="h-3 w-3 text-slate-400" />}
-        <span className={activeDoc === node.path ? 'font-bold text-brand-navy' : 'text-slate-600'}>{node.name}</span>
+        {isDir ? (
+          expanded ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )
+        ) : (
+          <FileText className="h-3 w-3 text-slate-400" />
+        )}
+        <span
+          className={
+            activeDoc === node.path
+              ? "font-bold text-brand-navy"
+              : "text-slate-600"
+          }
+        >
+          {node.name}
+        </span>
       </button>
-      {isDir && expanded && node.children?.map(child => (
-        <div key={child.id} className="pl-3">
-          <TreeNode node={child} activeDoc={activeDoc} onSelect={onSelect} />
-        </div>
-      ))}
+      {isDir &&
+        expanded &&
+        node.children?.map((child) => (
+          <div key={child.id} className="pl-3">
+            <TreeNode node={child} activeDoc={activeDoc} onSelect={onSelect} />
+          </div>
+        ))}
     </div>
-  )
+  );
 }

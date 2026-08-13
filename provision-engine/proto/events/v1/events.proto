@@ -1,0 +1,226 @@
+syntax = "proto3";
+package events.v1;
+option go_package = "github.com/cloudbuilder/provision-engine/proto/events/v1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// ─── Event Bus Service ──────────────────────────────────────────────────
+
+service EventService {
+  rpc PublishEvent(PublishEventRequest) returns (PublishEventResponse);
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream EngineEvent);
+  rpc GetEventHistory(GetEventHistoryRequest) returns (GetEventHistoryResponse);
+}
+
+// ─── Event Types ────────────────────────────────────────────────────────
+
+message EngineEvent {
+  string event_id = 1;
+  string event_type = 2;
+  string aggregate_id = 3;
+  string aggregate_type = 4;
+  string tenant_id = 5;
+  int32 version = 6;
+  google.protobuf.Timestamp occurred_at = 7;
+  string correlation_id = 8;
+  string causation_id = 9;
+  google.protobuf.Struct payload = 10;
+  EventMetadata metadata = 11;
+}
+
+message EventMetadata {
+  string user_id = 1;
+  string user_agent = 2;
+  string ip_address = 3;
+  string source = 4;
+}
+
+// ─── Deployment Events ──────────────────────────────────────────────────
+
+message DeploymentCreatedPayload {
+  string name = 1;
+  string executor_type = 2;
+  string provider_type = 3;
+}
+
+message DeploymentStatusChangedPayload {
+  string from_status = 1;
+  string to_status = 2;
+}
+
+message DeploymentApprovedPayload {
+  string approver = 1;
+  string notes = 2;
+}
+
+message DeploymentCompletedPayload {
+  int32 resources_created = 1;
+  int32 resources_updated = 2;
+  int32 resources_destroyed = 3;
+  int64 duration_ms = 4;
+}
+
+message DeploymentFailedPayload {
+  string error = 1;
+  string step_id = 2;
+}
+
+message DeploymentCancelledPayload {
+  string reason = 1;
+}
+
+message DeploymentDestroyedPayload {
+  int32 resources_destroyed = 1;
+  int64 duration_ms = 2;
+}
+
+message DeploymentDriftedPayload {
+  int32 drifted_resources = 1;
+}
+
+// ─── Workflow Events ────────────────────────────────────────────────────
+
+message WorkflowStartedPayload {
+  int32 total_steps = 1;
+}
+
+message WorkflowStepCompletedPayload {
+  string step_id = 1;
+  string step_name = 2;
+  int64 duration_ms = 3;
+}
+
+message WorkflowStepFailedPayload {
+  string step_id = 1;
+  string error = 2;
+}
+
+message WorkflowCompletedPayload {
+  int64 duration_ms = 1;
+}
+
+message WorkflowFailedPayload {
+  string error = 1;
+  string failed_step_id = 2;
+}
+
+message WorkflowCancelledPayload {
+  string reason = 1;
+}
+
+// ─── Execution Events ───────────────────────────────────────────────────
+
+message ExecutionStartedPayload {
+  string executor_type = 1;
+  string provider_type = 2;
+}
+
+message ExecutionProgressPayload {
+  int32 progress = 1;
+  string message = 2;
+}
+
+message ExecutionCompletedPayload {
+  bool success = 1;
+  int32 resources_affected = 2;
+  int64 duration_ms = 3;
+}
+
+message ExecutionFailedPayload {
+  string error = 1;
+  int32 exit_code = 2;
+}
+
+// ─── Resource Events ────────────────────────────────────────────────────
+
+message ResourceCreatedPayload {
+  string resource_type = 1;
+  string address = 2;
+  string provider = 3;
+}
+
+message ResourceUpdatedPayload {
+  string resource_type = 1;
+  string address = 2;
+  string changes = 3;
+}
+
+message ResourceDeletedPayload {
+  string resource_type = 1;
+  string address = 2;
+}
+
+message ResourceStateChangedPayload {
+  string old_state = 1;
+  string new_state = 2;
+}
+
+message ResourceDriftedPayload {
+  string diff = 1;
+  int32 changes_count = 2;
+}
+
+// ─── State Events ───────────────────────────────────────────────────────
+
+message StateSyncedPayload {
+  int32 version = 1;
+}
+
+message StateDriftDetectedPayload {
+  int32 diffs_count = 1;
+}
+
+// ─── Plugin Events ──────────────────────────────────────────────────────
+
+message PluginLoadedPayload {
+  string plugin_type = 1;
+  string version = 2;
+}
+
+message PluginUnloadedPayload {
+  string plugin_type = 1;
+}
+
+message PluginErrorPayload {
+  string error = 1;
+}
+
+// ─── Audit Events ───────────────────────────────────────────────────────
+
+message AuditActionPayload {
+  string action = 1;
+  string resource_type = 2;
+  string resource_id = 3;
+  string user_id = 4;
+  google.protobuf.Struct details = 5;
+}
+
+// ─── Request/Response Messages ──────────────────────────────────────────
+
+message PublishEventRequest {
+  EngineEvent event = 1;
+}
+
+message PublishEventResponse {
+  string event_id = 1;
+  bool published = 2;
+}
+
+message SubscribeEventsRequest {
+  string tenant_id = 1;
+  repeated string event_types = 2;
+  string aggregate_id = 3;
+}
+
+message GetEventHistoryRequest {
+  string aggregate_id = 1;
+  string event_type = 2;
+  int32 after_version = 3;
+  int32 limit = 4;
+}
+
+message GetEventHistoryResponse {
+  repeated EngineEvent events = 1;
+  int32 total_count = 2;
+}

@@ -1,92 +1,125 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo } from "react";
 import {
-  Shield, Settings, Plus, Trash2, User, UserPlus, Mail, X,
-  CheckCircle2, AlertTriangle, Users, ToggleLeft, ToggleRight,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useApprovalStore, type TeamMember, type ApprovalRule } from '@/store/approvalStore'
-import { useCredentialStore } from '@/store/credentialStore'
-import { ENVIRONMENT_TYPE_LABELS } from '@/types/settings.types'
+  Shield,
+  Settings,
+  Plus,
+  Trash2,
+  User,
+  UserPlus,
+  Mail,
+  X,
+  CheckCircle2,
+  AlertTriangle,
+  Users,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  useApprovalStore,
+  type TeamMember,
+  type ApprovalRule,
+} from "@/store/approvalStore";
+import { useCredentialStore } from "@/store/credentialStore";
+import { ENVIRONMENT_TYPE_LABELS } from "@/types/settings.types";
 
 interface ApprovalGateConfigProps {
-  onClose: () => void
+  onClose: () => void;
 }
 
-type Tab = 'rules' | 'members'
+type Tab = "rules" | "members";
 
 export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
   const {
-    teamMembers, approvalRules,
-    addTeamMember, removeTeamMember, updateTeamMember,
-    setApprovalRule, removeApprovalRule,
-  } = useApprovalStore()
-  const { environments } = useCredentialStore()
+    teamMembers,
+    approvalRules,
+    addTeamMember,
+    removeTeamMember,
+    updateTeamMember,
+    setApprovalRule,
+    removeApprovalRule,
+  } = useApprovalStore();
+  const { environments } = useCredentialStore();
 
-  const [tab, setTab] = useState<Tab>('rules')
-  const [showAddMember, setShowAddMember] = useState(false)
-  const [newMember, setNewMember] = useState({ name: '', email: '', role: 'approver' as TeamMember['role'] })
-  const [memberError, setMemberError] = useState<string | null>(null)
+  const [tab, setTab] = useState<Tab>("rules");
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMember, setNewMember] = useState({
+    name: "",
+    email: "",
+    role: "approver" as TeamMember["role"],
+  });
+  const [memberError, setMemberError] = useState<string | null>(null);
 
   const sortedEnvs = useMemo(
-    () => [...environments].sort((a, b) => {
-      const order = { development: 0, staging: 1, production: 2 }
-      return (order[a.type] ?? 99) - (order[b.type] ?? 99)
-    }),
-    [environments]
-  )
+    () =>
+      [...environments].sort((a, b) => {
+        const order = { development: 0, staging: 1, production: 2 };
+        return (order[a.type] ?? 99) - (order[b.type] ?? 99);
+      }),
+    [environments],
+  );
 
   const approvers = useMemo(
-    () => teamMembers.filter((m) => m.role === 'approver' || m.role === 'admin'),
-    [teamMembers]
-  )
+    () =>
+      teamMembers.filter((m) => m.role === "approver" || m.role === "admin"),
+    [teamMembers],
+  );
 
   const environmentRules = useMemo(() => {
     return sortedEnvs.map((env) => {
-      const rule = approvalRules.find((r) => r.environmentId === env.id)
-      return { env, rule: rule ?? null }
-    })
-  }, [sortedEnvs, approvalRules])
+      const rule = approvalRules.find((r) => r.environmentId === env.id);
+      return { env, rule: rule ?? null };
+    });
+  }, [sortedEnvs, approvalRules]);
 
   const handleAddMember = () => {
     if (!newMember.name.trim() || !newMember.email.trim()) {
-      setMemberError('Preencha nome e email')
-      return
+      setMemberError("Preencha nome e email");
+      return;
     }
-    if (!newMember.email.includes('@')) {
-      setMemberError('Email inválido')
-      return
+    if (!newMember.email.includes("@")) {
+      setMemberError("Email inválido");
+      return;
     }
     addTeamMember({
       name: newMember.name.trim(),
       email: newMember.email.trim(),
       role: newMember.role,
-    })
-    setNewMember({ name: '', email: '', role: 'approver' })
-    setShowAddMember(false)
-    setMemberError(null)
-  }
+    });
+    setNewMember({ name: "", email: "", role: "approver" });
+    setShowAddMember(false);
+    setMemberError(null);
+  };
 
-  const handleToggleRule = (envId: string, envName: string, current: boolean) => {
+  const handleToggleRule = (
+    envId: string,
+    envName: string,
+    current: boolean,
+  ) => {
     if (current) {
-      removeApprovalRule(envId)
+      removeApprovalRule(envId);
     } else {
       setApprovalRule({
         environmentId: envId,
         environmentName: envName,
         requiresApproval: true,
         approverIds: approvers.map((a) => a.id),
-        approvalMode: 'any',
-      })
+        approvalMode: "any",
+      });
     }
-  }
+  };
 
-  const handleApproverToggle = (envId: string, envName: string, memberId: string) => {
-    const existing = approvalRules.find((r) => r.environmentId === envId)
-    if (!existing) return
+  const handleApproverToggle = (
+    envId: string,
+    envName: string,
+    memberId: string,
+  ) => {
+    const existing = approvalRules.find((r) => r.environmentId === envId);
+    if (!existing) return;
 
     const newApproverIds = existing.approverIds.includes(memberId)
       ? existing.approverIds.filter((id) => id !== memberId)
-      : [...existing.approverIds, memberId]
+      : [...existing.approverIds, memberId];
 
     setApprovalRule({
       environmentId: envId,
@@ -94,23 +127,30 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
       requiresApproval: existing.requiresApproval,
       approverIds: newApproverIds,
       approvalMode: existing.approvalMode,
-    })
-  }
+    });
+  };
 
-  const handleModeChange = (envId: string, envName: string, mode: 'any' | 'all') => {
-    const existing = approvalRules.find((r) => r.environmentId === envId)
-    if (!existing) return
+  const handleModeChange = (
+    envId: string,
+    envName: string,
+    mode: "any" | "all",
+  ) => {
+    const existing = approvalRules.find((r) => r.environmentId === envId);
+    if (!existing) return;
     setApprovalRule({
       environmentId: envId,
       environmentName: envName,
       requiresApproval: existing.requiresApproval,
       approverIds: existing.approverIds,
       approvalMode: mode,
-    })
-  }
+    });
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -122,7 +162,9 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
                 <Shield className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-brand-navy font-display">Portões de Aprovação</h2>
+                <h2 className="text-lg font-bold text-brand-navy font-display">
+                  Portões de Aprovação
+                </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Configure quem pode aprovar promoções em cada ambiente
                 </p>
@@ -133,24 +175,24 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
 
         <div className="flex border-b border-slate-100 shrink-0">
           <button
-            onClick={() => setTab('rules')}
+            onClick={() => setTab("rules")}
             className={cn(
-              'flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all',
-              tab === 'rules'
-                ? 'text-brand-navy border-brand-navy'
-                : 'text-slate-400 border-transparent hover:text-slate-600'
+              "flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all",
+              tab === "rules"
+                ? "text-brand-navy border-brand-navy"
+                : "text-slate-400 border-transparent hover:text-slate-600",
             )}
           >
             <Shield className="w-3.5 h-3.5" />
             Regras por Ambiente
           </button>
           <button
-            onClick={() => setTab('members')}
+            onClick={() => setTab("members")}
             className={cn(
-              'flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all',
-              tab === 'members'
-                ? 'text-brand-navy border-brand-navy'
-                : 'text-slate-400 border-transparent hover:text-slate-600'
+              "flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all",
+              tab === "members"
+                ? "text-brand-navy border-brand-navy"
+                : "text-slate-400 border-transparent hover:text-slate-600",
             )}
           >
             <Users className="w-3.5 h-3.5" />
@@ -159,57 +201,79 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0">
-          {tab === 'rules' && (
+          {tab === "rules" && (
             <div className="p-6 space-y-4">
               {environments.length === 0 ? (
                 <div className="py-12 text-center">
                   <Settings className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-500">Nenhum ambiente configurado</p>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Nenhum ambiente configurado
+                  </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Crie ambientes nas configurações para configurar portões de aprovação
+                    Crie ambientes nas configurações para configurar portões de
+                    aprovação
                   </p>
                 </div>
               ) : (
                 environmentRules.map(({ env, rule }) => {
-                  const isApprovalEnabled = rule?.requiresApproval ?? false
+                  const isApprovalEnabled = rule?.requiresApproval ?? false;
                   return (
                     <div
                       key={env.id}
                       className={cn(
-                        'rounded-xl border-2 p-5 transition-all',
+                        "rounded-xl border-2 p-5 transition-all",
                         isApprovalEnabled
-                          ? 'border-amber-200 bg-amber-50/50'
-                          : 'border-slate-200 bg-white'
+                          ? "border-amber-200 bg-amber-50/50"
+                          : "border-slate-200 bg-white",
                       )}
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-brand-navy">{env.name}</span>
-                            <span className={cn(
-                              'text-[10px] px-1.5 py-0.5 rounded-full font-bold border',
-                              env.type === 'production' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                              env.type === 'staging' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                              'bg-blue-50 text-blue-700 border-blue-200'
-                            )}>
+                            <span className="text-sm font-bold text-brand-navy">
+                              {env.name}
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded-full font-bold border",
+                                env.type === "production"
+                                  ? "bg-purple-50 text-purple-700 border-purple-200"
+                                  : env.type === "staging"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200",
+                              )}
+                            >
                               {ENVIRONMENT_TYPE_LABELS[env.type]}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400 mt-0.5">v{env.canvasVersion} · {env.provider.toUpperCase()} · {env.region}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            v{env.canvasVersion} · {env.provider.toUpperCase()}{" "}
+                            · {env.region}
+                          </p>
                         </div>
                         <button
-                          onClick={() => handleToggleRule(env.id, env.name, isApprovalEnabled)}
+                          onClick={() =>
+                            handleToggleRule(
+                              env.id,
+                              env.name,
+                              isApprovalEnabled,
+                            )
+                          }
                           className={cn(
-                            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all',
+                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all",
                             isApprovalEnabled
-                              ? 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200'
-                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                              ? "bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200"
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100",
                           )}
                         >
                           {isApprovalEnabled ? (
-                            <><ToggleRight className="w-3.5 h-3.5" /> Ativado</>
+                            <>
+                              <ToggleRight className="w-3.5 h-3.5" /> Ativado
+                            </>
                           ) : (
-                            <><ToggleLeft className="w-3.5 h-3.5" /> Desativado</>
+                            <>
+                              <ToggleLeft className="w-3.5 h-3.5" /> Desativado
+                            </>
                           )}
                         </button>
                       </div>
@@ -222,23 +286,27 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
                             </p>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleModeChange(env.id, env.name, 'any')}
+                                onClick={() =>
+                                  handleModeChange(env.id, env.name, "any")
+                                }
                                 className={cn(
-                                  'flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-all',
-                                  rule?.approvalMode === 'any'
-                                    ? 'bg-brand-navy text-white border-brand-navy'
-                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                                  "flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-all",
+                                  rule?.approvalMode === "any"
+                                    ? "bg-brand-navy text-white border-brand-navy"
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300",
                                 )}
                               >
                                 Qualquer 1 aprovador
                               </button>
                               <button
-                                onClick={() => handleModeChange(env.id, env.name, 'all')}
+                                onClick={() =>
+                                  handleModeChange(env.id, env.name, "all")
+                                }
                                 className={cn(
-                                  'flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-all',
-                                  rule?.approvalMode === 'all'
-                                    ? 'bg-brand-navy text-white border-brand-navy'
-                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                                  "flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-all",
+                                  rule?.approvalMode === "all"
+                                    ? "bg-brand-navy text-white border-brand-navy"
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300",
                                 )}
                               >
                                 Todos os aprovadores
@@ -254,51 +322,72 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
                               <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
                                 <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                                 <p className="text-xs text-amber-700">
-                                  Nenhum aprovador disponível. Adicione membros com papel de aprovador.
+                                  Nenhum aprovador disponível. Adicione membros
+                                  com papel de aprovador.
                                 </p>
                               </div>
                             ) : (
                               <div className="space-y-1.5">
                                 {approvers.map((member) => {
-                                  const isSelected = rule?.approverIds.includes(member.id) ?? false
+                                  const isSelected =
+                                    rule?.approverIds.includes(member.id) ??
+                                    false;
                                   return (
                                     <label
                                       key={member.id}
                                       className={cn(
-                                        'flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-all',
+                                        "flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-all",
                                         isSelected
-                                          ? 'bg-white border-brand-navy/30'
-                                          : 'bg-white border-slate-200 hover:border-slate-300'
+                                          ? "bg-white border-brand-navy/30"
+                                          : "bg-white border-slate-200 hover:border-slate-300",
                                       )}
                                     >
-                                      <div className={cn(
-                                        'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white',
-                                        isSelected ? 'bg-brand-navy' : 'bg-slate-300'
-                                      )}>
+                                      <div
+                                        className={cn(
+                                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white",
+                                          isSelected
+                                            ? "bg-brand-navy"
+                                            : "bg-slate-300",
+                                        )}
+                                      >
                                         {member.name.charAt(0).toUpperCase()}
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                          <span className="text-xs font-semibold text-brand-navy">{member.name}</span>
-                                          <span className={cn(
-                                            'text-[9px] px-1.5 py-0.5 rounded-full font-bold border',
-                                            member.role === 'admin'
-                                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                              : 'bg-green-50 text-green-700 border-green-200'
-                                          )}>
-                                            {member.role === 'admin' ? 'Admin' : 'Aprovador'}
+                                          <span className="text-xs font-semibold text-brand-navy">
+                                            {member.name}
+                                          </span>
+                                          <span
+                                            className={cn(
+                                              "text-[9px] px-1.5 py-0.5 rounded-full font-bold border",
+                                              member.role === "admin"
+                                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                                : "bg-green-50 text-green-700 border-green-200",
+                                            )}
+                                          >
+                                            {member.role === "admin"
+                                              ? "Admin"
+                                              : "Aprovador"}
                                           </span>
                                         </div>
-                                        <p className="text-[10px] text-slate-400">{member.email}</p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {member.email}
+                                        </p>
                                       </div>
                                       <input
                                         type="checkbox"
                                         checked={isSelected}
-                                        onChange={() => handleApproverToggle(env.id, env.name, member.id)}
+                                        onChange={() =>
+                                          handleApproverToggle(
+                                            env.id,
+                                            env.name,
+                                            member.id,
+                                          )
+                                        }
                                         className="w-4 h-4 rounded border-slate-300 text-brand-navy focus:ring-brand-navy/30"
                                       />
                                     </label>
-                                  )
+                                  );
                                 })}
                               </div>
                             )}
@@ -308,7 +397,8 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
                             <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
                               <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                               <p className="text-xs text-amber-700">
-                                Selecione ao menos um aprovador para este ambiente
+                                Selecione ao menos um aprovador para este
+                                ambiente
                               </p>
                             </div>
                           )}
@@ -317,21 +407,23 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
 
                       {!isApprovalEnabled && (
                         <p className="text-xs text-slate-400">
-                          Promoções para este ambiente não exigem aprovação. Ative o portão para exigir aprovação.
+                          Promoções para este ambiente não exigem aprovação.
+                          Ative o portão para exigir aprovação.
                         </p>
                       )}
                     </div>
-                  )
+                  );
                 })
               )}
             </div>
           )}
 
-          {tab === 'members' && (
+          {tab === "members" && (
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  {teamMembers.length} {teamMembers.length === 1 ? 'membro' : 'membros'}
+                  {teamMembers.length}{" "}
+                  {teamMembers.length === 1 ? "membro" : "membros"}
                 </p>
                 <button
                   onClick={() => setShowAddMember(!showAddMember)}
@@ -345,9 +437,14 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
               {showAddMember && (
                 <div className="mb-4 p-4 rounded-xl bg-ice-blue/30 border border-ice-blue">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold text-brand-navy">Novo Membro</p>
+                    <p className="text-xs font-bold text-brand-navy">
+                      Novo Membro
+                    </p>
                     <button
-                      onClick={() => { setShowAddMember(false); setMemberError(null) }}
+                      onClick={() => {
+                        setShowAddMember(false);
+                        setMemberError(null);
+                      }}
                       className="text-slate-400 hover:text-slate-600"
                     >
                       <X className="w-4 h-4" />
@@ -355,30 +452,45 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nome</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Nome
+                      </label>
                       <input
                         type="text"
                         value={newMember.name}
-                        onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                        onChange={(e) =>
+                          setNewMember({ ...newMember, name: e.target.value })
+                        }
                         placeholder="Nome completo"
                         className="w-full h-9 rounded-lg border border-slate-200 px-3 text-xs text-brand-navy bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Email
+                      </label>
                       <input
                         type="email"
                         value={newMember.email}
-                        onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                        onChange={(e) =>
+                          setNewMember({ ...newMember, email: e.target.value })
+                        }
                         placeholder="email@exemplo.com"
                         className="w-full h-9 rounded-lg border border-slate-200 px-3 text-xs text-brand-navy bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Papel</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Papel
+                      </label>
                       <select
                         value={newMember.role}
-                        onChange={(e) => setNewMember({ ...newMember, role: e.target.value as TeamMember['role'] })}
+                        onChange={(e) =>
+                          setNewMember({
+                            ...newMember,
+                            role: e.target.value as TeamMember["role"],
+                          })
+                        }
                         className="w-full h-9 rounded-lg border border-slate-200 px-3 text-xs text-brand-navy bg-white focus:outline-none focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy"
                       >
                         <option value="approver">Aprovador</option>
@@ -407,7 +519,9 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
               {teamMembers.length === 0 ? (
                 <div className="py-12 text-center">
                   <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-500">Nenhum membro no time</p>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Nenhum membro no time
+                  </p>
                   <p className="text-xs text-slate-400 mt-1">
                     Adicione membros para configurar quem pode aprovar promoções
                   </p>
@@ -419,29 +533,44 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
                       key={member.id}
                       className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"
                     >
-                      <div className={cn(
-                        'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white',
-                        member.role === 'admin' ? 'bg-purple-500' :
-                        member.role === 'approver' ? 'bg-green-500' :
-                        member.role === 'developer' ? 'bg-blue-500' :
-                        'bg-slate-400'
-                      )}>
+                      <div
+                        className={cn(
+                          "w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white",
+                          member.role === "admin"
+                            ? "bg-purple-500"
+                            : member.role === "approver"
+                              ? "bg-green-500"
+                              : member.role === "developer"
+                                ? "bg-blue-500"
+                                : "bg-slate-400",
+                        )}
+                      >
                         {member.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-brand-navy">{member.name}</span>
-                          <span className={cn(
-                            'text-[9px] px-1.5 py-0.5 rounded-full font-bold border',
-                            member.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                            member.role === 'approver' ? 'bg-green-50 text-green-700 border-green-200' :
-                            member.role === 'developer' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                            'bg-slate-50 text-slate-500 border-slate-200'
-                          )}>
-                            {member.role === 'admin' ? 'Admin' :
-                             member.role === 'approver' ? 'Aprovador' :
-                             member.role === 'developer' ? 'Desenvolvedor' :
-                             'Visualizador'}
+                          <span className="text-sm font-semibold text-brand-navy">
+                            {member.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[9px] px-1.5 py-0.5 rounded-full font-bold border",
+                              member.role === "admin"
+                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                : member.role === "approver"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : member.role === "developer"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : "bg-slate-50 text-slate-500 border-slate-200",
+                            )}
+                          >
+                            {member.role === "admin"
+                              ? "Admin"
+                              : member.role === "approver"
+                                ? "Aprovador"
+                                : member.role === "developer"
+                                  ? "Desenvolvedor"
+                                  : "Visualizador"}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
@@ -473,5 +602,5 @@ export function ApprovalGateConfig({ onClose }: ApprovalGateConfigProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,0 +1,85 @@
+version: "3"
+
+vars:
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  BINARY_DIR: ./bin
+
+tasks:
+  default:
+    desc: Build and verify
+    cmds:
+      - task: verify
+      - task: build
+
+  build:
+    desc: Build all binaries
+    cmds:
+      - task: build-api
+      - task: build-worker
+      - task: build-scheduler
+
+  build-api:
+    desc: Build API server
+    cmd: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o {{.BINARY_DIR}}/api ./cmd/api/
+
+  build-worker:
+    desc: Build worker
+    cmd: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o {{.BINARY_DIR}}/worker ./cmd/worker/
+
+  build-scheduler:
+    desc: Build scheduler
+    cmd: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o {{.BINARY_DIR}}/scheduler ./cmd/scheduler/
+
+  test:
+    desc: Run unit tests
+    cmd: go test -v -count=1 -short ./...
+
+  test-integration:
+    desc: Run integration tests
+    cmd: go test -v -count=1 -tags=integration ./test/integration/...
+
+  verify:
+    desc: Full verification gate
+    cmds:
+      - go mod tidy
+      - go vet ./...
+      - go test -count=1 -short ./...
+
+  lint:
+    desc: Run linters
+    cmds:
+      - go vet ./...
+      - gofmt -s -w .
+
+  proto:
+    desc: Generate protobuf code
+    cmd: bash scripts/proto-gen.sh
+
+  docker-build:
+    desc: Build Docker image
+    cmd: docker build -t cloudbuilder/provision-engine:{{.VERSION}} .
+
+  docker-up:
+    desc: Start services
+    cmd: docker compose up -d
+
+  docker-down:
+    desc: Stop services
+    cmd: docker compose down -v
+
+  clean:
+    desc: Remove build artifacts
+    cmd: rm -rf {{.BINARY_DIR}} coverage.out coverage.html
+
+  run-api:
+    desc: Run API server
+    cmd: go run ./cmd/api/ --config configs/config.yaml
+
+  run-worker:
+    desc: Run worker
+    cmd: go run ./cmd/worker/ --config configs/config.yaml
+
+  run-scheduler:
+    desc: Run scheduler
+    cmd: go run ./cmd/scheduler/ --config configs/config.yaml

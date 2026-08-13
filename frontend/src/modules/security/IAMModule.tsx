@@ -1,502 +1,618 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  Shield, ShieldCheck, ShieldOff, Users, Plus, Trash2, UserPlus, Pencil,
-  KeyRound, CheckCircle2, XCircle, Loader2, Search, Building2, ToggleLeft, ToggleRight,
-  Smartphone, LogOut, Globe, Monitor, Clock, AlertTriangle, CheckCircle,
-  LayoutGrid, MoreHorizontal, Eye, EyeOff, ChevronDown, ChevronRight, Copy,
-} from 'lucide-react'
-import { iamApi, type Role, type TenantUserInfo, type Permission, type Tenant, type MfaConfig, type UserSession, type PermissionMatrixEntry } from '@/api/iam'
-import { showSuccess, showApiError } from '@/lib/toast'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
+  Shield,
+  ShieldCheck,
+  ShieldOff,
+  Users,
+  Plus,
+  Trash2,
+  UserPlus,
+  Pencil,
+  KeyRound,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Search,
+  Building2,
+  ToggleLeft,
+  ToggleRight,
+  Smartphone,
+  LogOut,
+  Globe,
+  Monitor,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  LayoutGrid,
+  MoreHorizontal,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+} from "lucide-react";
+import {
+  iamApi,
+  type Role,
+  type TenantUserInfo,
+  type Permission,
+  type Tenant,
+  type MfaConfig,
+  type UserSession,
+  type PermissionMatrixEntry,
+} from "@/api/iam";
+import { showSuccess, showApiError } from "@/lib/toast";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 // Use the active tenant from localStorage (set during login/tenant selection)
 function getActiveTenantId(): string | null {
-  return localStorage.getItem('cloudbuilder-active-tenant-id')
+  return localStorage.getItem("cloudbuilder-active-tenant-id");
 }
 
 export function IAMModule() {
-  const [activeTab, setActiveTab] = useState('roles')
+  const [activeTab, setActiveTab] = useState("roles");
 
   // Roles state
-  const [roles, setRoles] = useState<Role[]>([])
-  const [rolesLoading, setRolesLoading] = useState(true)
-  const [roleSearch, setRoleSearch] = useState('')
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [roleSearch, setRoleSearch] = useState("");
 
   // Users state
-  const [users, setUsers] = useState<TenantUserInfo[]>([])
-  const [usersLoading, setUsersLoading] = useState(true)
-  const [userSearch, setUserSearch] = useState('')
+  const [users, setUsers] = useState<TenantUserInfo[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [userSearch, setUserSearch] = useState("");
 
   // Permissions state
-  const [permissions, setPermissions] = useState<Record<string, Permission[]>>({})
-  const [expandedRole, setExpandedRole] = useState<string | null>(null)
+  const [permissions, setPermissions] = useState<Record<string, Permission[]>>(
+    {},
+  );
+  const [expandedRole, setExpandedRole] = useState<string | null>(null);
 
   // Tenants state
-  const [tenants, setTenants] = useState<Tenant[]>([])
-  const [tenantsLoading, setTenantsLoading] = useState(true)
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenantsLoading, setTenantsLoading] = useState(true);
 
   // Dialogs
-  const [createRoleOpen, setCreateRoleOpen] = useState(false)
-  const [editRoleOpen, setEditRoleOpen] = useState(false)
-  const [editRoleId, setEditRoleId] = useState<string | null>(null)
-  const [createUserOpen, setCreateUserOpen] = useState(false)
-  const [assignRoleOpen, setAssignRoleOpen] = useState(false)
-  const [assignUserId, setAssignUserId] = useState<string | null>(null)
-  const [selectedRoleId, setSelectedRoleId] = useState('')
+  const [createRoleOpen, setCreateRoleOpen] = useState(false);
+  const [editRoleOpen, setEditRoleOpen] = useState(false);
+  const [editRoleId, setEditRoleId] = useState<string | null>(null);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [assignRoleOpen, setAssignRoleOpen] = useState(false);
+  const [assignUserId, setAssignUserId] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState("");
 
   // Permission dialog
-  const [permRoleId, setPermRoleId] = useState<string | null>(null)
-  const [permAction, setPermAction] = useState('')
-  const [permResource, setPermResource] = useState('')
-  const [permDialogOpen, setPermDialogOpen] = useState(false)
-  const [creatingPerm, setCreatingPerm] = useState(false)
+  const [permRoleId, setPermRoleId] = useState<string | null>(null);
+  const [permAction, setPermAction] = useState("");
+  const [permResource, setPermResource] = useState("");
+  const [permDialogOpen, setPermDialogOpen] = useState(false);
+  const [creatingPerm, setCreatingPerm] = useState(false);
 
   // Form state
-  const [newRoleName, setNewRoleName] = useState('')
-  const [newRoleDesc, setNewRoleDesc] = useState('')
-  const [editRoleName, setEditRoleName] = useState('')
-  const [editRoleDesc, setEditRoleDesc] = useState('')
-  const [newUserName, setNewUserName] = useState('')
-  const [newUserEmail, setNewUserEmail] = useState('')
-  const [newUserPassword, setNewUserPassword] = useState('')
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDesc, setNewRoleDesc] = useState("");
+  const [editRoleName, setEditRoleName] = useState("");
+  const [editRoleDesc, setEditRoleDesc] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
 
   // MFA state
-  const [mfaConfigs, setMfaConfigs] = useState<Record<string, MfaConfig>>({})
-  const [mfaDialogOpen, setMfaDialogOpen] = useState(false)
-  const [mfaUserId, setMfaUserId] = useState<string | null>(null)
-  const [mfaLoading, setMfaLoading] = useState(false)
-  const [mfaSetupData, setMfaSetupData] = useState<{ qrCode: string; secretKey: string } | null>(null)
-  const [mfaVerifyCode, setMfaVerifyCode] = useState('')
-  const [mfaVerifying, setMfaVerifying] = useState(false)
-  const [backupCodes, setBackupCodes] = useState<string[] | null>(null)
-  const [backupCodesCopied, setBackupCodesCopied] = useState(false)
+  const [mfaConfigs, setMfaConfigs] = useState<Record<string, MfaConfig>>({});
+  const [mfaDialogOpen, setMfaDialogOpen] = useState(false);
+  const [mfaUserId, setMfaUserId] = useState<string | null>(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaSetupData, setMfaSetupData] = useState<{
+    qrCode: string;
+    secretKey: string;
+  } | null>(null);
+  const [mfaVerifyCode, setMfaVerifyCode] = useState("");
+  const [mfaVerifying, setMfaVerifying] = useState(false);
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false);
 
   // Sessions state
-  const [sessions, setSessions] = useState<UserSession[]>([])
-  const [sessionsLoading, setSessionsLoading] = useState(false)
-  const [sessionsUserId, setSessionsUserId] = useState<string | null>(null)
-  const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false)
-  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
-  const [revokingAll, setRevokingAll] = useState(false)
+  const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsUserId, setSessionsUserId] = useState<string | null>(null);
+  const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(
+    null,
+  );
+  const [revokingAll, setRevokingAll] = useState(false);
 
   // Permission Matrix state
-  const [permissionMatrix, setPermissionMatrix] = useState<PermissionMatrixEntry[]>([])
-  const [matrixLoading, setMatrixLoading] = useState(false)
-  const [matrixExpandedRole, setMatrixExpandedRole] = useState<string | null>(null)
+  const [permissionMatrix, setPermissionMatrix] = useState<
+    PermissionMatrixEntry[]
+  >([]);
+  const [matrixLoading, setMatrixLoading] = useState(false);
+  const [matrixExpandedRole, setMatrixExpandedRole] = useState<string | null>(
+    null,
+  );
 
   // Loading per-action
-  const [creating, setCreating] = useState(false)
-  const [deletingRole, setDeletingRole] = useState<string | null>(null)
-  const [updatingRole, setUpdatingRole] = useState(false)
-  const [togglingUser, setTogglingUser] = useState<string | null>(null)
-  const [assigningRole, setAssigningRole] = useState(false)
-  const [deletingPerm, setDeletingPerm] = useState<string | null>(null)
-  const [togglingTenant, setTogglingTenant] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false);
+  const [deletingRole, setDeletingRole] = useState<string | null>(null);
+  const [updatingRole, setUpdatingRole] = useState(false);
+  const [togglingUser, setTogglingUser] = useState<string | null>(null);
+  const [assigningRole, setAssigningRole] = useState(false);
+  const [deletingPerm, setDeletingPerm] = useState<string | null>(null);
+  const [togglingTenant, setTogglingTenant] = useState<string | null>(null);
 
-  const tenantId = getActiveTenantId()
+  const tenantId = getActiveTenantId();
 
   // ─── Data fetching ──────────────────────────────────────────
 
   const fetchRoles = useCallback(async () => {
-    if (!tenantId) return
-    setRolesLoading(true)
+    if (!tenantId) return;
+    setRolesLoading(true);
     try {
-      const data = await iamApi.listRoles(tenantId)
-      setRoles(Array.isArray(data) ? data : [])
+      const data = await iamApi.listRoles(tenantId);
+      setRoles(Array.isArray(data) ? data : []);
     } catch {
-      setRoles([])
+      setRoles([]);
     } finally {
-      setRolesLoading(false)
+      setRolesLoading(false);
     }
-  }, [tenantId])
+  }, [tenantId]);
 
   const fetchUsers = useCallback(async () => {
-    if (!tenantId) return
-    setUsersLoading(true)
+    if (!tenantId) return;
+    setUsersLoading(true);
     try {
-      const data = await iamApi.listUsersByTenant(tenantId)
-      setUsers(Array.isArray(data) ? data : [])
+      const data = await iamApi.listUsersByTenant(tenantId);
+      setUsers(Array.isArray(data) ? data : []);
     } catch {
-      setUsers([])
+      setUsers([]);
     } finally {
-      setUsersLoading(false)
+      setUsersLoading(false);
     }
-  }, [tenantId])
+  }, [tenantId]);
 
   const fetchTenants = useCallback(async () => {
-    setTenantsLoading(true)
+    setTenantsLoading(true);
     try {
-      const data = await iamApi.listTenants()
-      setTenants(Array.isArray(data) ? data : [])
+      const data = await iamApi.listTenants();
+      setTenants(Array.isArray(data) ? data : []);
     } catch {
-      setTenants([])
+      setTenants([]);
     } finally {
-      setTenantsLoading(false)
+      setTenantsLoading(false);
     }
-  }, [])
+  }, []);
 
-  useEffect(() => { fetchRoles() }, [fetchRoles])
-  useEffect(() => { fetchUsers() }, [fetchUsers])
-  useEffect(() => { fetchTenants() }, [fetchTenants])
+  useEffect(() => {
+    fetchRoles();
+  }, [fetchRoles]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+  useEffect(() => {
+    fetchTenants();
+  }, [fetchTenants]);
 
   // ─── Permissions ────────────────────────────────────────────
 
-  const togglePermissions = useCallback(async (roleId: string) => {
-    if (expandedRole === roleId) {
-      setExpandedRole(null)
-      return
-    }
-    setExpandedRole(roleId)
-    if (!permissions[roleId]) {
-      try {
-        const data = await iamApi.listPermissions(roleId)
-        setPermissions(prev => ({ ...prev, [roleId]: data }))
-      } catch {
-        setPermissions(prev => ({ ...prev, [roleId]: [] }))
+  const togglePermissions = useCallback(
+    async (roleId: string) => {
+      if (expandedRole === roleId) {
+        setExpandedRole(null);
+        return;
       }
-    }
-  }, [expandedRole, permissions])
+      setExpandedRole(roleId);
+      if (!permissions[roleId]) {
+        try {
+          const data = await iamApi.listPermissions(roleId);
+          setPermissions((prev) => ({ ...prev, [roleId]: data }));
+        } catch {
+          setPermissions((prev) => ({ ...prev, [roleId]: [] }));
+        }
+      }
+    },
+    [expandedRole, permissions],
+  );
 
   // ─── Role CRUD ──────────────────────────────────────────────
 
   const handleCreateRole = async () => {
-    if (!tenantId || !newRoleName.trim()) return
-    setCreating(true)
+    if (!tenantId || !newRoleName.trim()) return;
+    setCreating(true);
     try {
-      await iamApi.createRole({ name: newRoleName.trim(), description: newRoleDesc.trim(), tenantId })
-      showSuccess('Role criada com sucesso')
-      setCreateRoleOpen(false)
-      setNewRoleName('')
-      setNewRoleDesc('')
-      await fetchRoles()
+      await iamApi.createRole({
+        name: newRoleName.trim(),
+        description: newRoleDesc.trim(),
+        tenantId,
+      });
+      showSuccess("Role criada com sucesso");
+      setCreateRoleOpen(false);
+      setNewRoleName("");
+      setNewRoleDesc("");
+      await fetchRoles();
     } catch (err) {
-      showApiError(err, 'Erro ao criar role')
+      showApiError(err, "Erro ao criar role");
     } finally {
-      setCreating(false)
+      setCreating(false);
     }
-  }
+  };
 
   const handleDeleteRole = async (roleId: string) => {
-    setDeletingRole(roleId)
+    setDeletingRole(roleId);
     try {
-      await iamApi.deleteRole(roleId)
-      showSuccess('Role excluída')
-      setRoles(prev => prev.filter(r => r.id !== roleId))
+      await iamApi.deleteRole(roleId);
+      showSuccess("Role excluída");
+      setRoles((prev) => prev.filter((r) => r.id !== roleId));
     } catch (err) {
-      showApiError(err, 'Erro ao excluir role')
+      showApiError(err, "Erro ao excluir role");
     } finally {
-      setDeletingRole(null)
+      setDeletingRole(null);
     }
-  }
+  };
 
   const handleEditRole = async () => {
-    if (!editRoleId || !editRoleName.trim()) return
-    setUpdatingRole(true)
+    if (!editRoleId || !editRoleName.trim()) return;
+    setUpdatingRole(true);
     try {
-      const updated = await iamApi.updateRole(editRoleId, editRoleName.trim(), editRoleDesc.trim())
-      setRoles(prev => prev.map(r => r.id === editRoleId ? updated : r))
-      showSuccess('Role atualizada com sucesso')
-      setEditRoleOpen(false)
-      setEditRoleId(null)
+      const updated = await iamApi.updateRole(
+        editRoleId,
+        editRoleName.trim(),
+        editRoleDesc.trim(),
+      );
+      setRoles((prev) => prev.map((r) => (r.id === editRoleId ? updated : r)));
+      showSuccess("Role atualizada com sucesso");
+      setEditRoleOpen(false);
+      setEditRoleId(null);
     } catch (err) {
-      showApiError(err, 'Erro ao atualizar role')
+      showApiError(err, "Erro ao atualizar role");
     } finally {
-      setUpdatingRole(false)
+      setUpdatingRole(false);
     }
-  }
+  };
 
   const openEditRole = (role: Role) => {
-    setEditRoleId(role.id)
-    setEditRoleName(role.name)
-    setEditRoleDesc(role.description)
-    setEditRoleOpen(true)
-  }
+    setEditRoleId(role.id);
+    setEditRoleName(role.name);
+    setEditRoleDesc(role.description ?? "");
+    setEditRoleOpen(true);
+  };
 
   // ── Permission CRUD ──
 
   const handleCreatePermission = async () => {
-    if (!permRoleId || !permAction.trim() || !permResource.trim()) return
-    setCreatingPerm(true)
+    if (!permRoleId || !permAction.trim() || !permResource.trim()) return;
+    setCreatingPerm(true);
     try {
-      const perm = await iamApi.createPermission(permRoleId, permAction.trim(), permResource.trim())
-      setPermissions(prev => ({
+      const perm = await iamApi.createPermission(
+        permRoleId,
+        permAction.trim(),
+        permResource.trim(),
+      );
+      setPermissions((prev) => ({
         ...prev,
         [permRoleId]: [...(prev[permRoleId] || []), perm],
-      }))
-      setPermAction('')
-      setPermResource('')
-      setPermDialogOpen(false)
-      showSuccess('Permissão adicionada')
+      }));
+      setPermAction("");
+      setPermResource("");
+      setPermDialogOpen(false);
+      showSuccess("Permissão adicionada");
     } catch (err) {
-      showApiError(err, 'Erro ao adicionar permissão')
+      showApiError(err, "Erro ao adicionar permissão");
     } finally {
-      setCreatingPerm(false)
+      setCreatingPerm(false);
     }
-  }
+  };
 
   const handleDeletePermission = async (permId: string, roleId: string) => {
-    setDeletingPerm(permId)
+    setDeletingPerm(permId);
     try {
-      await iamApi.deletePermission(permId)
-      setPermissions(prev => ({
+      await iamApi.deletePermission(permId);
+      setPermissions((prev) => ({
         ...prev,
-        [roleId]: (prev[roleId] || []).filter(p => p.id !== permId),
-      }))
-      showSuccess('Permissão removida')
+        [roleId]: (prev[roleId] || []).filter((p) => p.id !== permId),
+      }));
+      showSuccess("Permissão removida");
     } catch (err) {
-      showApiError(err, 'Erro ao remover permissão')
+      showApiError(err, "Erro ao remover permissão");
     } finally {
-      setDeletingPerm(null)
+      setDeletingPerm(null);
     }
-  }
+  };
 
   // ─── User actions ───────────────────────────────────────────
 
   const handleCreateUser = async () => {
-    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return
-    setCreating(true)
+    const defaultRole =
+      roles.find((role) => role.name.toUpperCase() === "VIEWER") ?? roles[0];
+    if (
+      !tenantId ||
+      !defaultRole ||
+      !newUserName.trim() ||
+      !newUserEmail.trim() ||
+      !newUserPassword.trim()
+    )
+      return;
+    setCreating(true);
     try {
-      await iamApi.createUser({ name: newUserName.trim(), email: newUserEmail.trim(), passwordHash: newUserPassword.trim() })
-      showSuccess('Usuário criado com sucesso')
-      setCreateUserOpen(false)
-      setNewUserName('')
-      setNewUserEmail('')
-      setNewUserPassword('')
-      await fetchUsers()
+      await iamApi.createUser({
+        name: newUserName.trim(),
+        email: newUserEmail.trim(),
+        password: newUserPassword.trim(),
+        tenantId,
+        roleId: defaultRole.id,
+      });
+      showSuccess("Usuário criado com sucesso");
+      setCreateUserOpen(false);
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPassword("");
+      await fetchUsers();
     } catch (err) {
-      showApiError(err, 'Erro ao criar usuário')
+      showApiError(err, "Erro ao criar usuário");
     } finally {
-      setCreating(false)
+      setCreating(false);
     }
-  }
+  };
 
   const handleToggleUser = async (userId: string, currentEnabled: boolean) => {
-    setTogglingUser(userId)
+    setTogglingUser(userId);
     try {
       if (currentEnabled) {
-        await iamApi.disableUser(userId)
-        showSuccess('Usuário desabilitado')
+        await iamApi.disableUser(userId);
+        showSuccess("Usuário desabilitado");
       } else {
-        await iamApi.enableUser(userId)
-        showSuccess('Usuário habilitado')
+        await iamApi.enableUser(userId);
+        showSuccess("Usuário habilitado");
       }
-      await fetchUsers()
+      await fetchUsers();
     } catch (err) {
-      showApiError(err, 'Erro ao alterar status do usuário')
+      showApiError(err, "Erro ao alterar status do usuário");
     } finally {
-      setTogglingUser(null)
+      setTogglingUser(null);
     }
-  }
+  };
 
-  const handleToggleTenant = async (tenantId: string, currentActive: boolean) => {
-    setTogglingTenant(tenantId)
+  const handleToggleTenant = async (
+    tenantId: string,
+    currentActive: boolean,
+  ) => {
+    setTogglingTenant(tenantId);
     try {
       if (currentActive) {
-        await iamApi.deactivateTenant(tenantId)
-        showSuccess('Tenant desativado')
+        await iamApi.deactivateTenant(tenantId);
+        showSuccess("Tenant desativado");
       } else {
-        await iamApi.activateTenant(tenantId)
-        showSuccess('Tenant ativado')
+        await iamApi.activateTenant(tenantId);
+        showSuccess("Tenant ativado");
       }
-      setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, active: !currentActive } : t))
+      setTenants((prev) =>
+        prev.map((t) =>
+          t.id === tenantId ? { ...t, active: !currentActive } : t,
+        ),
+      );
     } catch (err) {
-      showApiError(err, 'Erro ao alterar status do tenant')
+      showApiError(err, "Erro ao alterar status do tenant");
     } finally {
-      setTogglingTenant(null)
+      setTogglingTenant(null);
     }
-  }
+  };
 
   const handleAssignRole = async () => {
-    if (!tenantId || !assignUserId || !selectedRoleId) return
-    setAssigningRole(true)
+    if (!tenantId || !assignUserId || !selectedRoleId) return;
+    setAssigningRole(true);
     try {
-      await iamApi.assignRole(tenantId, assignUserId, selectedRoleId)
-      showSuccess('Role atribuída com sucesso')
-      setAssignRoleOpen(false)
-      setAssignUserId(null)
-      setSelectedRoleId('')
-      await fetchUsers()
+      await iamApi.assignRole(tenantId, assignUserId, selectedRoleId);
+      showSuccess("Role atribuída com sucesso");
+      setAssignRoleOpen(false);
+      setAssignUserId(null);
+      setSelectedRoleId("");
+      await fetchUsers();
     } catch (err) {
-      showApiError(err, 'Erro ao atribuir role')
+      showApiError(err, "Erro ao atribuir role");
     } finally {
-      setAssigningRole(false)
+      setAssigningRole(false);
     }
-  }
+  };
 
   // ─── Filters ────────────────────────────────────────────────
 
-  const filteredRoles = roles.filter(r =>
-    r.name.toLowerCase().includes(roleSearch.toLowerCase())
-  )
+  const filteredRoles = roles.filter((r) =>
+    r.name.toLowerCase().includes(roleSearch.toLowerCase()),
+  );
 
-  const filteredUsers = users.filter(u =>
-    u.userName.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.userEmail.toLowerCase().includes(userSearch.toLowerCase())
-  )
+  const filteredUsers = users.filter(
+    (u) =>
+      (u.name ?? u.userName ?? "")
+        .toLowerCase()
+        .includes(userSearch.toLowerCase()) ||
+      (u.email ?? u.userEmail ?? "")
+        .toLowerCase()
+        .includes(userSearch.toLowerCase()),
+  );
 
   // ─── MFA Handlers ───────────────────────────────────────────
 
   const handleSetupMfa = async (userId: string) => {
-    setMfaLoading(true)
+    setMfaLoading(true);
     try {
-      const data = await iamApi.setupMfa(userId)
-      setMfaSetupData({ qrCode: data.qrCode, secretKey: data.secretKey })
-      setMfaConfigs(prev => ({ ...prev, [userId]: data.config }))
-      showSuccess('MFA configurado. Escaneie o QR Code com seu aplicativo autenticador.')
+      const data = await iamApi.setupMfa(userId);
+      setMfaSetupData({ qrCode: data.qrCode ?? "", secretKey: data.secretKey ?? "" });
+      setMfaConfigs((prev) => ({ ...prev, [userId]: data }));
+      showSuccess(
+        "MFA configurado. Escaneie o QR Code com seu aplicativo autenticador.",
+      );
     } catch (err) {
-      showApiError(err, 'Erro ao configurar MFA')
+      showApiError(err, "Erro ao configurar MFA");
     } finally {
-      setMfaLoading(false)
+      setMfaLoading(false);
     }
-  }
-
-  const generateBackupCodes = useCallback((): string[] => {
-    const codes: string[] = []
-    for (let i = 0; i < 8; i++) {
-      const segment1 = Math.random().toString(36).substring(2, 6).toUpperCase()
-      const segment2 = Math.random().toString(36).substring(2, 6).toUpperCase()
-      codes.push(`${segment1}-${segment2}`)
-    }
-    return codes
-  }, [])
+  };
 
   const handleVerifyMfa = async () => {
-    if (!mfaUserId || !mfaVerifyCode.trim()) return
-    setMfaVerifying(true)
+    if (!mfaUserId || !mfaVerifyCode.trim()) return;
+    setMfaVerifying(true);
     try {
-      const config = await iamApi.verifyMfa(mfaUserId, mfaVerifyCode.trim())
-      setMfaConfigs(prev => ({ ...prev, [mfaUserId]: config }))
-      // Generate backup codes after successful verification
-      const codes = generateBackupCodes()
-      setBackupCodes(codes)
-      setMfaSetupData(null)
-      setMfaVerifyCode('')
-      showSuccess('MFA verificado e ativado com sucesso! Guarde seus códigos de recuperação.')
+      const config = await iamApi.verifyMfa(mfaUserId, mfaVerifyCode.trim());
+      setMfaConfigs((prev) => ({ ...prev, [mfaUserId]: config }));
+      setBackupCodes(config.backupCodes ?? []);
+      setMfaSetupData(null);
+      setMfaVerifyCode("");
+      showSuccess(
+        "MFA verificado e ativado com sucesso! Guarde seus códigos de recuperação.",
+      );
     } catch (err) {
-      showApiError(err, 'Código MFA inválido')
+      showApiError(err, "Código MFA inválido");
     } finally {
-      setMfaVerifying(false)
+      setMfaVerifying(false);
     }
-  }
+  };
 
   const handleDisableMfa = async (userId: string) => {
-    setMfaLoading(true)
+    setMfaLoading(true);
     try {
-      await iamApi.disableMfa(userId)
-      const currentConfig = mfaConfigs[userId]
+      await iamApi.disableMfa(userId);
+      const currentConfig = mfaConfigs[userId];
       if (currentConfig) {
-        setMfaConfigs(prev => ({ ...prev, [userId]: { ...currentConfig, enabled: false, verified: false } }))
+        setMfaConfigs((prev) => ({
+          ...prev,
+          [userId]: { ...currentConfig, enabled: false, verified: false },
+        }));
       }
-      showSuccess('MFA desativado')
+      showSuccess("MFA desativado");
     } catch (err) {
-      showApiError(err, 'Erro ao desativar MFA')
+      showApiError(err, "Erro ao desativar MFA");
     } finally {
-      setMfaLoading(false)
+      setMfaLoading(false);
     }
-  }
+  };
 
   const openMfaDialog = async (userId: string) => {
-    setMfaUserId(userId)
-    setMfaDialogOpen(true)
-    setMfaSetupData(null)
-    setMfaVerifyCode('')
-    setMfaLoading(true)
+    setMfaUserId(userId);
+    setMfaDialogOpen(true);
+    setMfaSetupData(null);
+    setMfaVerifyCode("");
+    setMfaLoading(true);
     try {
-      const config = await iamApi.getMfaConfig(userId)
-      setMfaConfigs(prev => ({ ...prev, [userId]: config }))
+      const config = await iamApi.getMfaConfig(userId);
+      setMfaConfigs((prev) => ({ ...prev, [userId]: config }));
     } catch {
       // User may not have MFA config yet
     } finally {
-      setMfaLoading(false)
+      setMfaLoading(false);
     }
-  }
+  };
 
   // ─── Session Handlers ───────────────────────────────────────
 
   const openSessionsDialog = async (userId: string) => {
-    setSessionsUserId(userId)
-    setSessionsDialogOpen(true)
-    setSessionsLoading(true)
+    setSessionsUserId(userId);
+    setSessionsDialogOpen(true);
+    setSessionsLoading(true);
     try {
-      const data = await iamApi.listSessions(userId)
-      setSessions(data)
+      const data = await iamApi.listSessions(userId);
+      setSessions(data);
     } catch {
-      setSessions([])
+      setSessions([]);
     } finally {
-      setSessionsLoading(false)
+      setSessionsLoading(false);
     }
-  }
+  };
 
   const handleRevokeSession = async (sessionId: string) => {
-    if (!sessionsUserId) return
-    setRevokingSessionId(sessionId)
+    if (!sessionsUserId) return;
+    setRevokingSessionId(sessionId);
     try {
-      await iamApi.revokeSession(sessionsUserId, sessionId)
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'revoked' } : s))
-      showSuccess('Sessão revogada')
+      await iamApi.revokeSession(sessionsUserId, sessionId);
+      setSessions((prev) =>
+        prev.map((s) => (s.id === sessionId ? { ...s, status: "revoked" } : s)),
+      );
+      showSuccess("Sessão revogada");
     } catch (err) {
-      showApiError(err, 'Erro ao revogar sessão')
+      showApiError(err, "Erro ao revogar sessão");
     } finally {
-      setRevokingSessionId(null)
+      setRevokingSessionId(null);
     }
-  }
+  };
 
   const handleRevokeAllSessions = async () => {
-    if (!sessionsUserId) return
-    setRevokingAll(true)
+    if (!sessionsUserId) return;
+    setRevokingAll(true);
     try {
-      await iamApi.revokeAllSessions(sessionsUserId)
-      setSessions(prev => prev.map(s => ({ ...s, status: 'revoked' as const })))
-      showSuccess('Todas as sessões foram revogadas')
+      await iamApi.revokeAllSessions(sessionsUserId);
+      setSessions((prev) =>
+        prev.map((s) => ({ ...s, status: "revoked" as const })),
+      );
+      showSuccess("Todas as sessões foram revogadas");
     } catch (err) {
-      showApiError(err, 'Erro ao revogar sessões')
+      showApiError(err, "Erro ao revogar sessões");
     } finally {
-      setRevokingAll(false)
+      setRevokingAll(false);
     }
-  }
+  };
 
   // ─── Permission Matrix Handler ──────────────────────────────
 
   const fetchPermissionMatrix = useCallback(async () => {
-    if (!tenantId) return
-    setMatrixLoading(true)
+    if (!tenantId) return;
+    setMatrixLoading(true);
     try {
-      const data = await iamApi.getPermissionMatrix(tenantId)
-      setPermissionMatrix(Array.isArray(data) ? data : [])
+      const data = await iamApi.getPermissionMatrix(tenantId);
+      setPermissionMatrix(Array.isArray(data) ? data : []);
     } catch {
-      setPermissionMatrix([])
+      setPermissionMatrix([]);
     } finally {
-      setMatrixLoading(false)
+      setMatrixLoading(false);
     }
-  }, [tenantId])
+  }, [tenantId]);
 
   useEffect(() => {
-    if (activeTab === 'permissions') {
-      fetchPermissionMatrix()
+    if (activeTab === "permissions") {
+      fetchPermissionMatrix();
     }
-  }, [activeTab, fetchPermissionMatrix])
+  }, [activeTab, fetchPermissionMatrix]);
 
   // ─── Stats ──────────────────────────────────────────────────
 
-  const totalPermissions = roles.reduce((acc, r) => acc + (expandedRole === r.id && permissions[r.id] ? permissions[r.id].length : 0), 0)
+  const totalPermissions = roles.reduce(
+    (acc, r) =>
+      acc +
+      (expandedRole === r.id && permissions[r.id]
+        ? permissions[r.id].length
+        : 0),
+    0,
+  );
 
   // ─── Common cell styles ─────────────────────────────────────
 
-  const cellCls = 'px-4 py-3 text-sm'
+  const cellCls = "px-4 py-3 text-sm";
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-navy font-display">IAM</h1>
-          <p className="text-sm text-slate-400">Gerenciamento de identidade e acesso</p>
+          <h1 className="text-2xl font-bold text-brand-navy font-display">
+            IAM
+          </h1>
+          <p className="text-sm text-slate-400">
+            Gerenciamento de identidade e acesso
+          </p>
         </div>
       </div>
 
@@ -508,8 +624,12 @@ export function IAMModule() {
               <Shield className="h-5 w-5 text-brand-navy" />
             </div>
             <div>
-              <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Roles</p>
-              <p className="text-2xl font-bold text-brand-navy">{roles.length}</p>
+              <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+                Roles
+              </p>
+              <p className="text-2xl font-bold text-brand-navy">
+                {roles.length}
+              </p>
             </div>
           </div>
         </div>
@@ -519,8 +639,12 @@ export function IAMModule() {
               <Users className="h-5 w-5 text-brand-navy" />
             </div>
             <div>
-              <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Usuários</p>
-              <p className="text-2xl font-bold text-brand-navy">{users.length}</p>
+              <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+                Usuários
+              </p>
+              <p className="text-2xl font-bold text-brand-navy">
+                {users.length}
+              </p>
             </div>
           </div>
         </div>
@@ -530,8 +654,12 @@ export function IAMModule() {
               <KeyRound className="h-5 w-5 text-brand-navy" />
             </div>
             <div>
-              <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">Permissões</p>
-              <p className="text-2xl font-bold text-brand-navy">{totalPermissions}</p>
+              <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+                Permissões
+              </p>
+              <p className="text-2xl font-bold text-brand-navy">
+                {totalPermissions}
+              </p>
             </div>
           </div>
         </div>
@@ -540,19 +668,34 @@ export function IAMModule() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-white border border-slate-200 rounded-xl p-1">
-          <TabsTrigger value="roles" className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white">
+          <TabsTrigger
+            value="roles"
+            className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white"
+          >
             Roles
           </TabsTrigger>
-          <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white">
+          <TabsTrigger
+            value="users"
+            className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white"
+          >
             Usuários
           </TabsTrigger>
-          <TabsTrigger value="tenants" className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white">
+          <TabsTrigger
+            value="tenants"
+            className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white"
+          >
             Tenants
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white">
+          <TabsTrigger
+            value="permissions"
+            className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white"
+          >
             Permissões
           </TabsTrigger>
-          <TabsTrigger value="sessions" className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white">
+          <TabsTrigger
+            value="sessions"
+            className="rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white"
+          >
             Sessões
           </TabsTrigger>
         </TabsList>
@@ -567,7 +710,7 @@ export function IAMModule() {
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime"
                 placeholder="Buscar role..."
                 value={roleSearch}
-                onChange={e => setRoleSearch(e.target.value)}
+                onChange={(e) => setRoleSearch(e.target.value)}
               />
             </div>
             <Dialog open={createRoleOpen} onOpenChange={setCreateRoleOpen}>
@@ -579,7 +722,9 @@ export function IAMModule() {
               </DialogTrigger>
               <DialogContent className="rounded-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-brand-navy font-display">Criar Nova Role</DialogTitle>
+                  <DialogTitle className="text-brand-navy font-display">
+                    Criar Nova Role
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -588,7 +733,7 @@ export function IAMModule() {
                       id="roleName"
                       placeholder="Ex: devops, security-auditor"
                       value={newRoleName}
-                      onChange={e => setNewRoleName(e.target.value)}
+                      onChange={(e) => setNewRoleName(e.target.value)}
                       className="rounded-xl"
                     />
                   </div>
@@ -598,7 +743,7 @@ export function IAMModule() {
                       id="roleDesc"
                       placeholder="Descrição da role"
                       value={newRoleDesc}
-                      onChange={e => setNewRoleDesc(e.target.value)}
+                      onChange={(e) => setNewRoleDesc(e.target.value)}
                       className="rounded-xl"
                     />
                   </div>
@@ -607,7 +752,9 @@ export function IAMModule() {
                     disabled={creating || !newRoleName.trim()}
                     className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
                     Criar Role
                   </Button>
                 </div>
@@ -624,21 +771,42 @@ export function IAMModule() {
             ) : filteredRoles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-sm text-slate-400">
                 <ShieldOff className="w-8 h-8 mb-2" />
-                {roleSearch ? 'Nenhuma role encontrada para essa busca' : 'Nenhuma role configurada'}
+                {roleSearch
+                  ? "Nenhuma role encontrada para essa busca"
+                  : "Nenhuma role configurada"}
               </div>
             ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Role</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Descrição</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Criada em</th>
-                    <th className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Ações</th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Role
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Descrição
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Criada em
+                    </th>
+                    <th
+                      className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredRoles.map(role => (
-                    <tr key={role.id} className="hover:bg-slate-50/80 transition-colors">
+                  {filteredRoles.map((role) => (
+                    <tr
+                      key={role.id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
                       <td className={`${cellCls} font-medium text-brand-navy`}>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-ice-blue flex items-center justify-center">
@@ -647,13 +815,15 @@ export function IAMModule() {
                           {role.name}
                         </div>
                       </td>
-                      <td className={`${cellCls} text-slate-500`}>{role.description || '-'}</td>
+                      <td className={`${cellCls} text-slate-500`}>
+                        {role.description || "-"}
+                      </td>
                       <td className={`${cellCls} text-slate-400 text-xs`}>
-                        {new Date(role.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(role.createdAt ?? "").toLocaleDateString("pt-BR")}
                       </td>
                       <td className={`${cellCls} text-right`}>
                         <div className="flex items-center justify-end gap-1">
-                                          <Button
+                          <Button
                             variant="ghost"
                             size="sm"
                             className="text-xs text-slate-400 hover:text-brand-navy"
@@ -669,7 +839,7 @@ export function IAMModule() {
                             onClick={() => togglePermissions(role.id)}
                           >
                             <KeyRound className="w-3.5 h-3.5 mr-1" />
-                            {expandedRole === role.id ? 'Fechar' : 'Permissões'}
+                            {expandedRole === role.id ? "Fechar" : "Permissões"}
                           </Button>
                           <Button
                             variant="ghost"
@@ -678,10 +848,11 @@ export function IAMModule() {
                             onClick={() => handleDeleteRole(role.id)}
                             disabled={deletingRole === role.id}
                           >
-                            {deletingRole === role.id
-                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              : <Trash2 className="w-3.5 h-3.5" />
-                            }
+                            {deletingRole === role.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
                           </Button>
                         </div>
                       </td>
@@ -699,21 +870,24 @@ export function IAMModule() {
                 <div className="flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-brand-navy" />
                   <span className="text-sm font-bold text-brand-navy">
-                    Permissões: {roles.find(r => r.id === expandedRole)?.name}
+                    Permissões: {roles.find((r) => r.id === expandedRole)?.name}
                   </span>
                 </div>
-                <Dialog open={permDialogOpen && permRoleId === expandedRole} onOpenChange={open => {
-                  setPermDialogOpen(open)
-                  if (!open) setPermRoleId(null)
-                }}>
+                <Dialog
+                  open={permDialogOpen && permRoleId === expandedRole}
+                  onOpenChange={(open) => {
+                    setPermDialogOpen(open);
+                    if (!open) setPermRoleId(null);
+                  }}
+                >
                   <DialogTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="text-xs text-brand-navy hover:text-brand-navy/80"
                       onClick={() => {
-                        setPermRoleId(expandedRole)
-                        setPermDialogOpen(true)
+                        setPermRoleId(expandedRole);
+                        setPermDialogOpen(true);
                       }}
                     >
                       <Plus className="w-3.5 h-3.5 mr-1" />
@@ -722,7 +896,9 @@ export function IAMModule() {
                   </DialogTrigger>
                   <DialogContent className="rounded-2xl">
                     <DialogHeader>
-                      <DialogTitle className="text-brand-navy font-display">Nova Permissão</DialogTitle>
+                      <DialogTitle className="text-brand-navy font-display">
+                        Nova Permissão
+                      </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -731,7 +907,7 @@ export function IAMModule() {
                           id="permAction"
                           placeholder="Ex: CREATE, READ, UPDATE, DELETE"
                           value={permAction}
-                          onChange={e => setPermAction(e.target.value)}
+                          onChange={(e) => setPermAction(e.target.value)}
                           className="rounded-xl"
                         />
                       </div>
@@ -741,16 +917,22 @@ export function IAMModule() {
                           id="permResource"
                           placeholder="Ex: CANVAS, PROVISION, COST"
                           value={permResource}
-                          onChange={e => setPermResource(e.target.value)}
+                          onChange={(e) => setPermResource(e.target.value)}
                           className="rounded-xl"
                         />
                       </div>
                       <Button
                         onClick={handleCreatePermission}
-                        disabled={creatingPerm || !permAction.trim() || !permResource.trim()}
+                        disabled={
+                          creatingPerm ||
+                          !permAction.trim() ||
+                          !permResource.trim()
+                        }
                         className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                       >
-                        {creatingPerm ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {creatingPerm ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : null}
                         Adicionar
                       </Button>
                     </div>
@@ -762,22 +944,30 @@ export function IAMModule() {
                   <Loader2 className="w-5 h-5 animate-spin text-brand-navy" />
                 </div>
               ) : permissions[expandedRole].length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">Nenhuma permissão configurada para esta role</p>
+                <p className="text-sm text-slate-400 text-center py-4">
+                  Nenhuma permissão configurada para esta role
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {permissions[expandedRole].map(p => (
-                    <span key={p.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-medium text-brand-navy border border-ice-blue group">
+                  {permissions[expandedRole].map((p) => (
+                    <span
+                      key={p.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-medium text-brand-navy border border-ice-blue group"
+                    >
                       <CheckCircle2 className="w-3 h-3" />
                       {p.action}:{p.resource}
                       <button
                         className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600"
-                        onClick={() => handleDeletePermission(p.id, expandedRole)}
+                        onClick={() =>
+                          handleDeletePermission(p.id, expandedRole)
+                        }
                         disabled={deletingPerm === p.id}
                       >
-                        {deletingPerm === p.id
-                          ? <Loader2 className="w-3 h-3 animate-spin" />
-                          : <XCircle className="w-3 h-3" />
-                        }
+                        {deletingPerm === p.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <XCircle className="w-3 h-3" />
+                        )}
                       </button>
                     </span>
                   ))}
@@ -790,7 +980,9 @@ export function IAMModule() {
           <Dialog open={editRoleOpen} onOpenChange={setEditRoleOpen}>
             <DialogContent className="rounded-2xl">
               <DialogHeader>
-                <DialogTitle className="text-brand-navy font-display">Editar Role</DialogTitle>
+                <DialogTitle className="text-brand-navy font-display">
+                  Editar Role
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -798,7 +990,7 @@ export function IAMModule() {
                   <Input
                     id="editRoleName"
                     value={editRoleName}
-                    onChange={e => setEditRoleName(e.target.value)}
+                    onChange={(e) => setEditRoleName(e.target.value)}
                     className="rounded-xl"
                   />
                 </div>
@@ -807,7 +999,7 @@ export function IAMModule() {
                   <Input
                     id="editRoleDesc"
                     value={editRoleDesc}
-                    onChange={e => setEditRoleDesc(e.target.value)}
+                    onChange={(e) => setEditRoleDesc(e.target.value)}
                     className="rounded-xl"
                   />
                 </div>
@@ -816,7 +1008,9 @@ export function IAMModule() {
                   disabled={updatingRole || !editRoleName.trim()}
                   className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                 >
-                  {updatingRole ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  {updatingRole ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
                   Salvar Alterações
                 </Button>
               </div>
@@ -834,7 +1028,7 @@ export function IAMModule() {
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime"
                 placeholder="Buscar usuário..."
                 value={userSearch}
-                onChange={e => setUserSearch(e.target.value)}
+                onChange={(e) => setUserSearch(e.target.value)}
               />
             </div>
             <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
@@ -846,7 +1040,9 @@ export function IAMModule() {
               </DialogTrigger>
               <DialogContent className="rounded-2xl">
                 <DialogHeader>
-                  <DialogTitle className="text-brand-navy font-display">Criar Novo Usuário</DialogTitle>
+                  <DialogTitle className="text-brand-navy font-display">
+                    Criar Novo Usuário
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -855,7 +1051,7 @@ export function IAMModule() {
                       id="userName"
                       placeholder="Nome completo"
                       value={newUserName}
-                      onChange={e => setNewUserName(e.target.value)}
+                      onChange={(e) => setNewUserName(e.target.value)}
                       className="rounded-xl"
                     />
                   </div>
@@ -866,7 +1062,7 @@ export function IAMModule() {
                       type="email"
                       placeholder="email@exemplo.com"
                       value={newUserEmail}
-                      onChange={e => setNewUserEmail(e.target.value)}
+                      onChange={(e) => setNewUserEmail(e.target.value)}
                       className="rounded-xl"
                     />
                   </div>
@@ -877,16 +1073,23 @@ export function IAMModule() {
                       type="password"
                       placeholder="Senha temporária"
                       value={newUserPassword}
-                      onChange={e => setNewUserPassword(e.target.value)}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
                       className="rounded-xl"
                     />
                   </div>
                   <Button
                     onClick={handleCreateUser}
-                    disabled={creating || !newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()}
+                    disabled={
+                      creating ||
+                      !newUserName.trim() ||
+                      !newUserEmail.trim() ||
+                      !newUserPassword.trim()
+                    }
                     className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
                     Criar Usuário
                   </Button>
                 </div>
@@ -903,22 +1106,47 @@ export function IAMModule() {
             ) : filteredUsers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-sm text-slate-400">
                 <Users className="w-8 h-8 mb-2" />
-                {userSearch ? 'Nenhum usuário encontrado para essa busca' : 'Nenhum usuário neste tenant'}
+                {userSearch
+                  ? "Nenhum usuário encontrado para essa busca"
+                  : "Nenhum usuário neste tenant"}
               </div>
             ) : (
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Usuário</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Email</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Role</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Status</th>
-                    <th className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Ações</th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Usuário
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Email
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Role
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Status
+                    </th>
+                    <th
+                      className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredUsers.map(tu => (
-                    <tr key={tu.id} className="hover:bg-slate-50/80 transition-colors">
+                  {filteredUsers.map((tu) => (
+                    <tr
+                      key={tu.id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
                       <td className={`${cellCls} font-medium text-brand-navy`}>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-ice-blue flex items-center justify-center">
@@ -927,38 +1155,48 @@ export function IAMModule() {
                           {tu.name}
                         </div>
                       </td>
-                      <td className={`${cellCls} text-slate-500`}>                          {tu.email}</td>
+                      <td className={`${cellCls} text-slate-500`}>
+                        {" "}
+                        {tu.email}
+                      </td>
                       <td className={`${cellCls}`}>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-ice-blue text-brand-navy">
                           {tu.roleName}
                         </span>
                       </td>
-                       <td className={`${cellCls}`}>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          tu.enabled
-                            ? 'bg-green-50 text-green-700'
-                            : 'bg-red-50 text-red-700'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            tu.enabled ? 'bg-green-500' : 'bg-red-500'
-                          }`} />
+                      <td className={`${cellCls}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            tu.enabled
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              tu.enabled ? "bg-green-500" : "bg-red-500"
+                            }`}
+                          />
                           Ativo
                         </span>
                       </td>
                       <td className={`${cellCls} text-right`}>
                         <div className="flex items-center justify-end gap-1">
-                          <Dialog open={assignRoleOpen && assignUserId === tu.userId} onOpenChange={open => {
-                            setAssignRoleOpen(open)
-                            if (!open) setAssignUserId(null)
-                          }}>
+                          <Dialog
+                            open={assignRoleOpen && assignUserId === tu.userId}
+                            onOpenChange={(open) => {
+                              setAssignRoleOpen(open);
+                              if (!open) setAssignUserId(null);
+                            }}
+                          >
                             <DialogTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-xs text-slate-400 hover:text-brand-navy"
                                 onClick={() => {
-                                  setAssignUserId(tu.userId)
-                                  setAssignRoleOpen(true)
+                                  setAssignUserId(tu.userId);
+                                  setAssignRoleOpen(true);
                                 }}
                               >
                                 <Shield className="w-3.5 h-3.5 mr-1" />
@@ -968,19 +1206,24 @@ export function IAMModule() {
                             <DialogContent className="rounded-2xl">
                               <DialogHeader>
                                 <DialogTitle className="text-brand-navy font-display">
-                                   Atribuir Role para {tu.name}
+                                  Atribuir Role para {tu.name}
                                 </DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4">
                                 <div className="space-y-2">
                                   <Label>Selecionar Role</Label>
-                                  <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                                  <Select
+                                    value={selectedRoleId}
+                                    onValueChange={setSelectedRoleId}
+                                  >
                                     <SelectTrigger className="rounded-xl">
                                       <SelectValue placeholder="Escolha uma role" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {roles.map(r => (
-                                        <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                                      {roles.map((r) => (
+                                        <SelectItem key={r.id} value={r.id}>
+                                          {r.name}
+                                        </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -990,7 +1233,9 @@ export function IAMModule() {
                                   disabled={assigningRole || !selectedRoleId}
                                   className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                                 >
-                                  {assigningRole ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                                  {assigningRole ? (
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                  ) : null}
                                   Atribuir
                                 </Button>
                               </div>
@@ -1022,16 +1267,39 @@ export function IAMModule() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Tenant</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Slug</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Criado em</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Status</th>
-                    <th className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Ações</th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Tenant
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Slug
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Criado em
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Status
+                    </th>
+                    <th
+                      className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {tenants.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                  {tenants.map((t) => (
+                    <tr
+                      key={t.id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
                       <td className={`${cellCls} font-medium text-brand-navy`}>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-ice-blue flex items-center justify-center">
@@ -1040,18 +1308,26 @@ export function IAMModule() {
                           {t.name}
                         </div>
                       </td>
-                      <td className={`${cellCls} text-slate-500 font-mono text-xs`}>{t.slug}</td>
+                      <td
+                        className={`${cellCls} text-slate-500 font-mono text-xs`}
+                      >
+                        {t.slug}
+                      </td>
                       <td className={`${cellCls} text-slate-400 text-xs`}>
-                        {new Date(t.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(t.createdAt ?? "").toLocaleDateString("pt-BR")}
                       </td>
                       <td className={`${cellCls}`}>
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          t.active
-                            ? 'bg-green-50 text-green-700'
-                            : 'bg-red-50 text-red-700'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${t.active ? 'bg-green-500' : 'bg-red-500'}`} />
-                          {t.active ? 'Ativo' : 'Inativo'}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            t.active
+                              ? "bg-green-50 text-green-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${t.active ? "bg-green-500" : "bg-red-500"}`}
+                          />
+                          {t.active ? "Ativo" : "Inativo"}
                         </span>
                       </td>
                       <td className={`${cellCls} text-right`}>
@@ -1060,19 +1336,20 @@ export function IAMModule() {
                           size="sm"
                           className={`text-xs ${
                             t.active
-                              ? 'text-red-400 hover:text-red-600 hover:bg-red-50'
-                              : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                              ? "text-red-400 hover:text-red-600 hover:bg-red-50"
+                              : "text-green-600 hover:text-green-700 hover:bg-green-50"
                           }`}
-                          onClick={() => handleToggleTenant(t.id, t.active)}
+                          onClick={() => handleToggleTenant(t.id, t.active ?? false)}
                           disabled={togglingTenant === t.id}
                         >
-                          {togglingTenant === t.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-                            : t.active
-                              ? <ToggleRight className="w-3.5 h-3.5 mr-1" />
-                              : <ToggleLeft className="w-3.5 h-3.5 mr-1" />
-                          }
-                          {t.active ? 'Desativar' : 'Ativar'}
+                          {togglingTenant === t.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                          ) : t.active ? (
+                            <ToggleRight className="w-3.5 h-3.5 mr-1" />
+                          ) : (
+                            <ToggleLeft className="w-3.5 h-3.5 mr-1" />
+                          )}
+                          {t.active ? "Desativar" : "Ativar"}
                         </Button>
                       </td>
                     </tr>
@@ -1093,16 +1370,22 @@ export function IAMModule() {
             ) : permissionMatrix.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-sm text-slate-400">
                 <LayoutGrid className="w-8 h-8 mb-2" />
-                {tenantId ? 'Nenhuma permissão encontrada. Atribua permissões às roles primeiro.' : 'Selecione um tenant para ver a matriz de permissões.'}
+                {tenantId
+                  ? "Nenhuma permissão encontrada. Atribua permissões às roles primeiro."
+                  : "Selecione um tenant para ver a matriz de permissões."}
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {permissionMatrix.map((entry) => {
-                  const isExpanded = matrixExpandedRole === entry.roleId
+                  const isExpanded = matrixExpandedRole === entry.roleId;
                   return (
                     <div key={entry.roleId}>
                       <button
-                        onClick={() => setMatrixExpandedRole(isExpanded ? null : entry.roleId)}
+                        onClick={() =>
+                          setMatrixExpandedRole(
+                            isExpanded ? null : entry.roleId ?? "",
+                          )
+                        }
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
                       >
                         <div className="flex items-center gap-3">
@@ -1110,19 +1393,28 @@ export function IAMModule() {
                             <ShieldCheck className="w-5 h-5 text-brand-navy" />
                           </div>
                           <div className="text-left">
-                            <p className="text-sm font-bold text-brand-navy">{entry.roleName}</p>
-                            <p className="text-xs text-slate-400">{entry.permissions.length} permissão(ões)</p>
+                            <p className="text-sm font-bold text-brand-navy">
+                              {entry.roleName}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {entry.permissions.length} permissão(ões)
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex flex-wrap gap-1 max-w-[300px]">
                             {entry.permissions.slice(0, 4).map((p) => (
-                              <span key={p.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ice-blue/50 text-[9px] font-medium text-brand-navy border border-ice-blue">
+                              <span
+                                key={p.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ice-blue/50 text-[9px] font-medium text-brand-navy border border-ice-blue"
+                              >
                                 {p.action}:{p.resource}
                               </span>
                             ))}
                             {entry.permissions.length > 4 && (
-                              <span className="text-[9px] text-slate-400 px-1">+{entry.permissions.length - 4}</span>
+                              <span className="text-[9px] text-slate-400 px-1">
+                                +{entry.permissions.length - 4}
+                              </span>
                             )}
                           </div>
                           {isExpanded ? (
@@ -1142,10 +1434,17 @@ export function IAMModule() {
                               <span className="text-center">Status</span>
                             </div>
                             {entry.permissions.map((p) => (
-                              <div key={p.id} className="grid grid-cols-4 gap-2 py-2 px-3 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                                <span className="font-mono font-medium text-brand-navy">{p.action}</span>
+                              <div
+                                key={p.id}
+                                className="grid grid-cols-4 gap-2 py-2 px-3 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                              >
+                                <span className="font-mono font-medium text-brand-navy">
+                                  {p.action}
+                                </span>
                                 <span className="font-mono">{p.resource}</span>
-                                <span className="text-slate-400">{p.description || '-'}</span>
+                                <span className="text-slate-400">
+                                  {p.description || "-"}
+                                </span>
                                 <span className="flex justify-center">
                                   <CheckCircle className="w-4 h-4 text-green-500" />
                                 </span>
@@ -1155,7 +1454,7 @@ export function IAMModule() {
                         </div>
                       )}
                     </div>
-                  )
+                  );
                 })}
               </div>
             )}
@@ -1165,7 +1464,9 @@ export function IAMModule() {
         {/* ═══ Sessions Tab ═══ */}
         <TabsContent value="sessions" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Gerencie sessões ativas dos usuários no sistema</p>
+            <p className="text-sm text-slate-500">
+              Gerencie sessões ativas dos usuários no sistema
+            </p>
           </div>
           <div className="bg-white rounded-2xl card-shadow border border-slate-100 overflow-hidden">
             <div className="p-4 border-b border-slate-100">
@@ -1176,7 +1477,7 @@ export function IAMModule() {
                     className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-lime"
                     placeholder="Buscar por usuário..."
                     value={userSearch}
-                    onChange={e => setUserSearch(e.target.value)}
+                    onChange={(e) => setUserSearch(e.target.value)}
                   />
                 </div>
               </div>
@@ -1194,38 +1495,70 @@ export function IAMModule() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Usuário</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Sessões</th>
-                    <th className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>MFA</th>
-                    <th className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}>Ações</th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Usuário
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Sessões
+                    </th>
+                    <th
+                      className={`${cellCls} text-left text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      MFA
+                    </th>
+                    <th
+                      className={`${cellCls} text-right text-[11px] font-bold tracking-widest text-slate-400 uppercase`}
+                    >
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredUsers.map(tu => (
-                    <tr key={tu.id} className="hover:bg-slate-50/80 transition-colors">
+                  {filteredUsers.map((tu) => (
+                    <tr
+                      key={tu.id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
                       <td className={`${cellCls} font-medium text-brand-navy`}>
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-ice-blue flex items-center justify-center">
                             <Users className="w-4 h-4 text-brand-navy" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-brand-navy">{tu.name}</p>
-                            <p className="text-[10px] text-slate-400">                          {tu.email}</p>
+                            <p className="text-sm font-medium text-brand-navy">
+                              {tu.name}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              {" "}
+                              {tu.email}
+                            </p>
                           </div>
                         </div>
                       </td>
                       <td className={cellCls}>
-                        <span className="text-xs text-slate-500">Gerenciar</span>
+                        <span className="text-xs text-slate-500">
+                          Gerenciar
+                        </span>
                       </td>
                       <td className={cellCls}>
-                        <span className={cn(
-                          'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border',
-                          mfaConfigs[tu.userId]?.enabled && mfaConfigs[tu.userId]?.verified
-                            ? 'bg-green-50 text-green-700 border-green-200'
-                            : 'bg-slate-50 text-slate-500 border-slate-200'
-                        )}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border",
+                            mfaConfigs[tu.userId]?.enabled &&
+                              mfaConfigs[tu.userId]?.verified
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-slate-50 text-slate-500 border-slate-200",
+                          )}
+                        >
                           <Smartphone className="w-3 h-3" />
-                          {mfaConfigs[tu.userId]?.enabled && mfaConfigs[tu.userId]?.verified ? 'Ativo' : 'Inativo'}
+                          {mfaConfigs[tu.userId]?.enabled &&
+                          mfaConfigs[tu.userId]?.verified
+                            ? "Ativo"
+                            : "Inativo"}
                         </span>
                       </td>
                       <td className={`${cellCls} text-right`}>
@@ -1260,13 +1593,16 @@ export function IAMModule() {
       </Tabs>
 
       {/* ═══ MFA Dialog ═══ */}
-      <Dialog open={mfaDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setBackupCodes(null)
-          setBackupCodesCopied(false)
-        }
-        setMfaDialogOpen(open)
-      }}>
+      <Dialog
+        open={mfaDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBackupCodes(null);
+            setBackupCodesCopied(false);
+          }
+          setMfaDialogOpen(open);
+        }}
+      >
         <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
             <DialogTitle className="text-brand-navy font-display flex items-center gap-2">
@@ -1280,20 +1616,30 @@ export function IAMModule() {
                 <div className="w-12 h-12 rounded-full bg-brand-lime/20 flex items-center justify-center mx-auto mb-3">
                   <Shield className="w-6 h-6 text-brand-navy" />
                 </div>
-                <p className="text-sm font-bold text-brand-navy">MFA ativado com sucesso!</p>
-                <p className="text-xs text-slate-400 mt-1">Guarde estes códigos de recuperação em local seguro.</p>
+                <p className="text-sm font-bold text-brand-navy">
+                  MFA ativado com sucesso!
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Guarde estes códigos de recuperação em local seguro.
+                </p>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <p className="text-xs font-bold text-amber-800">Códigos de Recuperação</p>
+                  <p className="text-xs font-bold text-amber-800">
+                    Códigos de Recuperação
+                  </p>
                 </div>
                 <p className="text-[10px] text-amber-700 mb-3">
-                  Cada código só pode ser usado uma vez. Armazene-os em um gerenciador de senhas.
+                  Cada código só pode ser usado uma vez. Armazene-os em um
+                  gerenciador de senhas.
                 </p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {backupCodes.map((code, i) => (
-                    <code key={i} className="font-mono text-xs bg-white px-2 py-1.5 rounded border border-amber-200 text-amber-900 text-center tracking-wide">
+                    <code
+                      key={i}
+                      className="font-mono text-xs bg-white px-2 py-1.5 rounded border border-amber-200 text-amber-900 text-center tracking-wide"
+                    >
                       {code}
                     </code>
                   ))}
@@ -1304,22 +1650,24 @@ export function IAMModule() {
                     size="sm"
                     className="w-full text-xs border-amber-300 text-amber-800 hover:bg-amber-100 rounded-lg"
                     onClick={() => {
-                      navigator.clipboard.writeText(backupCodes.join('\n'))
-                      setBackupCodesCopied(true)
-                      showSuccess('Códigos copiados para a área de transferência!')
-                      setTimeout(() => setBackupCodesCopied(false), 2000)
+                      navigator.clipboard.writeText(backupCodes.join("\n"));
+                      setBackupCodesCopied(true);
+                      showSuccess(
+                        "Códigos copiados para a área de transferência!",
+                      );
+                      setTimeout(() => setBackupCodesCopied(false), 2000);
                     }}
                   >
                     <Copy className="w-3.5 h-3.5 mr-1.5" />
-                    {backupCodesCopied ? 'Copiado!' : 'Copiar todos os códigos'}
+                    {backupCodesCopied ? "Copiado!" : "Copiar todos os códigos"}
                   </Button>
                 </div>
               </div>
               <Button
                 className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                 onClick={() => {
-                  setBackupCodes(null)
-                  setMfaDialogOpen(false)
+                  setBackupCodes(null);
+                  setMfaDialogOpen(false);
                 }}
               >
                 Concluir
@@ -1333,18 +1681,29 @@ export function IAMModule() {
             <div className="space-y-4">
               {mfaSetupData.qrCode && (
                 <div className="text-center">
-                  <img src={mfaSetupData.qrCode} alt="QR Code MFA" className="w-48 h-48 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500">Escaneie o QR Code com seu aplicativo autenticador</p>
+                  <img
+                    src={mfaSetupData.qrCode}
+                    alt="QR Code MFA"
+                    className="w-48 h-48 mx-auto mb-2"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Escaneie o QR Code com seu aplicativo autenticador
+                  </p>
                 </div>
               )}
               <div className="bg-slate-50 rounded-xl p-3">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Chave Secreta</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                  Chave Secreta
+                </p>
                 <div className="flex items-center gap-2">
                   <code className="text-xs font-mono bg-white px-2 py-1 rounded border border-slate-200 flex-1 break-all">
                     {mfaSetupData.secretKey}
                   </code>
                   <button
-                    onClick={() => { navigator.clipboard.writeText(mfaSetupData.secretKey); showSuccess('Chave copiada!') }}
+                    onClick={() => {
+                      navigator.clipboard.writeText(mfaSetupData.secretKey);
+                      showSuccess("Chave copiada!");
+                    }}
                     className="p-1.5 rounded-lg hover:bg-white transition-colors"
                   >
                     <Copy className="w-3.5 h-3.5 text-slate-400" />
@@ -1359,7 +1718,11 @@ export function IAMModule() {
                     placeholder="000000"
                     maxLength={6}
                     value={mfaVerifyCode}
-                    onChange={e => setMfaVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) =>
+                      setMfaVerifyCode(
+                        e.target.value.replace(/\D/g, "").slice(0, 6),
+                      )
+                    }
                     className="rounded-xl font-mono text-lg text-center tracking-[0.5em]"
                   />
                   <Button
@@ -1367,7 +1730,11 @@ export function IAMModule() {
                     disabled={mfaVerifying || mfaVerifyCode.length < 6}
                     className="bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                   >
-                    {mfaVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    {mfaVerifying ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4" />
+                    )}
                     Verificar
                   </Button>
                 </div>
@@ -1380,15 +1747,26 @@ export function IAMModule() {
                   <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto">
                     <ShieldCheck className="w-6 h-6 text-green-600" />
                   </div>
-                  <p className="text-sm font-medium text-brand-navy">MFA está ativo</p>
-                  <p className="text-xs text-slate-400">O usuário utiliza autenticação de dois fatores via {mfaConfigs[mfaUserId]?.method === 'totp' ? 'aplicativo autenticador' : mfaConfigs[mfaUserId]?.method}</p>
+                  <p className="text-sm font-medium text-brand-navy">
+                    MFA está ativo
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    O usuário utiliza autenticação de dois fatores via{" "}
+                    {mfaConfigs[mfaUserId]?.method === "totp"
+                      ? "aplicativo autenticador"
+                      : mfaConfigs[mfaUserId]?.method}
+                  </p>
                   <Button
                     variant="outline"
                     className="text-red-600 border-red-200 hover:bg-red-50 rounded-xl"
                     onClick={() => handleDisableMfa(mfaUserId!)}
                     disabled={mfaLoading}
                   >
-                    {mfaLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldOff className="w-4 h-4 mr-2" />}
+                    {mfaLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <ShieldOff className="w-4 h-4 mr-2" />
+                    )}
                     Desativar MFA
                   </Button>
                 </div>
@@ -1397,14 +1775,23 @@ export function IAMModule() {
                   <div className="w-12 h-12 rounded-full bg-ice-blue flex items-center justify-center mx-auto">
                     <Smartphone className="w-6 h-6 text-brand-navy" />
                   </div>
-                  <p className="text-sm font-medium text-brand-navy">MFA não configurado</p>
-                  <p className="text-xs text-slate-400">Configure a autenticação de dois fatores para aumentar a segurança da conta.</p>
+                  <p className="text-sm font-medium text-brand-navy">
+                    MFA não configurado
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Configure a autenticação de dois fatores para aumentar a
+                    segurança da conta.
+                  </p>
                   <Button
                     className="bg-brand-navy text-white hover:bg-brand-navy/90 rounded-xl"
                     onClick={() => mfaUserId && handleSetupMfa(mfaUserId)}
                     disabled={mfaLoading}
                   >
-                    {mfaLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
+                    {mfaLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Smartphone className="w-4 h-4 mr-2" />
+                    )}
                     Configurar MFA
                   </Button>
                 </div>
@@ -1435,7 +1822,10 @@ export function IAMModule() {
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-500">{sessions.filter(s => s.status === 'active').length} sessão(ões) ativa(s)</p>
+                <p className="text-xs text-slate-500">
+                  {sessions.filter((s) => s.status === "active").length}{" "}
+                  sessão(ões) ativa(s)
+                </p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1443,42 +1833,73 @@ export function IAMModule() {
                   onClick={handleRevokeAllSessions}
                   disabled={revokingAll}
                 >
-                  {revokingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <LogOut className="w-3.5 h-3.5 mr-1" />}
+                  {revokingAll ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  ) : (
+                    <LogOut className="w-3.5 h-3.5 mr-1" />
+                  )}
                   Revogar Todas
                 </Button>
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {sessions.map((session) => (
-                  <div key={session.id} className={cn(
-                    'flex items-start gap-3 p-3 rounded-xl border transition-colors',
-                    session.status === 'active' ? 'bg-white border-slate-200' :
-                    session.status === 'revoked' ? 'bg-red-50/30 border-red-200' :
-                    'bg-slate-50 border-slate-200'
-                  )}>
-                    <div className={cn(
-                      'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
-                      session.status === 'active' ? 'bg-green-50' :
-                      session.status === 'revoked' ? 'bg-red-50' : 'bg-slate-100'
-                    )}>
-                      <Monitor className={cn(
-                        'w-4 h-4',
-                        session.status === 'active' ? 'text-green-600' :
-                        session.status === 'revoked' ? 'text-red-500' : 'text-slate-400'
-                      )} />
+                  <div
+                    key={session.id}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-xl border transition-colors",
+                      session.status === "active"
+                        ? "bg-white border-slate-200"
+                        : session.status === "revoked"
+                          ? "bg-red-50/30 border-red-200"
+                          : "bg-slate-50 border-slate-200",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                        session.status === "active"
+                          ? "bg-green-50"
+                          : session.status === "revoked"
+                            ? "bg-red-50"
+                            : "bg-slate-100",
+                      )}
+                    >
+                      <Monitor
+                        className={cn(
+                          "w-4 h-4",
+                          session.status === "active"
+                            ? "text-green-600"
+                            : session.status === "revoked"
+                              ? "text-red-500"
+                              : "text-slate-400",
+                        )}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-brand-navy">{session.deviceName || 'Dispositivo desconhecido'}</span>
+                        <span className="text-sm font-medium text-brand-navy">
+                          {session.deviceName || "Dispositivo desconhecido"}
+                        </span>
                         {session.isCurrent && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand-lime/30 text-brand-navy font-bold">Atual</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-brand-lime/30 text-brand-navy font-bold">
+                            Atual
+                          </span>
                         )}
-                        <span className={cn(
-                          'text-[10px] px-1.5 py-0.5 rounded-full border font-medium',
-                          session.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
-                          session.status === 'revoked' ? 'bg-red-50 text-red-700 border-red-200' :
-                          'bg-slate-50 text-slate-600 border-slate-200'
-                        )}>
-                          {session.status === 'active' ? 'Ativa' : session.status === 'revoked' ? 'Revogada' : 'Expirada'}
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
+                            session.status === "active"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : session.status === "revoked"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-slate-50 text-slate-600 border-slate-200",
+                          )}
+                        >
+                          {session.status === "active"
+                            ? "Ativa"
+                            : session.status === "revoked"
+                              ? "Revogada"
+                              : "Expirada"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-[10px] text-slate-400">
@@ -1492,12 +1913,18 @@ export function IAMModule() {
                         )}
                         <span className="text-slate-300">·</span>
                         <Clock className="w-3 h-3" />
-                        <span>{new Date(session.lastActivity).toLocaleString('pt-BR')}</span>
+                        <span>
+                          {new Date(session.lastActivity ?? "").toLocaleString(
+                            "pt-BR",
+                          )}
+                        </span>
                       </div>
-                      <p className="text-[9px] text-slate-400 mt-0.5 truncate max-w-md">{session.userAgent}</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5 truncate max-w-md">
+                        {session.userAgent}
+                      </p>
                     </div>
                     <div className="shrink-0">
-                      {session.status === 'active' && !session.isCurrent && (
+                      {session.status === "active" && !session.isCurrent && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1522,5 +1949,5 @@ export function IAMModule() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

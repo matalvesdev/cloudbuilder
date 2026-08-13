@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -53,7 +54,7 @@ public class SecurityConfig {
                 // Swagger removido — implementação nativa, sem springdoc
                 auth.requestMatchers("/api/v1/auth/**", "/api/auth/**").permitAll();
                 auth.requestMatchers("/api/v1/events/stream").permitAll();
-                auth.requestMatchers("/ws/**").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/api/v1/git/webhooks/github").permitAll();
                 auth.requestMatchers("/error").permitAll();
                 // H2 console only when explicitly enabled (dev profile)
                 if (h2ConsoleEnabled) {

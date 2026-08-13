@@ -1,17 +1,17 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 export async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const token = import.meta.env.VITE_AUTH_TOKEN;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -28,7 +28,7 @@ export async function request<T>(
 }
 
 export function fetchCanvases() {
-  return request<any[]>('/canvases');
+  return request<any[]>("/canvases");
 }
 
 export function fetchCanvas(id: string) {
@@ -36,60 +36,60 @@ export function fetchCanvas(id: string) {
 }
 
 export function createCanvas(data: any) {
-  return request<any>('/canvases', {
-    method: 'POST',
+  return request<any>("/canvases", {
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export function updateCanvas(id: string, data: any) {
   return request<any>(`/canvases/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
 export function deleteCanvas(id: string) {
   return request<void>(`/canvases/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
 export function addNode(canvasId: string, data: any) {
   return request<any>(`/canvases/${canvasId}/nodes`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export function updateNode(canvasId: string, nodeId: string, data: any) {
   return request<any>(`/canvases/${canvasId}/nodes/${nodeId}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
 export function removeNode(canvasId: string, nodeId: string) {
   return request<void>(`/canvases/${canvasId}/nodes/${nodeId}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
 export function addEdge(canvasId: string, data: any) {
   return request<any>(`/canvases/${canvasId}/edges`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export function removeEdge(canvasId: string, edgeId: string) {
   return request<void>(`/canvases/${canvasId}/edges/${edgeId}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
 export function validateCanvas(canvasId: string) {
   return request<any>(`/canvases/${canvasId}/validate`, {
-    method: 'POST',
+    method: "POST",
   });
 }

@@ -22,7 +22,7 @@ public class SsoAuthConfiguration {
     /**
      * Cache for OAuth2 state parameters (PKCE + CSRF).
      * Each entry is keyed by state value, stored for 10 minutes.
-     * Contains: providerConfigId, codeVerifier, tenantId
+     * Contains the provider, PKCE verifier, tenant, exact redirect URI and OIDC nonce.
      */
     @Bean
     public Cache<String, SsoStateData> oauthStateCache() {
@@ -40,6 +40,8 @@ public class SsoAuthConfiguration {
         String providerConfigId,
         String codeVerifier,
         String tenantId,
-        String providerType
+        String providerType,
+        String redirectUri,
+        String nonce
     ) {}
 }

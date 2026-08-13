@@ -26,7 +26,7 @@ public class PropertyMappingService {
         // Try to find a schema from the provider adapter
         Map<String, String> schema = providerRegistry.findAdapterForResource(resourceType)
                 .map(adapter -> adapter.getPropertySchema(resourceType))
-                .orElseGet(() -> Map.of("id", "ID"));
+                .orElseGet(Map::of);
 
         if (!schema.isEmpty()) {
             for (var schemaEntry : schema.entrySet()) {

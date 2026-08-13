@@ -1,10 +1,13 @@
 package com.cloudbuilder.git.infrastructure.web;
 
 import com.cloudbuilder.git.domain.model.Commit;
+import com.cloudbuilder.git.domain.model.ConnectedRepository;
 import com.cloudbuilder.git.domain.model.GitPushEvent;
-import com.cloudbuilder.git.domain.model.WebhookEvent;
 import com.cloudbuilder.git.domain.port.CommitRepository;
+import com.cloudbuilder.git.domain.port.ConnectedRepositoryPort;
 import com.cloudbuilder.git.domain.service.WebhookService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,11 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * GitHub-specific webhook receiver endpoint.
@@ -39,17 +40,23 @@ public class GitWebhookController {
 
     private final WebhookService webhookService;
     private final CommitRepository commitRepository;
+    private final ConnectedRepositoryPort connectedRepositoryPort;
     private final ApplicationEventPublisher eventPublisher;
+    private final ObjectMapper objectMapper;
 
     @Value("${cloudbuilder.git.webhook-secret:}")
     private String webhookSecret;
 
     public GitWebhookController(WebhookService webhookService,
                                  CommitRepository commitRepository,
-                                 ApplicationEventPublisher eventPublisher) {
+                                 ConnectedRepositoryPort connectedRepositoryPort,
+                                 ApplicationEventPublisher eventPublisher,
+                                 ObjectMapper objectMapper) {
         this.webhookService = webhookService;
         this.commitRepository = commitRepository;
+        this.connectedRepositoryPort = connectedRepositoryPort;
         this.eventPublisher = eventPublisher;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -71,18 +78,17 @@ public class GitWebhookController {
 
         log.info("Received GitHub webhook: event={}, deliveryId={}", eventType, deliveryId);
 
-        // Verify HMAC-SHA256 signature
-        if (webhookSecret != null && !webhookSecret.isBlank()) {
-            boolean verified = webhookService.verifySignature(body, signature, webhookSecret);
-            if (!verified) {
-                log.warn("Webhook signature verification FAILED for deliveryId={}", deliveryId);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "Invalid signature"));
-            }
-            log.debug("Webhook signature verified for deliveryId={}", deliveryId);
-        } else {
-            log.warn("No webhook secret configured — skipping signature verification for deliveryId={}", deliveryId);
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.error("GitHub webhook rejected because cloudbuilder.git.webhook-secret is not configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "Webhook receiver is not configured"));
         }
+        if (!webhookService.verifySignature(body, signature, webhookSecret)) {
+            log.warn("Webhook signature verification FAILED for deliveryId={}", deliveryId);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid signature"));
+        }
+        log.debug("Webhook signature verified for deliveryId={}", deliveryId);
 
         // Only process push events for commit extraction
         if (!"push".equalsIgnoreCase(eventType)) {
@@ -92,8 +98,6 @@ public class GitWebhookController {
         }
 
         try {
-            // Parse the push payload manually to extract commits and branch info
-            // We parse from the raw JSON body without Jackson dependency
             PushPayload payload = parsePushPayload(body);
 
             if (payload == null) {
@@ -102,13 +106,21 @@ public class GitWebhookController {
                         .body(Map.of("error", "Failed to parse push payload"));
             }
 
-            // Extract repository ID from the payload
-            String repoId = payload.repoId;
-            if (repoId == null || repoId.isBlank()) {
-                log.warn("No repository ID found in payload for deliveryId={}", deliveryId);
+            if (payload.repositoryFullName == null || payload.repositoryFullName.isBlank()) {
+                log.warn("No repository full_name found in payload for deliveryId={}", deliveryId);
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "No repository identifier in payload"));
             }
+            ConnectedRepository repository = connectedRepositoryPort
+                .findByFullName(payload.repositoryFullName)
+                .orElse(null);
+            if (repository == null) {
+                log.warn("Webhook received for an unconnected repository: {}",
+                    payload.repositoryFullName);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Repository is not connected"));
+            }
+            String repoId = repository.getId();
 
             // Persist commits
             List<Commit> savedCommits = new ArrayList<>();
@@ -157,181 +169,60 @@ public class GitWebhookController {
         }
     }
 
-    /**
-     * Simple push payload parser that extracts key fields from the GitHub
-     * webhook JSON push event payload using string operations.
-     * <p>
-     * This avoids adding a JSON parsing dependency for a single endpoint.
-     */
     private PushPayload parsePushPayload(String body) {
         if (body == null || body.isBlank()) {
             return null;
         }
-
-        PushPayload result = new PushPayload();
-
-        // Extract repository full_name (used as repoId)
-        result.repoId = extractJsonString(body, "full_name");
-        if (result.repoId != null) {
-            // GitHub sends "owner/repo" as full_name — normalize to just the repo ID
-            result.repoId = result.repoId.replace("/", "-");
-        }
-
-        // Extract branch name from ref: "refs/heads/main" → "main"
-        String ref = extractJsonString(body, "ref");
-        if (ref != null && ref.startsWith("refs/heads/")) {
-            result.branch = ref.substring("refs/heads/".length());
-        }
-
-        // Parse commits array
-        result.commits = new ArrayList<>();
-        int commitsStart = body.indexOf("\"commits\"");
-        if (commitsStart >= 0) {
-            int arrayStart = body.indexOf('[', commitsStart);
-            if (arrayStart >= 0) {
-                int depth = 1;
-                int pos = arrayStart + 1;
-                int objectStart = -1;
-                while (pos < body.length() && depth > 0) {
-                    char c = body.charAt(pos);
-                    if (c == '{' && depth == 1) {
-                        objectStart = pos;
-                    }
-                    if (c == '{') {
-                        // Guard for nested objects within commits
-                    }
-                    if (c == '}') {
-                        if (depth == 1 && objectStart >= 0) {
-                            // Extract single commit object
-                            String commitJson = body.substring(objectStart, pos + 1);
-                            ParsedCommit parsed = parseSingleCommit(commitJson);
-                            if (parsed != null) {
-                                result.commits.add(parsed);
-                            }
-                            objectStart = -1;
-                        }
-                    }
-                    if (c == '[') depth++;
-                    if (c == ']') depth--;
-                    pos++;
-                }
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            PushPayload result = new PushPayload();
+            result.repositoryFullName = textOrNull(root.path("repository").path("full_name"));
+            String ref = textOrNull(root.path("ref"));
+            if (ref != null && ref.startsWith("refs/heads/")) {
+                result.branch = ref.substring("refs/heads/".length());
             }
-        }
-
-        return result;
-    }
-
-    /**
-     * Parse a single commit JSON object from the push payload.
-     */
-    private ParsedCommit parseSingleCommit(String json) {
-        if (json == null || json.length() < 2) {
-            return null;
-        }
-
-        String sha = extractJsonString(json, "id");
-        String message = extractJsonString(json, "message");
-        String author = null;
-        String authorEmail = null;
-        String timestampStr = null;
-
-        // Extract author info from nested "author" object
-        int authorIdx = json.indexOf("\"author\"");
-        if (authorIdx >= 0) {
-            int authorObjStart = json.indexOf('{', authorIdx);
-            if (authorObjStart >= 0) {
-                int braceDepth = 1;
-                int pos = authorObjStart + 1;
-                while (pos < json.length() && braceDepth > 0) {
-                    if (json.charAt(pos) == '{') braceDepth++;
-                    if (json.charAt(pos) == '}') braceDepth--;
-                    pos++;
-                }
-                String authorJson = json.substring(authorObjStart, pos);
-                author = extractJsonString(authorJson, "name");
-                authorEmail = extractJsonString(authorJson, "email");
-            }
-        }
-
-        // Extract timestamp
-        timestampStr = extractJsonString(json, "timestamp");
-        Instant timestamp;
-        if (timestampStr != null) {
-            try {
-                timestamp = Instant.parse(timestampStr);
-            } catch (Exception e) {
-                timestamp = Instant.now();
-            }
-        } else {
-            timestamp = Instant.now();
-        }
-
-        if (sha == null || sha.isBlank()) {
-            return null;
-        }
-
-        return new ParsedCommit(sha, message, author, authorEmail, timestamp);
-    }
-
-    /**
-     * Extract a string value from a JSON key-value pair using simple parsing.
-     * Finds {@code "key":"value"} or {@code "key": "value"} patterns.
-     */
-    private String extractJsonString(String json, String key) {
-        if (json == null || key == null) {
-            return null;
-        }
-
-        String searchKey = "\"" + key + "\"";
-        int keyIdx = json.indexOf(searchKey);
-        if (keyIdx < 0) {
-            return null;
-        }
-
-        int colonIdx = json.indexOf(':', keyIdx + searchKey.length());
-        if (colonIdx < 0) {
-            return null;
-        }
-
-        int valueStart = colonIdx + 1;
-        // Skip whitespace
-        while (valueStart < json.length() && json.charAt(valueStart) == ' ') {
-            valueStart++;
-        }
-
-        if (valueStart >= json.length()) {
-            return null;
-        }
-
-        // Check if the value is a string (starts with quote)
-        if (json.charAt(valueStart) == '"') {
-            int quoteEnd = valueStart + 1;
-            while (quoteEnd < json.length()) {
-                char c = json.charAt(quoteEnd);
-                if (c == '\\') {
-                    quoteEnd += 2; // skip escaped character
+            result.commits = new ArrayList<>();
+            for (JsonNode commit : root.path("commits")) {
+                String sha = textOrNull(commit.path("id"));
+                if (sha == null || sha.isBlank()) {
                     continue;
                 }
-                if (c == '"') {
-                    return json.substring(valueStart + 1, quoteEnd);
-                }
-                quoteEnd++;
+                Instant timestamp = parseTimestamp(textOrNull(commit.path("timestamp")));
+                JsonNode author = commit.path("author");
+                result.commits.add(new ParsedCommit(
+                    sha,
+                    textOrNull(commit.path("message")),
+                    textOrNull(author.path("name")),
+                    textOrNull(author.path("email")),
+                    timestamp));
             }
-        }
-
-        // Check if the value is null
-        if (json.startsWith("null", valueStart)) {
+            return result;
+        } catch (Exception malformedPayload) {
+            log.warn("Malformed GitHub push payload", malformedPayload);
             return null;
         }
+    }
 
-        return null;
+    private static String textOrNull(JsonNode node) {
+        return node.isTextual() ? node.textValue() : null;
+    }
+
+    private static Instant parseTimestamp(String value) {
+        if (value != null) {
+            try {
+                return Instant.parse(value);
+            } catch (RuntimeException ignored) {
+                // GitHub timestamps should be ISO-8601; use receipt time if malformed.
+            }
+        }
+        return Instant.now();
     }
 
     /**
      * Internal DTO for parsed GitHub push payload fields.
      */
     private static class PushPayload {
-        String repoId;
+        String repositoryFullName;
         String branch;
         List<ParsedCommit> commits;
     }

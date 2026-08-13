@@ -26,84 +26,121 @@
 
 export interface DomainEvents {
   // Canvas
-  'canvas:created': { canvasId: string; tenantId: string }
-  'canvas:updated': { canvasId: string; tenantId: string; version: number }
-  'canvas:deleted': { canvasId: string; tenantId: string }
-  'canvas:node:added': { canvasId: string; nodeId: string; type: string }
-  'canvas:node:removed': { canvasId: string; nodeId: string }
-  'canvas:edge:added': { canvasId: string; edgeId: string }
-  'canvas:edge:removed': { canvasId: string; edgeId: string }
+  "canvas:created": { canvasId: string; tenantId: string };
+  "canvas:updated": { canvasId: string; tenantId: string; version: number };
+  "canvas:deleted": { canvasId: string; tenantId: string };
+  "canvas:node:added": { canvasId: string; nodeId: string; type: string };
+  "canvas:node:removed": { canvasId: string; nodeId: string };
+  "canvas:edge:added": { canvasId: string; edgeId: string };
+  "canvas:edge:removed": { canvasId: string; edgeId: string };
 
   // Deployment
-  'deployment:requested': { deploymentId: string; environmentId: string }
-  'deployment:started': { deploymentId: string; status: string }
-  'deployment:progress': { deploymentId: string; percent: number; message: string }
-  'deployment:succeeded': { deploymentId: string; resources: string[] }
-  'deployment:failed': { deploymentId: string; error: string }
-  'deployment:cancelled': { deploymentId: string }
+  "deployment:requested": { deploymentId: string; environmentId: string };
+  "deployment:started": { deploymentId: string; status: string };
+  "deployment:progress": {
+    deploymentId: string;
+    percent: number;
+    message: string;
+  };
+  "deployment:succeeded": { deploymentId: string; resources: string[] };
+  "deployment:failed": { deploymentId: string; error: string };
+  "deployment:cancelled": { deploymentId: string };
 
   // Provisioning
-  'provision:started': { resourceId: string; provider: string }
-  'provision:progress': { resourceId: string; percent: number; message: string }
-  'provision:completed': { resourceId: string; outputs: Record<string, string> }
-  'provision:failed': { resourceId: string; error: string }
+  "provision:started": { resourceId: string; provider: string };
+  "provision:progress": {
+    resourceId: string;
+    percent: number;
+    message: string;
+  };
+  "provision:completed": {
+    resourceId: string;
+    outputs: Record<string, string>;
+  };
+  "provision:failed": { resourceId: string; error: string };
 
   // Drift
-  'drift:detected': { environmentId: string; resourceCount: number }
-  'drift:resolved': { environmentId: string; resourceId: string }
+  "drift:detected": { environmentId: string; resourceCount: number };
+  "drift:resolved": { environmentId: string; resourceId: string };
 
   // Cost
-  'cost:budget-exceeded': { environmentId: string; budgetId: string; amount: number }
-  'cost:anomaly-detected': { environmentId: string; service: string; deviation: number }
-  'cost:optimization-available': { environmentId: string; suggestionId: string }
+  "cost:budget-exceeded": {
+    environmentId: string;
+    budgetId: string;
+    amount: number;
+  };
+  "cost:anomaly-detected": {
+    environmentId: string;
+    service: string;
+    deviation: number;
+  };
+  "cost:optimization-available": {
+    environmentId: string;
+    suggestionId: string;
+  };
 
   // Observability
-  'observe:alert:fired': { alertId: string; severity: string; service: string }
-  'observe:alert:resolved': { alertId: string; service: string }
-  'observe:health:changed': { serviceId: string; status: string }
-  'observe:metrics:update': { serviceId: string; metrics: Record<string, number> }
+  "observe:alert:fired": { alertId: string; severity: string; service: string };
+  "observe:alert:resolved": { alertId: string; service: string };
+  "observe:health:changed": { serviceId: string; status: string };
+  "observe:metrics:update": {
+    serviceId: string;
+    metrics: Record<string, number>;
+  };
 
   // Incidents
-  'incident:created': { incidentId: string; title: string; severity: string }
-  'incident:updated': { incidentId: string; status: string }
-  'incident:resolved': { incidentId: string; rootCause: string }
+  "incident:created": { incidentId: string; title: string; severity: string };
+  "incident:updated": { incidentId: string; status: string };
+  "incident:resolved": { incidentId: string; rootCause: string };
 
   // Notifications
-  'notification:new': { notificationId: string; type: string; title: string; message: string }
-  'notification:read': { notificationId: string }
+  "notification:new": {
+    notificationId: string;
+    type: string;
+    title: string;
+    message: string;
+  };
+  "notification:read": { notificationId: string };
 
   // Auth
-  'auth:login': { userId: string; tenantId: string }
-  'auth:logout': { userId: string }
-  'auth:token-refreshed': { expiresAt: number }
+  "auth:login": { userId: string; tenantId: string };
+  "auth:logout": { userId: string };
+  "auth:token-refreshed": { expiresAt: number };
 
   // Feature flags
-  'flags:updated': { flagKey: string; enabled: boolean }
+  "flags:updated": { flagKey: string; enabled: boolean };
 
   // Generic fallback for untyped events
-  [key: string]: Record<string, unknown>
+  [key: string]: Record<string, unknown>;
 }
 
-export type EventKey = string & keyof DomainEvents
-export type EventPayload<K extends EventKey> = DomainEvents[K]
-export type EventHandler<K extends EventKey> = (payload: EventPayload<K>) => void
+export type EventKey = string & keyof DomainEvents;
+export type EventPayload<K extends EventKey> = DomainEvents[K];
+export type EventHandler<K extends EventKey> = (
+  payload: EventPayload<K>,
+) => void;
 
 /* ─── EventBus Implementation ──────────────────────────────── */
 
-type GenericHandler = (payload: Record<string, unknown>) => void
+type GenericHandler = (payload: Record<string, unknown>) => void;
 
 interface Subscription {
-  id: string
-  event: string
-  handler: GenericHandler
-  once: boolean
+  id: string;
+  event: string;
+  handler: GenericHandler;
+  once: boolean;
 }
 
-let subscriptionCounter = 0
+let subscriptionCounter = 0;
 
 class EventBus {
-  private subscriptions = new Map<string, Subscription[]>()
-  private middleware: Array<(event: string, payload: Record<string, unknown>) => Record<string, unknown> | null> = []
+  private subscriptions = new Map<string, Subscription[]>();
+  private middleware: Array<
+    (
+      event: string,
+      payload: Record<string, unknown>,
+    ) => Record<string, unknown> | null
+  > = [];
 
   /**
    * Subscribe to an event. Returns unsubscribe function.
@@ -111,32 +148,35 @@ class EventBus {
   subscribe<K extends EventKey>(
     event: K,
     handler: EventHandler<K>,
-    options?: { once?: boolean }
+    options?: { once?: boolean },
   ): () => void {
-    const id = String(++subscriptionCounter)
+    const id = String(++subscriptionCounter);
     const sub: Subscription = {
       id,
       event,
       handler: handler as GenericHandler,
       once: options?.once ?? false,
-    }
+    };
 
-    const list = this.subscriptions.get(event) ?? []
-    list.push(sub)
-    this.subscriptions.set(event, list)
+    const list = this.subscriptions.get(event) ?? [];
+    list.push(sub);
+    this.subscriptions.set(event, list);
 
     return () => {
-      const subs = this.subscriptions.get(event) ?? []
-      const idx = subs.findIndex((s) => s.id === id)
-      if (idx >= 0) subs.splice(idx, 1)
-    }
+      const subs = this.subscriptions.get(event) ?? [];
+      const idx = subs.findIndex((s) => s.id === id);
+      if (idx >= 0) subs.splice(idx, 1);
+    };
   }
 
   /**
    * Subscribe to an event, auto-unsubscribes after first fire.
    */
-  subscribeOnce<K extends EventKey>(event: K, handler: EventHandler<K>): () => void {
-    return this.subscribe(event, handler, { once: true })
+  subscribeOnce<K extends EventKey>(
+    event: K,
+    handler: EventHandler<K>,
+  ): () => void {
+    return this.subscribe(event, handler, { once: true });
   }
 
   /**
@@ -144,30 +184,30 @@ class EventBus {
    * Runs through middleware pipeline first; if any returns null, event is swallowed.
    */
   publish<K extends EventKey>(event: K, payload: EventPayload<K>): void {
-    let processedPayload = payload as Record<string, unknown>
+    let processedPayload = payload as Record<string, unknown>;
 
     for (const mw of this.middleware) {
-      const result = mw(event, processedPayload)
-      if (result === null) return // event swallowed
-      processedPayload = result
+      const result = mw(event, processedPayload);
+      if (result === null) return; // event swallowed
+      processedPayload = result;
     }
 
-    const subs = this.subscriptions.get(event) ?? []
-    const toRemove: string[] = []
+    const subs = this.subscriptions.get(event) ?? [];
+    const toRemove: string[] = [];
 
     for (const sub of subs) {
       try {
-        sub.handler(processedPayload)
-        if (sub.once) toRemove.push(sub.id)
+        sub.handler(processedPayload);
+        if (sub.once) toRemove.push(sub.id);
       } catch (err) {
-        console.error(`[EventBus] Error in handler for "${event}":`, err)
+        console.error(`[EventBus] Error in handler for "${event}":`, err);
       }
     }
 
     // Clean up once-handlers
     if (toRemove.length > 0) {
-      const remaining = subs.filter((s) => !toRemove.includes(s.id))
-      this.subscriptions.set(event, remaining)
+      const remaining = subs.filter((s) => !toRemove.includes(s.id));
+      this.subscriptions.set(event, remaining);
     }
   }
 
@@ -175,12 +215,17 @@ class EventBus {
    * Add middleware that can transform or swallow events.
    * Return null to swallow the event, or return (possibly modified) payload.
    */
-  addMiddleware(fn: (event: string, payload: Record<string, unknown>) => Record<string, unknown> | null): () => void {
-    this.middleware.push(fn)
+  addMiddleware(
+    fn: (
+      event: string,
+      payload: Record<string, unknown>,
+    ) => Record<string, unknown> | null,
+  ): () => void {
+    this.middleware.push(fn);
     return () => {
-      const idx = this.middleware.indexOf(fn)
-      if (idx >= 0) this.middleware.splice(idx, 1)
-    }
+      const idx = this.middleware.indexOf(fn);
+      if (idx >= 0) this.middleware.splice(idx, 1);
+    };
   }
 
   /**
@@ -188,9 +233,9 @@ class EventBus {
    */
   clear(event?: string): void {
     if (event) {
-      this.subscriptions.delete(event)
+      this.subscriptions.delete(event);
     } else {
-      this.subscriptions.clear()
+      this.subscriptions.clear();
     }
   }
 
@@ -198,19 +243,19 @@ class EventBus {
    * Get subscriber count for an event (useful for debugging).
    */
   listenerCount(event: string): number {
-    return this.subscriptions.get(event)?.length ?? 0
+    return this.subscriptions.get(event)?.length ?? 0;
   }
 
   /**
    * Get all registered event names (useful for debugging).
    */
   eventNames(): string[] {
-    return Array.from(this.subscriptions.keys())
+    return Array.from(this.subscriptions.keys());
   }
 }
 
 /** Singleton EventBus instance */
-export const eventBus = new EventBus()
+export const eventBus = new EventBus();
 
 /**
  * React hook helper: subscribe to an event with automatic cleanup.
@@ -219,7 +264,7 @@ export const eventBus = new EventBus()
 export function createEventSubscription<K extends EventKey>(
   event: K,
   handler: EventHandler<K>,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ): void {
   // This is a simple wrapper — actual React hook usage should use useEffect
   // This export is for non-React contexts (stores, services)

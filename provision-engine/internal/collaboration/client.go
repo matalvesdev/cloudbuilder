@@ -12,7 +12,7 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 10 * 1024 * 1024
+	maxMessageSize = 1 * 1024 * 1024
 	sendBufferSize = 256
 )
 
@@ -43,6 +43,7 @@ type Client struct {
 	ID       string
 	TenantID string
 	Roles    []string
+	CanEdit  bool
 	User     UserInfo
 
 	conn       *websocket.Conn
@@ -77,7 +78,7 @@ func (c *Client) readPump() {
 		switch messageType {
 		case websocket.BinaryMessage:
 			// Yjs sync/update binary → relay to all other peers in room
-			if c.room != nil {
+			if c.room != nil && c.CanEdit {
 				c.room.BroadcastBinary(c, data)
 			}
 
@@ -111,9 +112,6 @@ func (c *Client) handleJSONMessage(data []byte) {
 			Avatar string `json:"avatar"`
 		}
 		if json.Unmarshal(data, &info) == nil {
-			if info.Name != "" {
-				c.User.Name = info.Name
-			}
 			if info.Avatar != "" {
 				c.User.Avatar = info.Avatar
 			}
@@ -126,10 +124,13 @@ func (c *Client) handleJSONMessage(data []byte) {
 			c.room.BroadcastJSON(presence)
 		}
 
-	default:
-		if c.room != nil {
+	case "sync":
+		if c.room != nil && c.CanEdit {
 			c.room.BroadcastJSONExcept(c, data)
 		}
+
+	default:
+		log.Printf("[client %s] dropped unsupported message type %q", c.ID, msg.Type)
 	}
 }
 

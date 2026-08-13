@@ -3,7 +3,7 @@ package com.cloudbuilder.tenant.domain.service;
 import com.cloudbuilder.tenant.domain.model.Project;
 import com.cloudbuilder.tenant.domain.model.ProjectMember;
 import com.cloudbuilder.tenant.domain.port.ProjectMemberRepository;
-import com.cloudbuilder.tenant.domain.port.ProjectRepository;
+import com.cloudbuilder.tenant.domain.port.TenantProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.*;
 class ProjectServiceTest {
 
     @Mock
-    private ProjectRepository projectRepository;
+    private TenantProjectRepository projectRepository;
 
     @Mock
     private ProjectMemberRepository memberRepository;
@@ -155,11 +155,11 @@ class ProjectServiceTest {
         when(memberRepository.save(any(ProjectMember.class))).thenAnswer(i -> i.getArgument(0));
         when(projectRepository.save(any(Project.class))).thenAnswer(i -> i.getArgument(0));
 
-        var member = projectService.inviteMember(projectId, "user-2", "User 2", "u2@email.com", "member");
+        var member = projectService.inviteMember(projectId, "user-2", "User 2", "u2@email.com", ProjectMember.ROLE_EDITOR);
 
         assertNotNull(member);
         assertEquals("user-2", member.getUserId());
-        assertEquals("member", member.getRole());
+        assertEquals(ProjectMember.ROLE_EDITOR, member.getRole());
         assertEquals(2, project.getMemberCount());
         verify(memberRepository).save(any(ProjectMember.class));
         verify(projectRepository, times(1)).save(any(Project.class));
@@ -175,21 +175,20 @@ class ProjectServiceTest {
     @Test
     void inviteMember_WhenAlreadyMember_ShouldThrow() {
         var projectId = UUID.randomUUID().toString();
-        var existing = new ProjectMember(projectId, "user-1", "U1", "u@e.com", "member");
+        var existing = new ProjectMember(projectId, "user-1", "U1", "u@e.com", ProjectMember.ROLE_VIEWER);
         when(memberRepository.findByProjectIdAndUserId(projectId, "user-1")).thenReturn(Optional.of(existing));
 
         assertThrows(IllegalStateException.class,
-                () -> projectService.inviteMember(projectId, "user-1", "U1", "u@e.com", "member"));
+                () -> projectService.inviteMember(projectId, "user-1", "U1", "u@e.com", ProjectMember.ROLE_VIEWER));
     }
 
     @Test
     void inviteMember_WhenProjectNotFound_ShouldThrow() {
         var projectId = UUID.randomUUID().toString();
-        when(memberRepository.findByProjectIdAndUserId(projectId, "user-1")).thenReturn(Optional.empty());
         when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> projectService.inviteMember(projectId, "user-1", "U1", "u@e.com", "member"));
+                () -> projectService.inviteMember(projectId, "user-1", "U1", "u@e.com", ProjectMember.ROLE_VIEWER));
     }
 
     @Test
@@ -211,7 +210,7 @@ class ProjectServiceTest {
     @Test
     void removeMember_WhenOwner_ShouldThrow() {
         var projectId = UUID.randomUUID().toString();
-        var owner = new ProjectMember(projectId, "owner-1", "Owner", "o@e.com", ProjectMember.ROLE_OWNER);
+        var owner = new ProjectMember(projectId, "owner-1", "Owner", "o@e.com", ProjectMember.ROLE_ADMIN);
         when(memberRepository.findByProjectIdAndUserId(projectId, "owner-1")).thenReturn(Optional.of(owner));
 
         assertThrows(IllegalStateException.class,
@@ -230,7 +229,7 @@ class ProjectServiceTest {
     @Test
     void updateMemberRole_ShouldUpdateAndSave() {
         var projectId = UUID.randomUUID().toString();
-        var member = new ProjectMember(projectId, "user-1", "U1", "u@e.com", ProjectMember.ROLE_MEMBER);
+        var member = new ProjectMember(projectId, "user-1", "U1", "u@e.com", ProjectMember.ROLE_EDITOR);
         when(memberRepository.findByProjectIdAndUserId(projectId, "user-1")).thenReturn(Optional.of(member));
         when(memberRepository.save(any(ProjectMember.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -249,11 +248,11 @@ class ProjectServiceTest {
     @Test
     void updateMemberRole_WhenOwner_ShouldThrow() {
         var projectId = UUID.randomUUID().toString();
-        var owner = new ProjectMember(projectId, "owner-1", "Owner", "o@e.com", ProjectMember.ROLE_OWNER);
+        var owner = new ProjectMember(projectId, "owner-1", "Owner", "o@e.com", ProjectMember.ROLE_ADMIN);
         when(memberRepository.findByProjectIdAndUserId(projectId, "owner-1")).thenReturn(Optional.of(owner));
 
         assertThrows(IllegalStateException.class,
-                () -> projectService.updateMemberRole(projectId, "owner-1", ProjectMember.ROLE_ADMIN));
+                () -> projectService.updateMemberRole(projectId, "owner-1", ProjectMember.ROLE_EDITOR));
     }
 
     @Test
@@ -262,7 +261,7 @@ class ProjectServiceTest {
         when(memberRepository.findByProjectIdAndUserId(projectId, "unknown")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> projectService.updateMemberRole(projectId, "unknown", ProjectMember.ROLE_MEMBER));
+                () -> projectService.updateMemberRole(projectId, "unknown", ProjectMember.ROLE_VIEWER));
     }
 
     @Test

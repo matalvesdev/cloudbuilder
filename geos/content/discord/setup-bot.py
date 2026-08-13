@@ -19,7 +19,13 @@ import os
 import sys
 import json
 import asyncio
+import io
 from typing import Optional
+
+# Fix Windows encoding for emoji output
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 try:
     import discord

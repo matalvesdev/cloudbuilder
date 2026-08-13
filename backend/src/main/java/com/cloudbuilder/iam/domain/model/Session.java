@@ -1,5 +1,6 @@
 package com.cloudbuilder.iam.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -75,8 +76,10 @@ public class Session {
 
     public String getId() { return id; }
     public String getUserId() { return userId; }
+    @JsonIgnore
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
+    @JsonIgnore
     public String getRefreshToken() { return refreshToken; }
     public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
     public Instant getExpiresAt() { return expiresAt; }

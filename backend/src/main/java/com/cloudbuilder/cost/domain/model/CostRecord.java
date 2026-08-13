@@ -38,6 +38,16 @@ public class CostRecord {
     @Column(nullable = false, updatable = false)
     private Instant importedAt;
 
+    @PrePersist
+    public void prePersist() {
+        if (this.id == null) {
+            this.id = UUID.randomUUID().toString();
+        }
+        if (this.importedAt == null) {
+            this.importedAt = Instant.now();
+        }
+    }
+
     protected CostRecord() {}
 
     public CostRecord(String environmentId, String provider, String serviceName,

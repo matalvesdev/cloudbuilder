@@ -1,0 +1,104 @@
+syntax = "proto3";
+package metrics.v1;
+option go_package = "github.com/cloudbuilder/provision-engine/proto/metrics/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// Metrics service for querying engine metrics.
+service MetricsService {
+  rpc GetDeploymentMetrics(GetDeploymentMetricsRequest) returns (GetDeploymentMetricsResponse);
+  rpc GetExecutionMetrics(GetExecutionMetricsRequest) returns (GetExecutionMetricsResponse);
+  rpc GetResourceMetrics(GetResourceMetricsRequest) returns (GetResourceMetricsResponse);
+  rpc GetSystemMetrics(GetSystemMetricsRequest) returns (GetSystemMetricsResponse);
+}
+
+message GetDeploymentMetricsRequest {
+  string tenant_id = 1;
+  google.protobuf.Timestamp from = 2;
+  google.protobuf.Timestamp to = 3;
+  string group_by = 4; // "status", "provider", "executor", "day"
+}
+
+message GetDeploymentMetricsResponse {
+  repeated MetricPoint data_points = 1;
+  DeploymentSummary summary = 2;
+}
+
+message DeploymentSummary {
+  int32 total_deployments = 1;
+  int32 successful = 2;
+  int32 failed = 3;
+  int32 cancelled = 4;
+  double success_rate = 5;
+  int64 avg_duration_ms = 6;
+}
+
+message GetExecutionMetricsRequest {
+  string tenant_id = 1;
+  string executor_type = 2;
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+}
+
+message GetExecutionMetricsResponse {
+  repeated MetricPoint data_points = 1;
+  ExecutionSummary summary = 2;
+}
+
+message ExecutionSummary {
+  int32 total_executions = 1;
+  int32 successful = 2;
+  int32 failed = 3;
+  double avg_duration_ms = 4;
+  double p95_duration_ms = 5;
+  double p99_duration_ms = 6;
+}
+
+message GetResourceMetricsRequest {
+  string tenant_id = 1;
+  string provider = 2;
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+}
+
+message GetResourceMetricsResponse {
+  repeated MetricPoint data_points = 1;
+  ResourceSummary summary = 2;
+}
+
+message ResourceSummary {
+  int32 total_resources = 1;
+  int32 active = 2;
+  int32 failed = 3;
+  int32 drifted = 4;
+  map<string, int32> by_provider = 5;
+  map<string, int32> by_type = 6;
+}
+
+message GetSystemMetricsRequest {
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message GetSystemMetricsResponse {
+  double cpu_usage_percent = 1;
+  double memory_usage_percent = 2;
+  int64 goroutines = 3;
+  int64 open_files = 4;
+  int64 uptime_seconds = 5;
+  repeated WorkerMetrics workers = 6;
+}
+
+message WorkerMetrics {
+  int32 worker_id = 1;
+  bool busy = 2;
+  string current_task = 3;
+  int64 tasks_completed = 4;
+}
+
+message MetricPoint {
+  string label = 1;
+  double value = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  map<string, string> tags = 4;
+}

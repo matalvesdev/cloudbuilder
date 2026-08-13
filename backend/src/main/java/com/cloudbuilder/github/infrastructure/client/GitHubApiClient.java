@@ -12,6 +12,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.*;
+import java.util.LinkedHashMap;
 
 /**
  * HTTP client for the GitHub REST API.
@@ -146,6 +147,116 @@ public class GitHubApiClient {
         return false;
     }
 
+    // ── Git Write Operations (used by GitWriterService) ──
+
+    /**
+     * Get the SHA of the default branch's HEAD commit.
+     */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "getDefaultBranchShaFallback")
+    public String getDefaultBranchSha(String token, String owner, String repo) throws Exception {
+        String json = get("/repos/" + owner + "/" + repo + "/branches/" + getDefaultBranchName(token, owner, repo), token);
+        JsonNode node = MAPPER.readTree(json);
+        return node.get("commit").get("sha").asText();
+    }
+
+    public String getDefaultBranchShaFallback(String token, String owner, String repo, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub getDefaultBranchSha: {}", ex.getMessage());
+        throw new RuntimeException("Cannot get default branch SHA: " + ex.getMessage());
+    }
+
+    private String getDefaultBranchName(String token, String owner, String repo) throws Exception {
+        String json = get("/repos/" + owner + "/" + repo, token);
+        JsonNode node = MAPPER.readTree(json);
+        return node.get("default_branch").asText("main");
+    }
+
+    /**
+     * Create a new branch from a given SHA.
+     */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "createBranchFallback")
+    public void createBranch(String token, String owner, String repo, String branchName, String sha) throws Exception {
+        String body = MAPPER.writeValueAsString(Map.of("ref", "refs/heads/" + branchName, "sha", sha));
+        post("/repos/" + owner + "/" + repo + "/git/refs", token, body);
+    }
+
+    public void createBranchFallback(String token, String owner, String repo, String branchName, String sha, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub createBranch: {}", ex.getMessage());
+        throw new RuntimeException("Cannot create branch: " + ex.getMessage());
+    }
+
+    /**
+     * Get the SHA of a file at a given path and branch. Returns null if file doesn't exist.
+     */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "getFileShaFallback")
+    public String getFileSha(String token, String owner, String repo, String path, String branch) throws Exception {
+        String encodedPath = "/" + path;
+        String url = "/repos/" + owner + "/" + repo + "/contents" + encodedPath + "?ref=" + branch;
+        try {
+            String json = get(url, token);
+            JsonNode node = MAPPER.readTree(json);
+            return node.has("sha") ? node.get("sha").asText() : null;
+        } catch (Exception e) {
+            return null; // File doesn't exist yet
+        }
+    }
+
+    public String getFileShaFallback(String token, String owner, String repo, String path, String branch, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub getFileSha: {}", ex.getMessage());
+        return null;
+    }
+
+    /**
+     * Create or update a file in a repository.
+     */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "createOrUpdateFileFallback")
+    public JsonNode createOrUpdateFile(String token, String owner, String repo, String path,
+                                       String content, String message, String branch, String sha) throws Exception {
+        String encodedContent = Base64.getEncoder().encodeToString(content.getBytes());
+        Map<String, Object> bodyMap = new LinkedHashMap<>();
+        bodyMap.put("message", message);
+        bodyMap.put("content", encodedContent);
+        bodyMap.put("branch", branch);
+        if (sha != null) {
+            bodyMap.put("sha", sha);
+        }
+        String body = MAPPER.writeValueAsString(bodyMap);
+        String json;
+        if (sha != null) {
+            json = put("/repos/" + owner + "/" + repo + "/contents/" + path, token, body);
+        } else {
+            json = put("/repos/" + owner + "/" + repo + "/contents/" + path, token, body);
+        }
+        return MAPPER.readTree(json);
+    }
+
+    public JsonNode createOrUpdateFileFallback(String token, String owner, String repo, String path,
+                                               String content, String message, String branch, String sha, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub createOrUpdateFile: {}", ex.getMessage());
+        throw new RuntimeException("Cannot create/update file: " + ex.getMessage());
+    }
+
+    /**
+     * Create a pull request.
+     */
+    @CircuitBreaker(name = "gitHubClient", fallbackMethod = "createPullRequestFallback")
+    public JsonNode createPullRequest(String token, String owner, String repo,
+                                      String title, String body, String head, String base) throws Exception {
+        Map<String, String> bodyMap = new LinkedHashMap<>();
+        bodyMap.put("title", title);
+        bodyMap.put("body", body);
+        bodyMap.put("head", head);
+        bodyMap.put("base", base);
+        String requestBody = MAPPER.writeValueAsString(bodyMap);
+        String json = post("/repos/" + owner + "/" + repo + "/pulls", token, requestBody);
+        return MAPPER.readTree(json);
+    }
+
+    public JsonNode createPullRequestFallback(String token, String owner, String repo,
+                                              String title, String body, String head, String base, Exception ex) {
+        log.warn("Circuit breaker OPEN for GitHub createPullRequest: {}", ex.getMessage());
+        throw new RuntimeException("Cannot create PR: " + ex.getMessage());
+    }
+
     private GitHubFile parseFileNode(JsonNode node) {
         return new GitHubFile(
             node.get("name").asText(),
@@ -168,6 +279,44 @@ public class GitHubApiClient {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
+            throw new RuntimeException("GitHub API error " + response.statusCode() + ": " + response.body());
+        }
+
+        return response.body();
+    }
+
+    private String post(String path, String token, String body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(API_BASE + path))
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("Authorization", "Bearer " + token)
+            .header("User-Agent", "CloudBuilder")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() < 200 || response.statusCode() > 299) {
+            throw new RuntimeException("GitHub API error " + response.statusCode() + ": " + response.body());
+        }
+
+        return response.body();
+    }
+
+    private String put(String path, String token, String body) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(API_BASE + path))
+            .header("Accept", "application/vnd.github.v3+json")
+            .header("Authorization", "Bearer " + token)
+            .header("User-Agent", "CloudBuilder")
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() < 200 || response.statusCode() > 299) {
             throw new RuntimeException("GitHub API error " + response.statusCode() + ": " + response.body());
         }
 

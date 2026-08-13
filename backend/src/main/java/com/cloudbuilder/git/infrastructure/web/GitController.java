@@ -16,6 +16,7 @@ import com.cloudbuilder.git.domain.service.GitScannerService;
 import com.cloudbuilder.git.domain.service.IaCDetector;
 import com.cloudbuilder.git.domain.service.PipelineGeneratorService;
 import com.cloudbuilder.git.domain.service.WebhookService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +29,9 @@ import java.util.Map;
 @RequestMapping("/api/v1/git")
 @PreAuthorize("isAuthenticated()")
 public class GitController {
+
+    @Value("${cloudbuilder.git.webhook-secret:}")
+    private String webhookSecret;
 
     private final ConnectedRepositoryPort repositoryPort;
     private final RepositoryScanPort scanPort;
@@ -170,13 +174,12 @@ public class GitController {
             @RequestHeader("X-GitHub-Delivery") String deliveryId,
             @RequestBody String payload,
             @RequestParam String repositoryId,
-            @RequestParam(required = false) String secret,
             @RequestParam(required = false) String branch,
             @RequestParam(required = false) String commitSha,
             @RequestParam(required = false) String actor) {
         var event = webhookService.receiveEvent(
                 eventType, repositoryId, payload, signature,
-                secret, deliveryId, branch, commitSha, actor
+                webhookSecret, deliveryId, branch, commitSha, actor
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(event);
     }

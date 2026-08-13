@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os/exec"
 )
 
@@ -91,6 +92,13 @@ func (e *Executor) run(ctx context.Context, args ...string) (*ExecutionResult, e
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
+		} else {
+			// CRITICAL FIX: Propagate non-exit errors (binary not found, context cancelled, etc.)
+			return &ExecutionResult{
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+				ExitCode: -1,
+			}, fmt.Errorf("executor run failed: %w", err)
 		}
 	}
 

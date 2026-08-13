@@ -31,14 +31,14 @@ class MetricsServiceTest {
         var resource = snapshot.resources().getFirst();
         assertEquals("node1", resource.nodeId());
         assertEquals("Web Server", resource.resourceName());
-        assertEquals("aws", resource.provider());
+        assertEquals("unknown", resource.provider());
         assertNotNull(resource.cpuUtilization());
         assertNotNull(resource.memoryUtilization());
         assertNotNull(resource.networkIn());
         assertNotNull(resource.networkOut());
         assertNotNull(resource.diskReadOps());
         assertNotNull(resource.diskWriteOps());
-        assertEquals(12, resource.cpuUtilization().size());
+        assertEquals(0, resource.cpuUtilization().size());
     }
 
     @Test

@@ -1,42 +1,52 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Loader2,
   CheckCircle2,
   GitBranch,
   GitFork,
   FileCode2,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useRepoStore } from '@/store/repoStore'
-import type { RepoProvider } from '@/types/repo.types'
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useRepoStore } from "@/store/repoStore";
+import type { RepoProvider } from "@/types/repo.types";
 
 interface CiCdPipelineProps {
-  repoId: string
-  onClose: () => void
+  repoId: string;
+  onClose: () => void;
 }
 
 export function CiCdPipeline({ repoId, onClose }: CiCdPipelineProps) {
-  const repo = useRepoStore((s) => s.getRepoById(repoId))
-  const result = useRepoStore((s) => s.scanResults.find((r) => r.repoId === repoId))
-  const detection = repoId ? useRepoStore((s) => s.detectAppType(repoId)) : null
+  const repo = useRepoStore((s) => s.getRepoById(repoId));
+  const result = useRepoStore((s) =>
+    s.scanResults.find((r) => r.repoId === repoId),
+  );
+  const detection = useRepoStore((s) =>
+    repoId ? s.detectAppType(repoId) : null,
+  );
 
-  const [ciProvider, setCiProvider] = useState<'github-actions' | 'gitlab-ci'>(
-    repo?.provider === 'gitlab' ? 'gitlab-ci' : 'github-actions'
-  )
-  const [creating, setCreating] = useState(false)
-  const [created, setCreated] = useState(false)
+  const [ciProvider, setCiProvider] = useState<"github-actions" | "gitlab-ci">(
+    repo?.provider === "gitlab" ? "gitlab-ci" : "github-actions",
+  );
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState(false);
 
-  if (!repo) return null
+  if (!repo) return null;
 
   const appTypeLabel = detection?.appType
-    ? detection.appType === 'web-app' ? 'Web App' :
-      detection.appType === 'microservice' ? 'Microsserviço' :
-      detection.appType === 'data-pipeline' ? 'Data Pipeline' :
-      detection.appType === 'docker-compose' ? 'Docker Compose' : 'Não detectado'
-    : 'Não detectado'
+    ? detection.appType === "web-app"
+      ? "Web App"
+      : detection.appType === "microservice"
+        ? "Microsserviço"
+        : detection.appType === "data-pipeline"
+          ? "Data Pipeline"
+          : detection.appType === "docker-compose"
+            ? "Docker Compose"
+            : "Não detectado"
+    : "Não detectado";
 
-  const pipelineYaml = ciProvider === 'github-actions'
-    ? `name: CloudBuilder CI/CD
+  const pipelineYaml =
+    ciProvider === "github-actions"
+      ? `name: CloudBuilder CI/CD
 
 on:
   push:
@@ -97,7 +107,7 @@ jobs:
       - name: Deploy
         run: npm run deploy
 `
-    : `stages:
+      : `stages:
   - validate
   - plan
   - deploy
@@ -145,7 +155,7 @@ deploy:
     - ${repo.defaultBranch}
   dependencies:
     - plan
-`
+`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -154,7 +164,9 @@ deploy:
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-brand-navy font-display">Configurar Pipeline CI/CD</h2>
+          <h2 className="text-lg font-bold text-brand-navy font-display">
+            Configurar Pipeline CI/CD
+          </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             {repo.fullName} · {appTypeLabel}
           </p>
@@ -162,16 +174,28 @@ deploy:
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-50 rounded-xl p-3">
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Tipo de App</p>
-              <p className="text-sm font-bold text-brand-navy">{appTypeLabel}</p>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                Tipo de App
+              </p>
+              <p className="text-sm font-bold text-brand-navy">
+                {appTypeLabel}
+              </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Linguagem</p>
-              <p className="text-sm font-bold text-brand-navy">{detection?.language || '—'}</p>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                Linguagem
+              </p>
+              <p className="text-sm font-bold text-brand-navy">
+                {detection?.language || "—"}
+              </p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3">
-              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Framework</p>
-              <p className="text-sm font-bold text-brand-navy">{detection?.framework || '—'}</p>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">
+                Framework
+              </p>
+              <p className="text-sm font-bold text-brand-navy">
+                {detection?.framework || "—"}
+              </p>
             </div>
           </div>
 
@@ -181,26 +205,27 @@ deploy:
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => setCiProvider('github-actions')}
+                onClick={() => setCiProvider("github-actions")}
                 className={cn(
-                  'flex items-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-medium',
-                  ciProvider === 'github-actions'
-                    ? 'border-brand-navy bg-brand-navy/5 text-brand-navy'
-                    : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  "flex items-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-medium",
+                  ciProvider === "github-actions"
+                    ? "border-brand-navy bg-brand-navy/5 text-brand-navy"
+                    : "border-slate-200 text-slate-500 hover:border-slate-300",
                 )}
               >
                 <GitBranch className="w-4 h-4" />
                 GitHub Actions
               </button>
               <button
-                onClick={() => setCiProvider('gitlab-ci')}
-                disabled={repo.provider === 'bitbucket'}
+                onClick={() => setCiProvider("gitlab-ci")}
+                disabled={repo.provider === "bitbucket"}
                 className={cn(
-                  'flex items-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-medium',
-                  ciProvider === 'gitlab-ci'
-                    ? 'border-brand-navy bg-brand-navy/5 text-brand-navy'
-                    : 'border-slate-200 text-slate-500 hover:border-slate-300',
-                  repo.provider === 'bitbucket' && 'opacity-40 cursor-not-allowed'
+                  "flex items-center gap-2 p-3 rounded-xl border-2 transition-all text-sm font-medium",
+                  ciProvider === "gitlab-ci"
+                    ? "border-brand-navy bg-brand-navy/5 text-brand-navy"
+                    : "border-slate-200 text-slate-500 hover:border-slate-300",
+                  repo.provider === "bitbucket" &&
+                    "opacity-40 cursor-not-allowed",
                 )}
               >
                 <GitFork className="w-4 h-4" />
@@ -216,7 +241,7 @@ deploy:
             <div className="relative group">
               <button
                 onClick={async () => {
-                  await navigator.clipboard.writeText(pipelineYaml)
+                  await navigator.clipboard.writeText(pipelineYaml);
                 }}
                 className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
               >
@@ -233,9 +258,12 @@ deploy:
             <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 border border-green-200">
               <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-green-700">Pipeline criado com sucesso!</p>
+                <p className="text-sm font-semibold text-green-700">
+                  Pipeline criado com sucesso!
+                </p>
                 <p className="text-xs text-green-500">
-                  PR aberto em <strong>{repo.fullName}</strong> com o arquivo de pipeline configurado
+                  PR aberto em <strong>{repo.fullName}</strong> com o arquivo de
+                  pipeline configurado
                 </p>
               </div>
             </div>
@@ -245,8 +273,12 @@ deploy:
             <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
               <Loader2 className="w-5 h-5 animate-spin text-blue-500 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-blue-700">Criando pipeline...</p>
-                <p className="text-xs text-blue-500">Abrindo PR com configuração de CI/CD</p>
+                <p className="text-sm font-semibold text-blue-700">
+                  Criando pipeline...
+                </p>
+                <p className="text-xs text-blue-500">
+                  Abrindo PR com configuração de CI/CD
+                </p>
               </div>
             </div>
           )}
@@ -257,15 +289,15 @@ deploy:
             disabled={creating}
             className="px-4 h-9 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all disabled:opacity-50"
           >
-            {created ? 'Fechar' : 'Cancelar'}
+            {created ? "Fechar" : "Cancelar"}
           </button>
           {!created && (
             <button
               onClick={async () => {
-                setCreating(true)
-                await new Promise((r) => setTimeout(r, 2000))
-                setCreating(false)
-                setCreated(true)
+                setCreating(true);
+                await new Promise((r) => setTimeout(r, 2000));
+                setCreating(false);
+                setCreated(true);
               }}
               disabled={creating}
               className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50"
@@ -275,11 +307,11 @@ deploy:
               ) : (
                 <GitBranch className="w-3.5 h-3.5" />
               )}
-              {creating ? 'Criando...' : 'Criar PR com Pipeline'}
+              {creating ? "Criando..." : "Criar PR com Pipeline"}
             </button>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,0 +1,227 @@
+# CloudBuilder — Content Engine (Organic Growth)
+# Pipeline completo de criação de conteúdo para aquisição orgânica
+# Rode: geos workflows run cloudbuilder-content-engine
+
+workflow:
+  id: cloudbuilder-content-engine
+  description: "Content Engine completo — pesquisa, criação, SEO/GEO, distribuição para crescimento orgânico."
+  trigger:
+    kind: cron
+    cron: "0 6 * * 1"  # Toda segunda às 6h
+
+  steps:
+    # ═══════════════════════════════════════════════════════════
+    # FASE 1: PESQUISA DE CONTEÚDO
+    # ═══════════════════════════════════════════════════════════
+    - id: keyword_research
+      type: agent
+      agent: seo.keywords
+      input:
+        target_keywords:
+          - "platform engineering"
+          - "finops"
+          - "terraform visual"
+          - "cloud cost management"
+          - "devops platform"
+          - "internal developer platform"
+          - "multi-cloud management"
+          - "infrastructure as code visual"
+        competitors:
+          - "hashicorp.com"
+          - "pulumi.com"
+          - "spacelift.io"
+          - "backstage.io"
+          - "port.io"
+
+    - id: competitor_content
+      type: agent
+      agent: research.run
+      input:
+        question: "top blog posts about platform engineering and finops 2026"
+        sources_limit: 10
+        focus: "content gaps and opportunities"
+
+    - id: trend_analysis
+      type: agent
+      agent: research.run
+      input:
+        question: "trends in platform engineering devops finops 2026"
+        sources_limit: 10
+        focus: "emerging topics and content opportunities"
+
+    - id: community_research
+      type: agent
+      agent: research.run
+      input:
+        question: "what questions do developers ask about platform engineering"
+        sources_limit: 10
+        focus: "FAQ opportunities and content gaps"
+
+    # ═══════════════════════════════════════════════════════════
+    # FASE 2: CRIAÇÃO DE CONTEÚDO
+    # ═══════════════════════════════════════════════════════════
+    - id: content_brief
+      type: agent
+      agent: content.brief
+      input:
+        from_research:
+          - "$ref steps.keyword_research.gaps"
+          - "$ref steps.competitor_content.insights"
+          - "$ref steps.trend_analysis.insights"
+          - "$ref steps.community_research.insights"
+        brand: "CloudBuilder"
+        tone: "técnico mas acessível"
+        target: "DevOps engineers, Platform leads, CTOs"
+        content_types:
+          - "tutorial"
+          - "guide"
+          - "case_study"
+          - "comparison"
+          - "glossary"
+
+    - id: content_creation
+      type: agent
+      agent: content.create
+      input:
+        from_brief: "$ref steps.content_brief.topics"
+        format: "blog_post"
+        word_count: 1500
+        include_code_examples: true
+        include_diagrams: true
+
+    - id: draft_generation
+      type: agent
+      agent: content.draft
+      input:
+        topics: "$ref steps.content_creation.ideas"
+        brand: "CloudBuilder"
+        tone: "técnico mas acessível"
+
+    # ═══════════════════════════════════════════════════════════
+    # FASE 3: SEO/GEO OTIMIZAÇÃO
+    # ═══════════════════════════════════════════════════════════
+    - id: seo_optimization
+      type: agent
+      agent: seo.audit
+      input:
+        content: "$ref steps.draft_generation.content"
+        target_keywords: "$ref steps.keyword_research.primary"
+        checks:
+          - "title_tag"
+          - "meta_description"
+          - "heading_structure"
+          - "keyword_density"
+          - "internal_links"
+          - "external_links"
+          - "image_alt_text"
+
+    - id: geo_optimization
+      type: agent
+      agent: content.optimize_geo
+      input:
+        content: "$ref steps.draft_generation.content"
+        strategy:
+          - "Adicionar seção 'O que é [topic]?'"
+          - "Incluir tabela comparativa com concorrentes"
+          - "Adicionar FAQ estruturado"
+          - "Incluir estatísticas e dados verificáveis"
+          - "Adicionar links para documentação técnica"
+          - "Incluir code examples"
+          - "Adicionar schema markup"
+
+    - id: content_scoring
+      type: agent
+      agent: content.score
+      input:
+        content: "$ref steps.geo_optimize.content"
+        criteria:
+          - "relevance"
+          - "depth"
+          - "originality"
+          - "actionability"
+          - "seo_score"
+          - "geo_score"
+
+    # ═══════════════════════════════════════════════════════════
+    # FASE 4: APROVAÇÃO
+    # ═══════════════════════════════════════════════════════════
+    - id: approval
+      type: approval
+      approval:
+        mode: required
+        channel: "content-review"
+
+    # ═══════════════════════════════════════════════════════════
+    # FASE 5: DISTRIBUIÇÃO
+    # ═══════════════════════════════════════════════════════════
+    - id: blog_preparation
+      type: agent
+      agent: blog.prepare
+      input:
+        content: "$ref steps.geo_optimize.content"
+        frontmatter:
+          author: "CloudBuilder Team"
+          tags: "$ref steps.keyword_research.primary"
+          category: "tutorial"
+          featured: true
+
+    - id: social_preparation
+      type: agent
+      agent: social.draft
+      input:
+        title: "$ref steps.draft_generation.title"
+        summary: "$ref steps.draft_generation.summary"
+        platforms:
+          - linkedin
+          - twitter
+          - github
+
+    - id: newsletter_preparation
+      type: task
+      task: newsletter.prepare
+      input:
+        title: "$ref steps.draft_generation.title"
+        summary: "$ref steps.draft_generation.summary"
+        section: "destaque-da-semana"
+
+    # ═══════════════════════════════════════════════════════════
+    # FASE 6: AGENDAMENTO
+    # ═══════════════════════════════════════════════════════════
+    - id: schedule_blog
+      type: task
+      task: schedule.record
+      input:
+        title: "$ref steps.draft_generation.title"
+        platform: blog
+        publish_date: "next_week"
+
+    - id: schedule_social
+      type: task
+      task: schedule.record
+      input:
+        title: "$ref steps.draft_generation.title"
+        platform: social
+        publish_date: "same_day_as_blog"
+
+    - id: schedule_newsletter
+      type: task
+      task: schedule.record
+      input:
+        title: "$ref steps.draft_generation.title"
+        platform: newsletter
+        publish_date: "next_tuesday"
+
+    # ═══════════════════════════════════════════════════════════
+    # FASE 7: MÉTRICAS
+    # ═══════════════════════════════════════════════════════════
+    - id: record
+      type: task
+      task: analytics.record
+      input:
+        type: content_pipeline
+        data:
+          keywords_researched: "$ref steps.keyword_research.count"
+          content_created: "$ref steps.content_creation.count"
+          seo_score: "$ref steps.seo_optimization.score"
+          geo_score: "$ref steps.geo_optimize.score"
+          distribution_channels: 3

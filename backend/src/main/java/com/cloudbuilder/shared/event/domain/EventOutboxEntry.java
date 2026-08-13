@@ -56,7 +56,12 @@ public class EventOutboxEntry {
     protected EventOutboxEntry() {}
 
     public EventOutboxEntry(String eventType, String eventClass, String payload, String tenantId) {
-        this.id = UUID.randomUUID().toString();
+        this(UUID.randomUUID().toString(), eventType, eventClass, payload, tenantId);
+    }
+
+    public EventOutboxEntry(String id, String eventType, String eventClass,
+                            String payload, String tenantId) {
+        this.id = id;
         this.eventType = eventType;
         this.eventClass = eventClass;
         this.payload = payload;
@@ -92,8 +97,12 @@ public class EventOutboxEntry {
     }
 
     public void markFailed(String error) {
-        this.status = Status.FAILED;
+        this.status = Status.PENDING;
         this.retryCount++;
         this.lastError = error;
+    }
+
+    public void markPermanentlyFailed() {
+        this.status = Status.FAILED;
     }
 }

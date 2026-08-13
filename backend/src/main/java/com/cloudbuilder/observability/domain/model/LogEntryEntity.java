@@ -37,7 +37,7 @@ public class LogEntryEntity {
     @Column(name = "stack_trace", columnDefinition = "TEXT")
     private String stackTrace;
 
-    @Column(columnDefinition = "JSONB DEFAULT '{}'")
+    @Column(columnDefinition = "TEXT DEFAULT '{}'")
     private String structured;
 
     public LogEntryEntity() {}

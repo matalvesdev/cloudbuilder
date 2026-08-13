@@ -1,24 +1,24 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { WifiOff, RefreshCw, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useEffect, useState, useCallback, useRef } from "react";
+import { WifiOff, RefreshCw, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1";
 
-type ConnectionStatus = 'online' | 'degraded' | 'offline'
+type ConnectionStatus = "online" | "degraded" | "offline";
 
-const DISMISS_KEY = 'cloudbuilder-offline-dismissed'
-const DISMISS_TTL = 5 * 60 * 1000 // 5 minutes
-const CHECK_INTERVAL = 30_000 // check every 30s
+const DISMISS_KEY = "cloudbuilder-offline-dismissed";
+const DISMISS_TTL = 5 * 60 * 1000; // 5 minutes
+const CHECK_INTERVAL = 30_000; // check every 30s
 
 function isDismissed(): boolean {
-  const raw = localStorage.getItem(DISMISS_KEY)
-  if (!raw) return false
-  const ts = parseInt(raw, 10)
-  return Date.now() - ts < DISMISS_TTL
+  const raw = localStorage.getItem(DISMISS_KEY);
+  if (!raw) return false;
+  const ts = parseInt(raw, 10);
+  return Date.now() - ts < DISMISS_TTL;
 }
 
 function setDismissed(): void {
-  localStorage.setItem(DISMISS_KEY, String(Date.now()))
+  localStorage.setItem(DISMISS_KEY, String(Date.now()));
 }
 
 /**
@@ -26,83 +26,86 @@ function setDismissed(): void {
  * Placed at the top of the main layout, above the content area.
  */
 export function OfflineBanner() {
-  const [status, setStatus] = useState<ConnectionStatus>('online')
-  const [dismissed, setDismissedState] = useState(isDismissed)
-  const [checking, setChecking] = useState(false)
-  const mountedRef = useRef(true)
+  const [status, setStatus] = useState<ConnectionStatus>("online");
+  const [dismissed, setDismissedState] = useState(isDismissed);
+  const [checking, setChecking] = useState(false);
+  const mountedRef = useRef(true);
 
   const checkHealth = useCallback(async () => {
-    if (dismissed || checking) return
-    setChecking(true)
+    if (dismissed || checking) return;
+    setChecking(true);
     try {
       // Health check via actuator endpoint (público, sem auth)
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
       // Use fetch directly to avoid HttpClient's error-throwing behavior
-      const res = await fetch(`${BASE_URL.replace('/api/v1', '')}/actuator/health`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-      }).catch(() => null)
+      const res = await fetch(
+        `${BASE_URL.replace("/api/v1", "")}/actuator/health`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        },
+      ).catch(() => null);
 
-      clearTimeout(timeout)
+      clearTimeout(timeout);
 
       if (!res) {
-        setStatus('offline')
+        setStatus("offline");
       } else if (res.status >= 500) {
-        setStatus('degraded')
+        setStatus("degraded");
       } else {
-        setStatus('online')
+        setStatus("online");
       }
     } catch {
-      setStatus('offline')
+      setStatus("offline");
     } finally {
-      if (mountedRef.current) setChecking(false)
+      if (mountedRef.current) setChecking(false);
     }
-  }, [dismissed, checking])
+  }, [dismissed, checking]);
 
   // Periodic health checks
   useEffect(() => {
-    mountedRef.current = true
-    checkHealth()
-    const interval = setInterval(checkHealth, CHECK_INTERVAL)
+    mountedRef.current = true;
+    checkHealth();
+    const interval = setInterval(checkHealth, CHECK_INTERVAL);
     return () => {
-      mountedRef.current = false
-      clearInterval(interval)
-    }
-  }, [dismissed])
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, [dismissed]);
 
   const handleDismiss = () => {
-    setDismissed()
-    setDismissedState(true)
-  }
+    setDismissed();
+    setDismissedState(true);
+  };
 
   const handleRetry = () => {
-    setDismissedState(false)
-    setStatus('online')
-    checkHealth()
-  }
+    setDismissedState(false);
+    setStatus("online");
+    checkHealth();
+  };
 
-  if (status === 'online' || dismissed) return null
+  if (status === "online" || dismissed) return null;
 
-  const isOffline = status === 'offline'
+  const isOffline = status === "offline";
 
   return (
     <div
       className={cn(
-        'flex items-center justify-between px-4 py-2 text-sm shrink-0 z-40',
+        "flex items-center justify-between px-4 py-2 text-sm shrink-0 z-40",
         isOffline
-          ? 'bg-red-50 text-red-800 border-b border-red-200'
-          : 'bg-amber-50 text-amber-800 border-b border-amber-200',
+          ? "bg-red-50 text-red-800 border-b border-red-200"
+          : "bg-amber-50 text-amber-800 border-b border-amber-200",
       )}
     >
       <div className="flex items-center gap-2">
         <WifiOff className="w-4 h-4 shrink-0" />
         <span className="font-medium">
           {isOffline
-            ? 'Backend offline — funcionalidades limitadas. Dados simulados podem ser exibidos.'
-            : 'Backend com resposta lenta — algumas funcionalidades podem estar degradadas.'}
+            ? "Backend offline — funcionalidades limitadas. Dados simulados podem ser exibidos."
+            : "Backend com resposta lenta — algumas funcionalidades podem estar degradadas."}
         </span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -122,5 +125,5 @@ export function OfflineBanner() {
         </button>
       </div>
     </div>
-  )
+  );
 }

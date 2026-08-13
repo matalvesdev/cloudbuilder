@@ -1,32 +1,35 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-export type ThemeMode = 'light' | 'dark' | 'system'
-export type AppLanguage = 'pt-BR' | 'en'
+export type ThemeMode = "light" | "dark" | "system";
+export type AppLanguage = "pt-BR" | "en";
 
 export interface SystemSettings {
-  theme: ThemeMode
-  language: AppLanguage
+  theme: ThemeMode;
+  language: AppLanguage;
   notifications: {
-    email: boolean
-    deployComplete: boolean
-    deployFailed: boolean
-    approvalRequested: boolean
-    driftDetected: boolean
-  }
+    email: boolean;
+    deployComplete: boolean;
+    deployFailed: boolean;
+    approvalRequested: boolean;
+    driftDetected: boolean;
+  };
 }
 
 interface SystemSettingsState {
-  settings: SystemSettings
-  updateTheme: (theme: ThemeMode) => void
-  updateLanguage: (language: AppLanguage) => void
-  updateNotification: (key: keyof SystemSettings['notifications'], value: boolean) => void
-  resetSettings: () => void
+  settings: SystemSettings;
+  updateTheme: (theme: ThemeMode) => void;
+  updateLanguage: (language: AppLanguage) => void;
+  updateNotification: (
+    key: keyof SystemSettings["notifications"],
+    value: boolean,
+  ) => void;
+  resetSettings: () => void;
 }
 
 const defaultSettings: SystemSettings = {
-  theme: 'light',
-  language: 'pt-BR',
+  theme: "light",
+  language: "pt-BR",
   notifications: {
     email: true,
     deployComplete: true,
@@ -34,7 +37,7 @@ const defaultSettings: SystemSettings = {
     approvalRequested: true,
     driftDetected: true,
   },
-}
+};
 
 export const useSystemSettingsStore = create<SystemSettingsState>()(
   persist(
@@ -58,8 +61,8 @@ export const useSystemSettingsStore = create<SystemSettingsState>()(
       resetSettings: () => set({ settings: defaultSettings }),
     }),
     {
-      name: 'cloudbuilder-system-settings',
+      name: "cloudbuilder-system-settings",
       partialize: (state) => ({ settings: state.settings }),
-    }
-  )
-)
+    },
+  ),
+);

@@ -6,6 +6,7 @@ import com.cloudbuilder.design.domain.model.CanvasNode;
 import com.cloudbuilder.design.domain.port.CanvasRepository;
 import com.cloudbuilder.design.domain.service.CanvasService;
 import com.cloudbuilder.shared.monitoring.CustomMetrics;
+import com.cloudbuilder.shared.security.TenantContext;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,6 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
+import java.util.List;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/v1/canvases")
@@ -35,9 +39,11 @@ public class CanvasController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<Canvas> createCanvas(@Valid @RequestBody CreateCanvasRequest request) {
+    public ResponseEntity<Canvas> createCanvas(@Valid @RequestBody CreateCanvasRequest request,
+                                                Principal principal) {
+        String tenantId = requireTenant();
         Canvas canvas = canvasService.createCanvas(
-                request.tenantId(), request.name(), request.description(), request.userId());
+                tenantId, request.name(), request.description(), principal.getName());
         customMetrics.recordCanvasCreated();
         return ResponseEntity.status(HttpStatus.CREATED).body(canvas);
     }
@@ -45,7 +51,7 @@ public class CanvasController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<Canvas>> listCanvases(Pageable pageable) {
-        return ResponseEntity.ok(canvasRepository.findAll(pageable));
+        return ResponseEntity.ok(canvasRepository.findByTenantId(requireTenant(), pageable));
     }
 
     @GetMapping("/{id}")
@@ -119,6 +125,36 @@ public class CanvasController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{id}/content")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    public ResponseEntity<Canvas> replaceContent(
+            @PathVariable String id,
+            @Valid @RequestBody ReplaceCanvasRequest request) {
+        var nodes = request.nodes().stream()
+                .map(node -> new CanvasService.NodeSnapshot(
+                        node.id(),
+                        node.componentDefinitionId(),
+                        node.positionX(),
+                        node.positionY(),
+                        node.properties()))
+                .toList();
+        var edges = request.edges().stream()
+                .map(edge -> new CanvasService.EdgeSnapshot(
+                        edge.id(),
+                        edge.sourceNodeId(),
+                        edge.targetNodeId(),
+                        edge.edgeType(),
+                        edge.properties()))
+                .toList();
+        return ResponseEntity.ok(canvasService.replaceContent(
+                id,
+                request.expectedVersion(),
+                request.name(),
+                request.metadata(),
+                nodes,
+                edges));
+    }
+
     public record CreateCanvasRequest(
             @NotBlank String tenantId,
             @NotBlank String name,
@@ -145,4 +181,33 @@ public class CanvasController {
             @NotNull String targetNodeId,
             @NotBlank String edgeType,
             String properties) {}
+
+    public record ReplaceCanvasRequest(
+            int expectedVersion,
+            @NotBlank String name,
+            String metadata,
+            @NotNull List<ReplaceNodeRequest> nodes,
+            @NotNull List<ReplaceEdgeRequest> edges) {}
+
+    public record ReplaceNodeRequest(
+            @NotBlank String id,
+            @NotBlank String componentDefinitionId,
+            double positionX,
+            double positionY,
+            String properties) {}
+
+    public record ReplaceEdgeRequest(
+            @NotBlank String id,
+            @NotBlank String sourceNodeId,
+            @NotBlank String targetNodeId,
+            @NotBlank String edgeType,
+            String properties) {}
+
+    private static String requireTenant() {
+        String tenantId = TenantContext.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new AccessDeniedException("No active tenant in authenticated session");
+        }
+        return tenantId;
+    }
 }

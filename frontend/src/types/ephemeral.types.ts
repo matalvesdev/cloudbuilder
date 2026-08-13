@@ -1,6 +1,7 @@
-export type EphemeralStatus = 'creating' | 'active' | 'destroying' | 'destroyed';
+export type EphemeralStatus =
+  "creating" | "active" | "destroying" | "destroyed";
 
-export type ResourceSize = 'small' | 'medium' | 'large';
+export type ResourceSize = "small" | "medium" | "large";
 
 export interface EphemeralEnv {
   id: string;

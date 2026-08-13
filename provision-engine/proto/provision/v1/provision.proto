@@ -1,0 +1,873 @@
+syntax = "proto3";
+package provision.v1;
+option go_package = "github.com/cloudbuilder/provision-engine/proto/provision/v1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+// ─── Common Types ───────────────────────────────────────────────────────
+
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+  string sort_by = 3;
+  string sort_order = 4; // "asc" or "desc"
+}
+
+message PaginationResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total_count = 3;
+  int32 total_pages = 4;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  string details = 3;
+}
+
+message Timestamps {
+  google.protobuf.Timestamp created_at = 1;
+  google.protobuf.Timestamp updated_at = 2;
+}
+
+// ─── Deployment Service ─────────────────────────────────────────────────
+
+service DeploymentService {
+  // CRUD
+  rpc CreateDeployment(CreateDeploymentRequest) returns (CreateDeploymentResponse);
+  rpc GetDeployment(GetDeploymentRequest) returns (GetDeploymentResponse);
+  rpc ListDeployments(ListDeploymentsRequest) returns (ListDeploymentsResponse);
+  rpc UpdateDeployment(UpdateDeploymentRequest) returns (UpdateDeploymentResponse);
+  rpc DeleteDeployment(DeleteDeploymentRequest) returns (google.protobuf.Empty);
+
+  // Lifecycle
+  rpc SubmitDeployment(SubmitDeploymentRequest) returns (SubmitDeploymentResponse);
+  rpc ApproveDeployment(ApproveDeploymentRequest) returns (ApproveDeploymentResponse);
+  rpc CancelDeployment(CancelDeploymentRequest) returns (CancelDeploymentResponse);
+  rpc ExecuteDeployment(ExecuteDeploymentRequest) returns (stream ExecutionEvent);
+  rpc DestroyDeployment(DestroyDeploymentRequest) returns (stream DestroyEvent);
+
+  // Rollback
+  rpc RollbackDeployment(RollbackDeploymentRequest) returns (stream RollbackEvent);
+
+  // Streaming
+  rpc WatchDeployment(WatchDeploymentRequest) returns (stream DeploymentEvent);
+}
+
+message DeploymentConfig {
+  string executor_type = 1;  // terraform, pulumi, helm, docker, kubernetes, etc.
+  string provider_type = 2;  // aws, azure, gcp, oracle, hetzner, etc.
+  bool auto_approve = 3;
+  map<string, string> variables = 4;
+  string workspace_dir = 5;
+  int64 timeout_seconds = 6;
+  map<string, string> tags = 7;
+}
+
+message CreateDeploymentRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string description = 3;
+  DeploymentConfig config = 4;
+}
+
+message CreateDeploymentResponse {
+  Deployment deployment = 1;
+}
+
+message GetDeploymentRequest {
+  string id = 1;
+}
+
+message GetDeploymentResponse {
+  Deployment deployment = 1;
+}
+
+message ListDeploymentsRequest {
+  string tenant_id = 1;
+  repeated string status_filter = 2;
+  Pagination pagination = 3;
+}
+
+message ListDeploymentsResponse {
+  repeated Deployment deployments = 1;
+  PaginationResponse pagination = 2;
+}
+
+message UpdateDeploymentRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  map<string, string> variables = 4;
+}
+
+message UpdateDeploymentResponse {
+  Deployment deployment = 1;
+}
+
+message DeleteDeploymentRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+message SubmitDeploymentRequest {
+  string id = 1;
+}
+
+message SubmitDeploymentResponse {
+  Deployment deployment = 1;
+}
+
+message ApproveDeploymentRequest {
+  string id = 1;
+  string approved_by = 2;
+  string notes = 3;
+}
+
+message ApproveDeploymentResponse {
+  Deployment deployment = 1;
+}
+
+message CancelDeploymentRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+message CancelDeploymentResponse {
+  Deployment deployment = 1;
+}
+
+message ExecuteDeploymentRequest {
+  string id = 1;
+  bool dry_run = 2;
+}
+
+message DestroyDeploymentRequest {
+  string id = 1;
+  string reason = 2;
+  bool force = 3;
+}
+
+message RollbackDeploymentRequest {
+  string id = 1;
+  int32 target_version = 2;
+  string reason = 3;
+}
+
+message WatchDeploymentRequest {
+  string id = 1;
+}
+
+message Deployment {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string description = 4;
+  DeploymentStatus status = 5;
+  DeploymentConfig config = 6;
+  string workflow_id = 7;
+  string error = 8;
+  map<string, string> metadata = 9;
+  Timestamps timestamps = 10;
+  int32 version = 11;
+}
+
+enum DeploymentStatus {
+  DEPLOYMENT_STATUS_UNSPECIFIED = 0;
+  DEPLOYMENT_STATUS_PENDING = 1;
+  DEPLOYMENT_STATUS_PLANNING = 2;
+  DEPLOYMENT_STATUS_PLANNED = 3;
+  DEPLOYMENT_STATUS_AWAITING_APPROVAL = 4;
+  DEPLOYMENT_STATUS_EXECUTING = 5;
+  DEPLOYMENT_STATUS_APPLIED = 6;
+  DEPLOYMENT_STATUS_PARTIAL_FAILURE = 7;
+  DEPLOYMENT_STATUS_FAILED = 8;
+  DEPLOYMENT_STATUS_ROLLING_BACK = 9;
+  DEPLOYMENT_STATUS_ROLLED_BACK = 10;
+  DEPLOYMENT_STATUS_CANCELLED = 11;
+  DEPLOYMENT_STATUS_DESTROYING = 12;
+  DEPLOYMENT_STATUS_DESTROYED = 13;
+  DEPLOYMENT_STATUS_DRIFTED = 14;
+  DEPLOYMENT_STATUS_RECONCILING = 15;
+}
+
+// ─── Workflow Service ───────────────────────────────────────────────────
+
+service WorkflowService {
+  rpc GetWorkflow(GetWorkflowRequest) returns (GetWorkflowResponse);
+  rpc GetWorkflowByDeployment(GetWorkflowByDeploymentRequest) returns (GetWorkflowResponse);
+  rpc ListWorkflowSteps(ListWorkflowStepsRequest) returns (ListWorkflowStepsResponse);
+  rpc WatchWorkflow(WatchWorkflowRequest) returns (stream WorkflowEvent);
+}
+
+message Workflow {
+  string id = 1;
+  string deployment_id = 2;
+  WorkflowStatus status = 3;
+  repeated WorkflowStep steps = 4;
+  int32 current_batch = 5;
+  string error = 6;
+  Timestamps timestamps = 7;
+}
+
+enum WorkflowStatus {
+  WORKFLOW_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STATUS_PENDING = 1;
+  WORKFLOW_STATUS_RUNNING = 2;
+  WORKFLOW_STATUS_COMPLETED = 3;
+  WORKFLOW_STATUS_FAILED = 4;
+  WORKFLOW_STATUS_CANCELLED = 5;
+  WORKFLOW_STATUS_PAUSED = 6;
+}
+
+message WorkflowStep {
+  string id = 1;
+  string name = 2;
+  StepType type = 3;
+  string resource_id = 4;
+  map<string, string> config = 5;
+  repeated string depends_on = 6;
+  StepStatus status = 7;
+  StepResult result = 8;
+  int32 retry_max = 9;
+  int64 timeout_seconds = 10;
+}
+
+enum StepType {
+  STEP_TYPE_UNSPECIFIED = 0;
+  STEP_TYPE_CREATE = 1;
+  STEP_TYPE_UPDATE = 2;
+  STEP_TYPE_DELETE = 3;
+  STEP_TYPE_REPLACE = 4;
+  STEP_TYPE_DESTROY = 5;
+  STEP_TYPE_IMPORT = 6;
+  STEP_TYPE_REFRESH = 7;
+  STEP_TYPE_VALIDATE = 8;
+  STEP_TYPE_PLAN = 9;
+  STEP_TYPE_APPLY = 10;
+  STEP_TYPE_ROLLBACK = 11;
+}
+
+enum StepStatus {
+  STEP_STATUS_UNSPECIFIED = 0;
+  STEP_STATUS_PENDING = 1;
+  STEP_STATUS_RUNNING = 2;
+  STEP_STATUS_COMPLETED = 3;
+  STEP_STATUS_FAILED = 4;
+  STEP_STATUS_SKIPPED = 5;
+  STEP_STATUS_RETRY = 6;
+}
+
+message StepResult {
+  bool success = 1;
+  map<string, string> outputs = 2;
+  string error = 3;
+  int64 duration_ms = 4;
+  int32 retry_count = 5;
+}
+
+message GetWorkflowRequest {
+  string id = 1;
+}
+
+message GetWorkflowByDeploymentRequest {
+  string deployment_id = 1;
+}
+
+message GetWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message ListWorkflowStepsRequest {
+  string workflow_id = 1;
+  repeated StepStatus status_filter = 2;
+}
+
+message ListWorkflowStepsResponse {
+  repeated WorkflowStep steps = 1;
+}
+
+message WatchWorkflowRequest {
+  string workflow_id = 1;
+}
+
+message WorkflowEvent {
+  string workflow_id = 1;
+  string event_type = 2;
+  string step_id = 3;
+  WorkflowStatus status = 4;
+  StepStatus step_status = 5;
+  string message = 6;
+  google.protobuf.Timestamp timestamp = 7;
+}
+
+// ─── Execution Service ──────────────────────────────────────────────────
+
+service ExecutionService {
+  rpc GetExecution(GetExecutionRequest) returns (GetExecutionResponse);
+  rpc ListExecutions(ListExecutionsRequest) returns (ListExecutionsResponse);
+  rpc StreamLogs(StreamLogsRequest) returns (stream LogEntry);
+  rpc WatchExecution(WatchExecutionRequest) returns (stream ExecutionEvent);
+}
+
+message Execution {
+  string id = 1;
+  string workflow_id = 2;
+  string step_id = 3;
+  string executor_type = 4;
+  string provider_type = 5;
+  ExecutionStatus status = 6;
+  ExecutionPlan plan = 7;
+  ExecutionResult result = 8;
+  string work_dir = 9;
+  int32 retry_count = 10;
+  int32 max_retries = 11;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp completed_at = 13;
+  string error = 14;
+  string logs = 15;
+}
+
+enum ExecutionStatus {
+  EXECUTION_STATUS_UNSPECIFIED = 0;
+  EXECUTION_STATUS_PENDING = 1;
+  EXECUTION_STATUS_RUNNING = 2;
+  EXECUTION_STATUS_COMPLETED = 3;
+  EXECUTION_STATUS_FAILED = 4;
+  EXECUTION_STATUS_CANCELLED = 5;
+  EXECUTION_STATUS_TIMEOUT = 6;
+}
+
+message ExecutionPlan {
+  repeated ResourceChange resource_changes = 1;
+  repeated string warnings = 2;
+  CostEstimate estimated_cost = 3;
+}
+
+message ResourceChange {
+  string address = 1;
+  string resource_type = 2;
+  string action = 3; // create, update, delete, no-op
+  google.protobuf.Struct before = 4;
+  google.protobuf.Struct after = 5;
+  string change_detail = 6;
+}
+
+message CostEstimate {
+  double monthly_low = 1;
+  double monthly_high = 2;
+  string currency = 3;
+}
+
+message ExecutionResult {
+  bool success = 1;
+  repeated ResourceResult resources = 2;
+  map<string, google.protobuf.Struct> outputs = 3;
+  int64 duration_ms = 4;
+  string error = 5;
+}
+
+message ResourceResult {
+  string address = 1;
+  string action = 2;
+  string status = 3;
+  string message = 4;
+  int64 duration_ms = 5;
+}
+
+message GetExecutionRequest {
+  string id = 1;
+}
+
+message GetExecutionResponse {
+  Execution execution = 1;
+}
+
+message ListExecutionsRequest {
+  string workflow_id = 1;
+  repeated ExecutionStatus status_filter = 2;
+  Pagination pagination = 3;
+}
+
+message ListExecutionsResponse {
+  repeated Execution executions = 1;
+  PaginationResponse pagination = 2;
+}
+
+message StreamLogsRequest {
+  string execution_id = 1;
+  bool follow = 2;
+  int32 tail_lines = 3;
+}
+
+message LogEntry {
+  string timestamp = 1;
+  string level = 2;
+  string source = 3;
+  string message = 4;
+  map<string, string> metadata = 5;
+}
+
+message WatchExecutionRequest {
+  string execution_id = 1;
+}
+
+message ExecutionEvent {
+  string execution_id = 1;
+  string event_type = 2;
+  ExecutionStatus status = 3;
+  string message = 4;
+  int32 progress = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// ─── Resource Service ───────────────────────────────────────────────────
+
+service ResourceService {
+  rpc CreateResource(CreateResourceRequest) returns (CreateResourceResponse);
+  rpc GetResource(GetResourceRequest) returns (GetResourceResponse);
+  rpc ListResources(ListResourcesRequest) returns (ListResourcesResponse);
+  rpc UpdateResource(UpdateResourceRequest) returns (UpdateResourceResponse);
+  rpc DeleteResource(DeleteResourceRequest) returns (google.protobuf.Empty);
+  rpc ListByProvider(ListByProviderRequest) returns (ListResourcesResponse);
+  rpc ListDrifted(ListDriftedRequest) returns (ListResourcesResponse);
+}
+
+message ManagedResource {
+  string id = 1;
+  string deployment_id = 2;
+  string tenant_id = 3;
+  string provider = 4;
+  string type = 5;
+  string name = 6;
+  string address = 7;
+  ResourceState state = 8;
+  google.protobuf.Struct config = 9;
+  repeated string dependencies = 10;
+  map<string, string> metadata = 11;
+  bool is_locked = 12;
+  string locked_by = 13;
+  Timestamps timestamps = 14;
+}
+
+enum ResourceState {
+  RESOURCE_STATE_UNSPECIFIED = 0;
+  RESOURCE_STATE_PENDING = 1;
+  RESOURCE_STATE_CREATING = 2;
+  RESOURCE_STATE_ACTIVE = 3;
+  RESOURCE_STATE_UPDATING = 4;
+  RESOURCE_STATE_REPLACING = 5;
+  RESOURCE_STATE_DELETING = 6;
+  RESOURCE_STATE_DELETED = 7;
+  RESOURCE_STATE_FAILED = 8;
+  RESOURCE_STATE_DRIFTED = 9;
+}
+
+message CreateResourceRequest {
+  string deployment_id = 1;
+  string tenant_id = 2;
+  string provider = 3;
+  string type = 4;
+  string name = 5;
+  string address = 6;
+  google.protobuf.Struct config = 7;
+  repeated string dependencies = 8;
+}
+
+message CreateResourceResponse {
+  ManagedResource resource = 1;
+}
+
+message GetResourceRequest {
+  string id = 1;
+}
+
+message GetResourceResponse {
+  ManagedResource resource = 1;
+}
+
+message ListResourcesRequest {
+  string deployment_id = 1;
+  string tenant_id = 2;
+  repeated ResourceState state_filter = 3;
+  Pagination pagination = 4;
+}
+
+message ListResourcesResponse {
+  repeated ManagedResource resources = 1;
+  PaginationResponse pagination = 2;
+}
+
+message UpdateResourceRequest {
+  string id = 1;
+  google.protobuf.Struct config = 2;
+  ResourceState state = 3;
+}
+
+message UpdateResourceResponse {
+  ManagedResource resource = 1;
+}
+
+message DeleteResourceRequest {
+  string id = 1;
+  string reason = 2;
+}
+
+message ListByProviderRequest {
+  string tenant_id = 1;
+  string provider = 2;
+  Pagination pagination = 3;
+}
+
+message ListDriftedRequest {
+  string tenant_id = 1;
+  Pagination pagination = 2;
+}
+
+// ─── State Service ──────────────────────────────────────────────────────
+
+service StateService {
+  rpc GetState(GetStateRequest) returns (GetStateResponse);
+  rpc GetStateByResource(GetStateByResourceRequest) returns (GetStateResponse);
+  rpc ComputeDiff(ComputeDiffRequest) returns (ComputeDiffResponse);
+  rpc ReconcileState(ReconcileStateRequest) returns (ReconcileStateResponse);
+  rpc ListVersions(ListVersionsRequest) returns (ListVersionsResponse);
+  rpc RestoreVersion(RestoreVersionRequest) returns (RestoreVersionResponse);
+}
+
+message StateEntry {
+  string id = 1;
+  string resource_id = 2;
+  string deployment_id = 3;
+  string tenant_id = 4;
+  google.protobuf.Struct desired_state = 5;
+  google.protobuf.Struct current_state = 6;
+  StateStatus status = 7;
+  int32 version = 8;
+  Timestamps timestamps = 9;
+}
+
+enum StateStatus {
+  STATE_STATUS_UNSPECIFIED = 0;
+  STATE_STATUS_SYNCED = 1;
+  STATE_STATUS_DRIFTED = 2;
+  STATE_STATUS_PENDING = 3;
+  STATE_STATUS_CONFLICT = 4;
+}
+
+message StateDiff {
+  string resource_address = 1;
+  DiffType type = 2;
+  google.protobuf.Struct desired = 3;
+  google.protobuf.Struct current = 4;
+  repeated PropertyChange changes = 5;
+}
+
+enum DiffType {
+  DIFF_TYPE_UNSPECIFIED = 0;
+  DIFF_TYPE_ADDED = 1;
+  DIFF_TYPE_REMOVED = 2;
+  DIFF_TYPE_MODIFIED = 3;
+  DIFF_TYPE_NONE = 4;
+}
+
+message PropertyChange {
+  string property = 1;
+  string before = 2;
+  string after = 3;
+}
+
+message StateVersion {
+  int32 version = 1;
+  google.protobuf.Struct state = 2;
+  string snapshot_id = 3;
+  string trigger = 4;
+  string created_at = 5;
+}
+
+message GetStateRequest {
+  string id = 1;
+}
+
+message GetStateResponse {
+  StateEntry state = 1;
+}
+
+message GetStateByResourceRequest {
+  string resource_id = 1;
+}
+
+message ComputeDiffRequest {
+  string resource_id = 1;
+}
+
+message ComputeDiffResponse {
+  repeated StateDiff diffs = 1;
+  bool has_drift = 2;
+}
+
+message ReconcileStateRequest {
+  string resource_id = 1;
+}
+
+message ReconcileStateResponse {
+  StateEntry state = 1;
+  bool applied = 2;
+}
+
+message ListVersionsRequest {
+  string resource_id = 1;
+  Pagination pagination = 2;
+}
+
+message ListVersionsResponse {
+  repeated StateVersion versions = 1;
+  PaginationResponse pagination = 2;
+}
+
+message RestoreVersionRequest {
+  string resource_id = 1;
+  int32 target_version = 2;
+}
+
+message RestoreVersionResponse {
+  StateEntry state = 1;
+  bool restored = 2;
+}
+
+// ─── Provider Service ───────────────────────────────────────────────────
+
+service ProviderService {
+  rpc RegisterProvider(RegisterProviderRequest) returns (RegisterProviderResponse);
+  rpc GetProvider(GetProviderRequest) returns (GetProviderResponse);
+  rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
+  rpc UpdateProvider(UpdateProviderRequest) returns (UpdateProviderResponse);
+  rpc DeleteProvider(DeleteProviderRequest) returns (google.protobuf.Empty);
+  rpc HealthCheck(ProviderHealthCheckRequest) returns (ProviderHealthCheckResponse);
+  rpc ListCapabilities(ListCapabilitiesRequest) returns (ListCapabilitiesResponse);
+}
+
+message Provider {
+  string id = 1;
+  string tenant_id = 2;
+  string type = 3;   // aws, azure, gcp, etc.
+  string name = 4;
+  ProviderStatus status = 5;
+  map<string, string> config = 6;
+  repeated string capabilities = 7;
+  Timestamps timestamps = 8;
+}
+
+enum ProviderStatus {
+  PROVIDER_STATUS_UNSPECIFIED = 0;
+  PROVIDER_STATUS_HEALTHY = 1;
+  PROVIDER_STATUS_DEGRADED = 2;
+  PROVIDER_STATUS_UNHEALTHY = 3;
+  PROVIDER_STATUS_UNKNOWN = 4;
+}
+
+message RegisterProviderRequest {
+  string tenant_id = 1;
+  string type = 2;
+  string name = 3;
+  map<string, string> config = 4;
+  repeated string capabilities = 5;
+}
+
+message RegisterProviderResponse {
+  Provider provider = 1;
+}
+
+message GetProviderRequest {
+  string id = 1;
+}
+
+message GetProviderResponse {
+  Provider provider = 1;
+}
+
+message ListProvidersRequest {
+  string tenant_id = 1;
+  Pagination pagination = 2;
+}
+
+message ListProvidersResponse {
+  repeated Provider providers = 1;
+  PaginationResponse pagination = 2;
+}
+
+message UpdateProviderRequest {
+  string id = 1;
+  string name = 2;
+  map<string, string> config = 3;
+}
+
+message UpdateProviderResponse {
+  Provider provider = 1;
+}
+
+message DeleteProviderRequest {
+  string id = 1;
+}
+
+message ProviderHealthCheckRequest {
+  string id = 1;
+}
+
+message ProviderHealthCheckResponse {
+  bool healthy = 1;
+  string message = 2;
+  int64 latency_ms = 3;
+}
+
+message ListCapabilitiesRequest {
+  string provider_type = 1;
+}
+
+message ListCapabilitiesResponse {
+  repeated Capability capabilities = 1;
+}
+
+message Capability {
+  string name = 1;
+  string description = 2;
+  bool enabled = 3;
+}
+
+// ─── Plugin Service ─────────────────────────────────────────────────────
+
+service PluginService {
+  rpc ListPlugins(ListPluginsRequest) returns (ListPluginsResponse);
+  rpc GetPlugin(GetPluginRequest) returns (GetPluginResponse);
+  rpc ReloadPlugin(ReloadPluginRequest) returns (ReloadPluginResponse);
+}
+
+message PluginInfo {
+  string name = 1;
+  string version = 2;
+  string type = 3;   // executor, provider, hook, policy
+  string author = 4;
+  string description = 5;
+  bool healthy = 6;
+}
+
+message ListPluginsRequest {
+  string plugin_type = 1;
+}
+
+message ListPluginsResponse {
+  repeated PluginInfo plugins = 1;
+}
+
+message GetPluginRequest {
+  string name = 1;
+}
+
+message GetPluginResponse {
+  PluginInfo plugin = 1;
+}
+
+message ReloadPluginRequest {
+  string name = 1;
+}
+
+message ReloadPluginResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ─── Audit Service ──────────────────────────────────────────────────────
+
+service AuditService {
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
+  rpc GetAuditEvent(GetAuditEventRequest) returns (GetAuditEventResponse);
+}
+
+message AuditEvent {
+  string id = 1;
+  string tenant_id = 2;
+  string user_id = 3;
+  string action = 4;
+  string resource_type = 5;
+  string resource_id = 6;
+  google.protobuf.Struct details = 7;
+  string ip_address = 8;
+  string user_agent = 9;
+  google.protobuf.Timestamp timestamp = 10;
+}
+
+message ListAuditEventsRequest {
+  string tenant_id = 1;
+  string action = 2;
+  string resource_type = 3;
+  google.protobuf.Timestamp from = 4;
+  google.protobuf.Timestamp to = 5;
+  Pagination pagination = 6;
+}
+
+message ListAuditEventsResponse {
+  repeated AuditEvent events = 1;
+  PaginationResponse pagination = 2;
+}
+
+message GetAuditEventRequest {
+  string id = 1;
+}
+
+message GetAuditEventResponse {
+  AuditEvent event = 1;
+}
+
+// ─── Drift Service ──────────────────────────────────────────────────────
+
+service DriftService {
+  rpc DetectDrift(DetectDriftRequest) returns (DetectDriftResponse);
+  rpc ReconcileDrift(ReconcileDriftRequest) returns (stream ReconcileEvent);
+  rpc ListDriftedResources(ListDriftedResourcesRequest) returns (ListDriftedResourcesResponse);
+}
+
+message DriftReport {
+  string resource_id = 1;
+  string resource_name = 2;
+  bool has_drift = 3;
+  repeated StateDiff diffs = 4;
+  string current_state = 5;
+  google.protobuf.Timestamp detected_at = 6;
+}
+
+message DetectDriftRequest {
+  string resource_id = 1;  // empty = scan all
+  string tenant_id = 2;
+}
+
+message DetectDriftResponse {
+  repeated DriftReport reports = 1;
+  int32 total_scanned = 2;
+  int32 drifted_count = 3;
+}
+
+message ReconcileDriftRequest {
+  string resource_id = 1;
+  bool auto_apply = 2;
+}
+
+message ReconcileEvent {
+  string resource_id = 1;
+  string event_type = 2;
+  string status = 3;
+  string message = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message ListDriftedResourcesRequest {
+  string tenant_id = 1;
+  Pagination pagination = 2;
+}
+
+message ListDriftedResourcesResponse {
+  repeated DriftReport reports = 1;
+  PaginationResponse pagination = 2;
+}

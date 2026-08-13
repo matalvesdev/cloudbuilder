@@ -17,7 +17,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
       naming:
         physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
     show-sql: false
@@ -121,8 +121,11 @@ resilience4j:
         baseConfig: default
 
 cloudbuilder:
+  kafka:
+    enabled: false  # Kafka desabilitado por padrão (ADR-035) — ativar em produção se necessário
   sso:
     enabled: false  # SSO desabilitado por padrão (ADR-025)
+    redirect-uris: ${SSO_REDIRECT_URIS:http://localhost:3000/auth/callback,http://localhost:5173/auth/callback}
 
   security:
     jwt-secret: "${JWT_SECRET:?JWT_SECRET env var obrigatoria. Gere com: openssl rand -base64 64}"
@@ -133,6 +136,11 @@ cloudbuilder:
     # Encryption key for SecretEncryptionConverter (AES-256-GCM via PBKDF2)
     # Falls back to CLOUDBUILDER_ENCRYPTION_KEY env var if set, then to dev fallback
     encryption-key: "${CLOUDBUILDER_ENCRYPTION_KEY:}"
+    rate-limit:
+      auth-max-requests: 10
+      auth-window-seconds: 60
+      global-max-requests: 500
+      global-window-seconds: 60
 
   ai:
     llm:
@@ -148,9 +156,3 @@ cloudbuilder:
   opa:
     # OPA sidecar URL — set to empty to disable OPA integration
     url: "${OPA_URL:http://opa:8181}"
-
-    rate-limit:
-      auth-max-requests: 10
-      auth-window-seconds: 60
-      global-max-requests: 500
-      global-window-seconds: 60

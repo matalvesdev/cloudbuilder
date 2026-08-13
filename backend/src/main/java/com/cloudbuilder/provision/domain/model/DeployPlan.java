@@ -14,7 +14,7 @@ import java.util.UUID;
 public class DeployPlan {
 
     @Id
-    private String id;
+    private String id = UUID.randomUUID().toString();
 
     @Column(nullable = false)
     private String tenantId;
@@ -38,19 +38,19 @@ public class DeployPlan {
     private String resourcesJson; // JSON array of {resourceType, name, action, details}
 
     @Column(nullable = false)
-    private String status; // planned, applied, failed
+    private String status = "planned"; // planned, applied, failed
 
     @Column(nullable = false, updatable = false)
-    private Instant createdAt;
+    private Instant createdAt = Instant.now();
 
     private Instant appliedAt;
 
-    protected DeployPlan() {}
+    protected DeployPlan() {
+    }
 
     public DeployPlan(String tenantId, String environmentId, String canvasId,
                       int addCount, int changeCount, int destroyCount,
                       String resourcesJson) {
-        this.id = UUID.randomUUID().toString();
         this.tenantId = tenantId;
         this.environmentId = environmentId;
         this.canvasId = canvasId;
@@ -58,21 +58,28 @@ public class DeployPlan {
         this.changeCount = changeCount;
         this.destroyCount = destroyCount;
         this.resourcesJson = resourcesJson;
-        this.status = "planned";
-        this.createdAt = Instant.now();
     }
 
     public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
     public String getTenantId() { return tenantId; }
+    public void setTenantId(String tenantId) { this.tenantId = tenantId; }
     public String getEnvironmentId() { return environmentId; }
+    public void setEnvironmentId(String environmentId) { this.environmentId = environmentId; }
     public String getCanvasId() { return canvasId; }
+    public void setCanvasId(String canvasId) { this.canvasId = canvasId; }
     public int getAddCount() { return addCount; }
+    public void setAddCount(int addCount) { this.addCount = addCount; }
     public int getChangeCount() { return changeCount; }
+    public void setChangeCount(int changeCount) { this.changeCount = changeCount; }
     public int getDestroyCount() { return destroyCount; }
+    public void setDestroyCount(int destroyCount) { this.destroyCount = destroyCount; }
     public String getResourcesJson() { return resourcesJson; }
+    public void setResourcesJson(String resourcesJson) { this.resourcesJson = resourcesJson; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getAppliedAt() { return appliedAt; }
     public void setAppliedAt(Instant appliedAt) { this.appliedAt = appliedAt; }
 }

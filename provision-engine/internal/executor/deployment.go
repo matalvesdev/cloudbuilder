@@ -39,11 +39,37 @@ func (s DeploymentStatus) String() string {
 }
 
 func (dm *DeploymentManager) WriteCode(files map[string]string) error {
+	root, err := filepath.Abs(dm.executor.GetWorkDir())
+	if err != nil {
+		return fmt.Errorf("resolve work directory: %w", err)
+	}
 	for filename, content := range files {
-		filePath := filepath.Join(dm.executor.GetWorkDir(), filename)
+		if filepath.IsAbs(filename) {
+			return fmt.Errorf("absolute output path is not allowed: %s", filename)
+		}
+		cleanName := filepath.Clean(filename)
+		if cleanName == "." || cleanName == ".." ||
+			len(cleanName) >= 3 && cleanName[:3] == ".."+string(filepath.Separator) {
+			return fmt.Errorf("output path escapes work directory: %s", filename)
+		}
+		filePath := filepath.Join(root, cleanName)
+		relative, err := filepath.Rel(root, filePath)
+		if err != nil || relative == ".." ||
+			len(relative) >= 3 && relative[:3] == ".."+string(filepath.Separator) {
+			return fmt.Errorf("output path escapes work directory: %s", filename)
+		}
 		dir := filepath.Dir(filePath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+		resolvedDir, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			return fmt.Errorf("resolve output directory %s: %w", dir, err)
+		}
+		resolvedRelative, err := filepath.Rel(root, resolvedDir)
+		if err != nil || resolvedRelative == ".." ||
+			len(resolvedRelative) >= 3 && resolvedRelative[:3] == ".."+string(filepath.Separator) {
+			return fmt.Errorf("output directory escapes work directory: %s", filename)
 		}
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 			return fmt.Errorf("failed to write file %s: %w", filename, err)

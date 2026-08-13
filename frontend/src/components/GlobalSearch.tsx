@@ -1,27 +1,32 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Search } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { useState, useEffect, useCallback } from "react";
+import { Search } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function GlobalSearch() {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setOpen((prev) => !prev)
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setOpen((prev) => !prev);
       }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleClose = useCallback(() => {
-    setOpen(false)
-    setQuery('')
-  }, [])
+    setOpen(false);
+    setQuery("");
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -45,18 +50,26 @@ export default function GlobalSearch() {
           {query.trim() ? (
             <div className="text-center py-12">
               <Search className="w-8 h-8 mx-auto mb-3 text-slate-300" />
-              <p className="text-sm text-slate-400 font-medium">Nenhum resultado encontrado</p>
-              <p className="text-xs text-slate-300 mt-1">Conecte-se a um repositório para habilitar a pesquisa</p>
+              <p className="text-sm text-slate-400 font-medium">
+                Nenhum resultado encontrado
+              </p>
+              <p className="text-xs text-slate-300 mt-1">
+                Conecte-se a um repositório para habilitar a pesquisa
+              </p>
             </div>
           ) : (
             <div className="text-center py-12">
               <Search className="w-8 h-8 mx-auto mb-3 text-slate-300" />
-              <p className="text-sm text-slate-400 font-medium">Digite para pesquisar</p>
-              <p className="text-xs text-slate-300 mt-1">Resultados aparecerão conforme você digita</p>
+              <p className="text-sm text-slate-400 font-medium">
+                Digite para pesquisar
+              </p>
+              <p className="text-xs text-slate-300 mt-1">
+                Resultados aparecerão conforme você digita
+              </p>
             </div>
           )}
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

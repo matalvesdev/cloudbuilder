@@ -1,8 +1,10 @@
 package com.cloudbuilder.docs.domain.service;
 
+import com.cloudbuilder.design.domain.port.CanvasRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,11 +12,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(MockitoExtension.class)
 class AutoDocServiceTest {
 
+    @Mock
+    private CanvasRepository canvasRepository;
+
     private AutoDocService autoDocService;
 
     @BeforeEach
     void setUp() {
-        autoDocService = new AutoDocService();
+        autoDocService = new AutoDocService(canvasRepository);
     }
 
     @Test

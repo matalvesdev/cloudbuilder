@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
@@ -72,9 +74,9 @@ public class WebhookService {
                 log.warn("Webhook {} verification FAILED for repository {}", deliveryId, repositoryId);
             }
         } else {
-            // No secret configured — skip verification (dev mode)
-            event.setStatus(WebhookEvent.Status.VERIFIED);
-            log.info("Webhook {} received (no secret — dev mode)", deliveryId);
+            event.setStatus(WebhookEvent.Status.VERIFICATION_FAILED);
+            event.setFailureReason("Webhook secret is not configured");
+            log.error("Webhook {} rejected because no verification secret is configured", deliveryId);
         }
 
         WebhookEvent saved = webhookEventPort.save(event);
@@ -109,24 +111,21 @@ public class WebhookService {
 
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(), HMAC_ALGORITHM);
+            SecretKeySpec keySpec = new SecretKeySpec(
+                secret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM);
             mac.init(keySpec);
-            byte[] computedHash = mac.doFinal(payload.getBytes());
-            String computedHex = HexFormat.of().formatHex(computedHash);
+            byte[] computedHash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
 
-            // Support both "sha256=..." and raw hex formats
-            String expectedHash = signature;
-            if (signature.startsWith("sha256=")) {
-                expectedHash = signature.substring(7);
-            } else if (signature.startsWith("sha1=")) {
-                // SHA1 is weaker but some providers still use it
-                Mac sha1Mac = Mac.getInstance("HmacSHA1");
-                sha1Mac.init(keySpec);
-                byte[] sha1Hash = sha1Mac.doFinal(payload.getBytes());
-                return HexFormat.of().formatHex(sha1Hash).equals(signature.substring(5));
+            if (!signature.startsWith("sha256=")) {
+                return false;
             }
-
-            return computedHex.equals(expectedHash);
+            byte[] expectedHash;
+            try {
+                expectedHash = HexFormat.of().parseHex(signature.substring(7));
+            } catch (IllegalArgumentException malformedSignature) {
+                return false;
+            }
+            return MessageDigest.isEqual(computedHash, expectedHash);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             log.error("HMAC verification error: {}", e.getMessage());
             return false;

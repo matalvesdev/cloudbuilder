@@ -11,14 +11,18 @@ spring:
     show-sql: false
 
 cloudbuilder:
+  kafka:
+    enabled: false
   security:
-    jwt-access-token-expiration: 86400000   # 24 hours (generous for beta)
-    jwt-refresh-token-expiration: 604800000  # 7 days
-    cors-allowed-origins: "*"
+    access-token-expiration: 86400000   # 24 hours (generous for beta)
+    refresh-token-expiration: 604800000  # 7 days
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
   sso:
     enabled: false
+    redirect-uris: ${SSO_REDIRECT_URIS:http://localhost:3000/auth/callback,http://localhost:5173/auth/callback}
   ai:
-    provider: rule-based
+    llm:
+      provider: rule-based
 
 server:
   port: 8080

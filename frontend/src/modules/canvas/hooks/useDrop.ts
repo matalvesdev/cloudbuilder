@@ -1,15 +1,15 @@
-import { useCallback } from 'react'
-import { useReactFlow } from '@xyflow/react'
+import { useCallback } from "react";
+import { useReactFlow } from "@xyflow/react";
 
 export function useDrop() {
-  const reactFlowInstance = useReactFlow()
+  const reactFlowInstance = useReactFlow();
 
   const onDrop = useCallback(
     (event: DragEvent, componentData: any) => {
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
-      })
+      });
       const newNode = {
         id: crypto.randomUUID(),
         type: componentData.provider,
@@ -20,13 +20,13 @@ export function useDrop() {
           provider: componentData.provider,
           resourceType: componentData.resourceType,
           properties: {},
-          validationStatus: 'PENDING',
+          validationStatus: "PENDING",
         },
-      }
-      return newNode
+      };
+      return newNode;
     },
-    [reactFlowInstance]
-  )
+    [reactFlowInstance],
+  );
 
-  return { onDrop }
+  return { onDrop };
 }

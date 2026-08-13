@@ -1,48 +1,55 @@
-import { Component, type ReactNode, type ErrorInfo } from 'react'
-import { AlertTriangle, RefreshCw, Home, Cloud } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Component, type ReactNode, type ErrorInfo } from "react";
+import { AlertTriangle, RefreshCw, Home, Cloud } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ErrorBoundaryProps {
-  children: ReactNode
-  fallback?: ReactNode
-  moduleName?: string
-  onReset?: () => void
+  children: ReactNode;
+  fallback?: ReactNode;
+  moduleName?: string;
+  onReset?: () => void;
 }
 
 interface ErrorBoundaryState {
-  hasError: boolean
-  error: Error | null
-  errorInfo: ErrorInfo | null
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { hasError: false, error: null, errorInfo: null }
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    this.setState({ errorInfo })
-    console.error(`[ErrorBoundary${this.props.moduleName ? ` - ${this.props.moduleName}` : ''}]:`, error, errorInfo)
+    this.setState({ errorInfo });
+    console.error(
+      `[ErrorBoundary${this.props.moduleName ? ` - ${this.props.moduleName}` : ""}]:`,
+      error,
+      errorInfo,
+    );
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null })
-    this.props.onReset?.()
-  }
+    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.props.onReset?.();
+  };
 
   handleReload = () => {
-    window.location.reload()
-  }
+    window.location.reload();
+  };
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback
+        return this.props.fallback;
       }
 
       return (
@@ -54,11 +61,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <h2 className="text-lg font-bold text-brand-navy font-display mb-2">
               {this.props.moduleName
                 ? `Erro no módulo ${this.props.moduleName}`
-                : 'Algo deu errado'}
+                : "Algo deu errado"}
             </h2>
             <p className="text-sm text-slate-500 mb-6">
-              Ocorreu um erro inesperado ao carregar este componente.
-              Tente recarregar a página ou voltar ao dashboard.
+              Ocorreu um erro inesperado ao carregar este componente. Tente
+              recarregar a página ou voltar ao dashboard.
             </p>
             {this.state.error && (
               <details className="mb-6 text-left">
@@ -88,10 +95,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </div>
           </div>
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
 
@@ -109,6 +116,6 @@ export function withModuleGuard<T extends Record<string, any>>(
       <ErrorBoundary moduleName={moduleName}>
         <Component {...props} />
       </ErrorBoundary>
-    )
-  }
+    );
+  };
 }

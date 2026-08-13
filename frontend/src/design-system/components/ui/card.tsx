@@ -1,9 +1,9 @@
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from "lucide-react";
 
 export interface CardProps {
-  title: string
-  value: string
-  icon: LucideIcon
+  title: string;
+  value: string;
+  icon: LucideIcon;
 }
 
 export function Card({ title, value, icon: Icon }: CardProps) {
@@ -13,9 +13,11 @@ export function Card({ title, value, icon: Icon }: CardProps) {
         <Icon className="h-5 w-5 text-brand-navy" />
       </div>
       <div>
-        <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">{title}</p>
+        <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+          {title}
+        </p>
         <p className="text-2xl font-bold text-brand-navy">{value}</p>
       </div>
     </div>
-  )
+  );
 }

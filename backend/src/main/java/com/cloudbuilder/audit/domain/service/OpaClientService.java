@@ -23,7 +23,7 @@ public class OpaClientService {
     private final String opaUrl;
 
     public OpaClientService(RestTemplate restTemplate,
-                            @Value("${opa.url:http://localhost:8181}") String opaUrl) {
+                            @Value("${cloudbuilder.opa.url:http://localhost:8181}") String opaUrl) {
         this.restTemplate = restTemplate;
         this.opaUrl = opaUrl;
     }

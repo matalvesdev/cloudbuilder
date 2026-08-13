@@ -29,7 +29,6 @@ public class AuditEvent {
     @Column(columnDefinition = "TEXT")
     private String details;
 
-    @Column(nullable = false)
     private String ipAddress;
 
     @Column(nullable = false, updatable = false)

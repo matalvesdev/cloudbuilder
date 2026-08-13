@@ -1,10 +1,10 @@
-export type ReplicationResourceType = 'rds' | 's3' | 'route53';
+export type ReplicationResourceType = "rds" | "s3" | "route53";
 
-export type AutoTestSchedule = 'weekly' | 'monthly' | 'none';
+export type AutoTestSchedule = "weekly" | "monthly" | "none";
 
-export type DrStatus = 'active' | 'inactive' | 'degraded';
+export type DrStatus = "active" | "inactive" | "degraded";
 
-export type DrTestStatus = 'success' | 'failed';
+export type DrTestStatus = "success" | "failed";
 
 export interface ReplicationResource {
   type: ReplicationResourceType;
@@ -24,7 +24,7 @@ export interface DRConfig {
   autoTestSchedule: AutoTestSchedule;
   status: DrStatus;
   lastTestDate: string | null;
-  complianceStatus: 'compliant' | 'non_compliant' | 'unknown';
+  complianceStatus: "compliant" | "non_compliant" | "unknown";
   createdAt: string;
 }
 
@@ -42,6 +42,6 @@ export interface DRTestResult {
 export interface FailoverSimulationStep {
   step: number;
   name: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: "pending" | "running" | "completed" | "failed";
   duration_seconds: number;
 }

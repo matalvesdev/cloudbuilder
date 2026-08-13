@@ -4,7 +4,7 @@ import {
   importCanvasFromFile,
   copyCanvasToClipboard,
   generateCanvasSnapshot,
-} from '../services/canvasExport'
+} from "../services/canvasExport";
 
 export function useCanvasExport() {
   return {
@@ -13,5 +13,5 @@ export function useCanvasExport() {
     importCanvasFromFile,
     copyCanvasToClipboard,
     generateCanvasSnapshot,
-  }
+  };
 }

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/flags")
+@RequestMapping("/api/v1/feature-flags")
 public class FeatureFlagController {
 
     private final FeatureFlagService flagService;
@@ -44,6 +44,19 @@ public class FeatureFlagController {
     @GetMapping("/{flagKey}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> checkFlag(
+            @PathVariable String flagKey,
+            Authentication auth) {
+        String tenantId = resolveTenantId(auth);
+        boolean enabled = flagService.isEnabled(flagKey, tenantId);
+        return ResponseEntity.ok(Map.of("flagKey", flagKey, "enabled", enabled));
+    }
+
+    /**
+     * Check if a specific flag is enabled for the current tenant (alternate path).
+     */
+    @GetMapping("/{flagKey}/check")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> checkFlagAlt(
             @PathVariable String flagKey,
             Authentication auth) {
         String tenantId = resolveTenantId(auth);

@@ -1,6 +1,8 @@
 spring:
   autoconfigure:
     exclude: []
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:h2:mem:cloudbuilder;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
     username: sa
@@ -42,6 +44,8 @@ management:
     enabled: false
 
 cloudbuilder:
+  kafka:
+    enabled: false
   security:
     jwt-secret: cloudbuilder-dev-secret-key-change-in-production
     access-token-expiration: 86400000

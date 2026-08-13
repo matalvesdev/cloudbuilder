@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
-import { cn } from '@/lib/utils'
-import { showSuccess } from '@/lib/toast'
+import { useState, useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { showSuccess } from "@/lib/toast";
 import {
   BookOpen,
   Search,
@@ -13,117 +13,131 @@ import {
   User,
   Calendar,
   Tag,
-} from 'lucide-react'
+} from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────
 
 export interface RunbookStep {
-  id: string
-  title: string
-  command: string
-  description: string
-  expectedResult: string
-  danger: 'low' | 'medium' | 'high'
+  id: string;
+  title: string;
+  command: string;
+  description: string;
+  expectedResult: string;
+  danger: "low" | "medium" | "high";
 }
 
 export interface Runbook {
-  id: string
-  title: string
-  description: string
-  category: string
-  tags: string[]
-  severity: 'critical' | 'high' | 'medium' | 'low'
-  steps: RunbookStep[]
-  author: string
-  updatedAt: string
-  version: string
-  estimatedDuration: string
-  applicableServices: string[]
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  tags: string[];
+  severity: "critical" | "high" | "medium" | "low";
+  steps: RunbookStep[];
+  author: string;
+  updatedAt: string;
+  version: string;
+  estimatedDuration: string;
+  applicableServices: string[];
 }
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function DangerBadge({ level }: { level: RunbookStep['danger'] }) {
+function DangerBadge({ level }: { level: RunbookStep["danger"] }) {
   const config = {
-    low: { bg: 'bg-green-50 text-green-700 border-green-200', label: 'Baixo' },
-    medium: { bg: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Médio' },
-    high: { bg: 'bg-red-50 text-red-700 border-red-200', label: 'Alto' },
-  }[level]
+    low: { bg: "bg-green-50 text-green-700 border-green-200", label: "Baixo" },
+    medium: {
+      bg: "bg-amber-50 text-amber-700 border-amber-200",
+      label: "Médio",
+    },
+    high: { bg: "bg-red-50 text-red-700 border-red-200", label: "Alto" },
+  }[level];
 
   return (
-    <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full border font-medium', config.bg)}>
+    <span
+      className={cn(
+        "text-[9px] px-1.5 py-0.5 rounded-full border font-medium",
+        config.bg,
+      )}
+    >
       {config.label}
     </span>
-  )
+  );
 }
 
 // ─── Main Component ──────────────────────────────────────────
 
 interface RunbooksPanelProps {
-  className?: string
-  runbooks?: Runbook[]
-  onApplyRunbook?: (runbookId: string) => Promise<void>
+  className?: string;
+  runbooks?: Runbook[];
+  onApplyRunbook?: (runbookId: string) => Promise<void>;
 }
 
-export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: RunbooksPanelProps) {
-  const [search, setSearch] = useState('')
-  const [expandedRunbook, setExpandedRunbook] = useState<string | null>(null)
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
-  const [applyingRunbook, setApplyingRunbook] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<string>('all')
+export function RunbooksPanel({
+  className,
+  runbooks = [],
+  onApplyRunbook,
+}: RunbooksPanelProps) {
+  const [search, setSearch] = useState("");
+  const [expandedRunbook, setExpandedRunbook] = useState<string | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [applyingRunbook, setApplyingRunbook] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   const categories = useMemo(() => {
-    const cats = new Set(runbooks.map((r) => r.category))
-    return ['all', ...Array.from(cats)]
-  }, [runbooks])
+    const cats = new Set(runbooks.map((r) => r.category));
+    return ["all", ...Array.from(cats)];
+  }, [runbooks]);
 
   const filteredRunbooks = useMemo(() => {
     return runbooks.filter((r) => {
       const matchesSearch =
         r.title.toLowerCase().includes(search.toLowerCase()) ||
         r.description.toLowerCase().includes(search.toLowerCase()) ||
-        r.tags.some((t) => t.includes(search.toLowerCase()))
-      const matchesCategory = activeTab === 'all' || r.category === activeTab
-      return matchesSearch && matchesCategory
-    })
-  }, [runbooks, search, activeTab])
+        r.tags.some((t) => t.includes(search.toLowerCase()));
+      const matchesCategory = activeTab === "all" || r.category === activeTab;
+      return matchesSearch && matchesCategory;
+    });
+  }, [runbooks, search, activeTab]);
 
   const toggleStep = (stepId: string) => {
     setExpandedSteps((prev) => {
-      const next = new Set(prev)
-      if (next.has(stepId)) next.delete(stepId)
-      else next.add(stepId)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(stepId)) next.delete(stepId);
+      else next.add(stepId);
+      return next;
+    });
+  };
 
   const handleApplyRunbook = async (runbookId: string) => {
-    if (!onApplyRunbook) return
-    setApplyingRunbook(runbookId)
+    if (!onApplyRunbook) return;
+    setApplyingRunbook(runbookId);
     try {
-      await onApplyRunbook(runbookId)
-      showSuccess(`Runbook aplicado com sucesso!`)
+      await onApplyRunbook(runbookId);
+      showSuccess(`Runbook aplicado com sucesso!`);
     } catch {
       // error handled by caller
     } finally {
-      setApplyingRunbook(null)
+      setApplyingRunbook(null);
     }
-  }
+  };
 
   if (runbooks.length === 0) {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn("space-y-4", className)}>
         <div className="py-12 text-center">
           <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-sm text-slate-400">Nenhum runbook disponível</p>
-          <p className="text-xs text-slate-300 mt-1">Runbooks serão carregados automaticamente quando disponíveis</p>
+          <p className="text-xs text-slate-300 mt-1">
+            Runbooks serão carregados automaticamente quando disponíveis
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Category Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {categories.map((cat) => (
@@ -131,13 +145,13 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
             key={cat}
             onClick={() => setActiveTab(cat)}
             className={cn(
-              'whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border',
+              "whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
               activeTab === cat
-                ? 'bg-brand-navy text-white border-brand-navy'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                ? "bg-brand-navy text-white border-brand-navy"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
             )}
           >
-            {cat === 'all' ? 'Todos' : cat}
+            {cat === "all" ? "Todos" : cat}
           </button>
         ))}
       </div>
@@ -162,7 +176,7 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
           </div>
         ) : (
           filteredRunbooks.map((runbook) => {
-            const isExpanded = expandedRunbook === runbook.id
+            const isExpanded = expandedRunbook === runbook.id;
             return (
               <div
                 key={runbook.id}
@@ -170,7 +184,9 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
               >
                 {/* Header */}
                 <button
-                  onClick={() => setExpandedRunbook(isExpanded ? null : runbook.id)}
+                  onClick={() =>
+                    setExpandedRunbook(isExpanded ? null : runbook.id)
+                  }
                   className="w-full flex items-start justify-between p-4 hover:bg-slate-50 transition-colors text-left"
                 >
                   <div className="flex-1 min-w-0">
@@ -178,19 +194,33 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
                       <div className="w-8 h-8 rounded-lg bg-ice-blue flex items-center justify-center shrink-0">
                         <BookOpen className="w-4 h-4 text-brand-navy" />
                       </div>
-                      <p className="text-sm font-bold text-brand-navy">{runbook.title}</p>
-                      <span className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-full border font-medium whitespace-nowrap',
-                        runbook.severity === 'critical' ? 'bg-red-50 text-red-700 border-red-200' :
-                        runbook.severity === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                        'bg-slate-50 text-slate-600 border-slate-200'
-                      )}>
-                        {runbook.severity === 'critical' ? 'Crítico' : runbook.severity === 'high' ? 'Alto' : 'Médio'}
+                      <p className="text-sm font-bold text-brand-navy">
+                        {runbook.title}
+                      </p>
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full border font-medium whitespace-nowrap",
+                          runbook.severity === "critical"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : runbook.severity === "high"
+                              ? "bg-orange-50 text-orange-700 border-orange-200"
+                              : "bg-slate-50 text-slate-600 border-slate-200",
+                        )}
+                      >
+                        {runbook.severity === "critical"
+                          ? "Crítico"
+                          : runbook.severity === "high"
+                            ? "Alto"
+                            : "Médio"}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 line-clamp-2">{runbook.description}</p>
+                    <p className="text-xs text-slate-600 line-clamp-2">
+                      {runbook.description}
+                    </p>
                     <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-400">
-                      <span className="font-medium text-brand-navy">{runbook.category}</span>
+                      <span className="font-medium text-brand-navy">
+                        {runbook.category}
+                      </span>
                       <span className="text-slate-300">|</span>
                       <Clock className="w-3 h-3" />
                       <span>{runbook.estimatedDuration}</span>
@@ -201,7 +231,10 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
                     </div>
                     <div className="flex items-center gap-1.5 mt-1.5">
                       {runbook.tags.map((tag) => (
-                        <span key={tag} className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-ice-blue/40 text-brand-navy font-medium">
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-ice-blue/40 text-brand-navy font-medium"
+                        >
                           <Tag className="w-2 h-2" />
                           {tag}
                         </span>
@@ -212,14 +245,15 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
                     {onApplyRunbook && (
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          handleApplyRunbook(runbook.id)
+                          e.stopPropagation();
+                          handleApplyRunbook(runbook.id);
                         }}
                         disabled={applyingRunbook === runbook.id}
                         className={cn(
-                          'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
-                          'bg-brand-navy text-white hover:bg-brand-navy/90',
-                          applyingRunbook === runbook.id && 'opacity-50 cursor-not-allowed'
+                          "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                          "bg-brand-navy text-white hover:bg-brand-navy/90",
+                          applyingRunbook === runbook.id &&
+                            "opacity-50 cursor-not-allowed",
                         )}
                       >
                         {applyingRunbook === runbook.id ? (
@@ -230,7 +264,11 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
                         Aplicar Runbook
                       </button>
                     )}
-                    {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                    {isExpanded ? (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    )}
                   </div>
                 </button>
 
@@ -246,15 +284,22 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
                         <span>{runbook.author}</span>
                         <span className="text-slate-300">|</span>
                         <Calendar className="w-3 h-3" />
-                        <span>{new Date(runbook.updatedAt).toLocaleDateString('pt-BR')}</span>
+                        <span>
+                          {new Date(runbook.updatedAt).toLocaleDateString(
+                            "pt-BR",
+                          )}
+                        </span>
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       {runbook.steps.map((step, idx) => {
-                        const isStepExpanded = expandedSteps.has(step.id)
+                        const isStepExpanded = expandedSteps.has(step.id);
                         return (
-                          <div key={step.id} className="border border-slate-100 rounded-lg overflow-hidden">
+                          <div
+                            key={step.id}
+                            className="border border-slate-100 rounded-lg overflow-hidden"
+                          >
                             <button
                               onClick={() => toggleStep(step.id)}
                               className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors text-left"
@@ -262,38 +307,53 @@ export function RunbooksPanel({ className, runbooks = [], onApplyRunbook }: Runb
                               <span className="w-6 h-6 rounded-full bg-ice-blue flex items-center justify-center text-[10px] font-bold text-brand-navy shrink-0">
                                 {idx + 1}
                               </span>
-                              <span className="flex-1 text-xs font-semibold text-brand-navy">{step.title}</span>
+                              <span className="flex-1 text-xs font-semibold text-brand-navy">
+                                {step.title}
+                              </span>
                               <DangerBadge level={step.danger} />
-                              {isStepExpanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                              {isStepExpanded ? (
+                                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                              )}
                             </button>
                             {isStepExpanded && (
                               <div className="px-3 pb-3 space-y-2">
-                                <p className="text-xs text-slate-600">{step.description}</p>
+                                <p className="text-xs text-slate-600">
+                                  {step.description}
+                                </p>
                                 <div className="bg-[#0D1B2A] rounded-lg p-3">
                                   <div className="flex items-center justify-between mb-1">
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Comando</span>
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                                      Comando
+                                    </span>
                                   </div>
-                                  <pre className="text-[10px] font-mono text-green-400 whitespace-pre-wrap">{step.command}</pre>
+                                  <pre className="text-[10px] font-mono text-green-400 whitespace-pre-wrap">
+                                    {step.command}
+                                  </pre>
                                 </div>
                                 <div className="flex items-start gap-2 text-xs">
                                   <CheckCircle2 className="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" />
                                   <span className="text-slate-600">
-                                    <span className="font-semibold text-brand-navy">Resultado esperado:</span> {step.expectedResult}
+                                    <span className="font-semibold text-brand-navy">
+                                      Resultado esperado:
+                                    </span>{" "}
+                                    {step.expectedResult}
                                   </span>
                                 </div>
                               </div>
                             )}
                           </div>
-                        )
+                        );
                       })}
                     </div>
                   </div>
                 )}
               </div>
-            )
+            );
           })
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,5 +1,6 @@
 package com.cloudbuilder.design.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -11,6 +12,7 @@ public class CanvasEdge {
     @Id
     private String id;
 
+    @JsonBackReference("canvas-edges")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "canvas_id", nullable = false)
     private Canvas canvas;
@@ -33,7 +35,12 @@ public class CanvasEdge {
     protected CanvasEdge() {}
 
     public CanvasEdge(Canvas canvas, String sourceNodeId, String targetNodeId, String edgeType, String properties) {
-        this.id = UUID.randomUUID().toString();
+        this(canvas, sourceNodeId, targetNodeId, edgeType, properties, null);
+    }
+
+    public CanvasEdge(Canvas canvas, String sourceNodeId, String targetNodeId,
+                      String edgeType, String properties, String id) {
+        this.id = id != null ? id : UUID.randomUUID().toString();
         this.canvas = canvas;
         this.sourceNodeId = sourceNodeId;
         this.targetNodeId = targetNodeId;

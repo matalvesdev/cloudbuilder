@@ -9,16 +9,12 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "event_inbox", indexes = {
-    @Index(name = "idx_inbox_event_id", columnList = "eventId"),
-    @Index(name = "idx_inbox_tenant", columnList = "tenantId")
+    @Index(name = "idx_inbox_tenant", columnList = "tenant_id")
 })
 public class EventInbox {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "event_id", nullable = false, unique = true)
+    @Column(name = "event_id", nullable = false)
     private String eventId;
 
     @Column(name = "tenant_id")
@@ -30,11 +26,11 @@ public class EventInbox {
     @Column(name = "topic")
     private String topic;
 
-    @Column(name = "partition")
+    @Column(name = "partition_num")
     private int partition;
 
-    @Column(name = "offset")
-    private long offset;
+    @Column(name = "offset_val")
+    private long kafkaOffset;
 
     @Column(name = "processed_at", nullable = false)
     private Instant processedAt;
@@ -44,24 +40,24 @@ public class EventInbox {
 
     protected EventInbox() {}
 
-    public EventInbox(String eventId, String tenantId, String eventType, String topic, int partition, long offset) {
+    public EventInbox(String eventId, String tenantId, String eventType, String topic, int partition, long kafkaOffset) {
         this.eventId = eventId;
         this.tenantId = tenantId;
         this.eventType = eventType;
         this.topic = topic;
         this.partition = partition;
-        this.offset = offset;
+        this.kafkaOffset = kafkaOffset;
         this.processedAt = Instant.now();
         this.createdAt = Instant.now();
     }
 
-    public Long getId() { return id; }
+    public String getId() { return eventId; }
     public String getEventId() { return eventId; }
     public String getTenantId() { return tenantId; }
     public String getEventType() { return eventType; }
     public String getTopic() { return topic; }
     public int getPartition() { return partition; }
-    public long getOffset() { return offset; }
+    public long getKafkaOffset() { return kafkaOffset; }
     public Instant getProcessedAt() { return processedAt; }
     public Instant getCreatedAt() { return createdAt; }
 }

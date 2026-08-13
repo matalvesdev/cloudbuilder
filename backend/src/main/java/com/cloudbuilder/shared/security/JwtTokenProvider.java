@@ -90,6 +90,14 @@ public class JwtTokenProvider {
         }
     }
 
+    public boolean isRefreshToken(String token) {
+        try {
+            return "refresh".equals(parseAndVerify(token).get("type"));
+        } catch (RuntimeException invalidToken) {
+            return false;
+        }
+    }
+
     public String getUserId(String token) {
         Map<String, Object> claims = parseAndVerify(token);
         return (String) claims.get("sub");
@@ -153,11 +161,12 @@ public class JwtTokenProvider {
 
         // Check expiration
         Object expObj = claims.get("exp");
-        if (expObj instanceof Number expNum) {
-            long expSeconds = expNum.longValue();
-            if (Instant.now().getEpochSecond() > expSeconds) {
-                throw new SecurityException("JWT expired");
-            }
+        if (!(expObj instanceof Number expNum)) {
+            throw new SecurityException("JWT expiration claim is missing");
+        }
+        long expSeconds = expNum.longValue();
+        if (Instant.now().getEpochSecond() >= expSeconds) {
+            throw new SecurityException("JWT expired");
         }
 
         return claims;

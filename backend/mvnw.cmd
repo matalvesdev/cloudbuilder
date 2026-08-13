@@ -38,8 +38,8 @@ echo Please set the JAVA_HOME variable in your environment to match the location
 goto end
 
 :init
-set MAVEN_HOME=%~dp0\.mvn\wrapper
-"%JAVA_EXE%" "-Dmaven.multiModuleProjectDirectory=%CD%" "-Dmaven.home=%MAVEN_HOME%" "-Dclassworlds.conf=%MAVEN_HOME%\maven-wrapper.conf" "-jar" "%MAVEN_HOME%\maven-wrapper.jar" %*
+set MAVEN_PROJECTBASEDIR=%~dp0.
+"%JAVA_EXE%" "-Dmaven.multiModuleProjectDirectory=%MAVEN_PROJECTBASEDIR%" -classpath "%~dp0.mvn\wrapper\maven-wrapper.jar" org.apache.maven.wrapper.MavenWrapperMain %*
 goto end
 
 :end

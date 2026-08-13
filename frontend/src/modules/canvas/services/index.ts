@@ -1,1 +1,1 @@
-export { downloadCanvasJson, importCanvasFromFile } from './canvasExport'
+export { downloadCanvasJson, importCanvasFromFile } from "./canvasExport";

@@ -97,8 +97,13 @@ public class AuthService {
         var user = new User(request.email(), passwordEncoder.encode(request.password()), request.name());
         user = userRepository.save(user);
 
-        // Link user to tenant as admin
-        var tenantUser = new TenantUser(tenant.getId(), user.getId(), adminRole.getId());
+        // Resolve role from request or default to admin
+        var requestedRoleName = request.role() != null && !request.role().isBlank() ? request.role() : "admin";
+        var targetRole = roleRepository.findByTenantIdAndName(tenant.getId(), requestedRoleName)
+            .orElse(adminRole);
+
+        // Link user to tenant with the selected role
+        var tenantUser = new TenantUser(tenant.getId(), user.getId(), targetRole.getId());
         tenantUserRepository.save(tenantUser);
 
         // Create organization (used by Projects, Teams, Memberships)
@@ -112,7 +117,7 @@ public class AuthService {
         var defaultTeam = new Team(org.getId(), "Equipe Principal", "Time principal da organização");
         teamRepository.save(defaultTeam);
 
-        return buildAuthResponse(user, tenant, adminRole);
+        return buildAuthResponse(user, tenant, targetRole);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -143,7 +148,7 @@ public class AuthService {
     }
 
     public AuthResponse refresh(String refreshToken) {
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
             throw new RuntimeException("Token de refresh inválido ou expirado.");
         }
         var userId = jwtTokenProvider.getUserId(refreshToken);

@@ -1,7 +1,9 @@
 package com.cloudbuilder.cost.domain.service;
 
 import com.cloudbuilder.cost.application.dto.CostAnomaly;
+import com.cloudbuilder.cost.domain.model.CostAnomalyResult;
 import com.cloudbuilder.cost.domain.model.CostRecord;
+import com.cloudbuilder.cost.domain.port.CostAnomalyResultRepository;
 import com.cloudbuilder.cost.domain.port.CostRecordRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,18 +13,21 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class AnomalyDetectionService {
 
     private final CostRecordRepository costRecordRepository;
+    private final CostAnomalyResultRepository costAnomalyResultRepository;
 
-    public AnomalyDetectionService(CostRecordRepository costRecordRepository) {
+    public AnomalyDetectionService(CostRecordRepository costRecordRepository,
+                                   CostAnomalyResultRepository costAnomalyResultRepository) {
         this.costRecordRepository = costRecordRepository;
+        this.costAnomalyResultRepository = costAnomalyResultRepository;
     }
 
     /**
      * Detecta anomalias de custo por servico usando media movel de 7 dias
-     * e desvio padrao das deviacoes.
+     * e desvio padrao das deviacoes. Persiste resultados na tabela cost_anomaly_results.
      */
     public List<CostAnomaly> detectAnomalies(String environmentId, int lookbackDays) {
         var today = LocalDate.now();
@@ -42,6 +47,7 @@ public class AnomalyDetectionService {
                 ));
 
         List<CostAnomaly> anomalies = new ArrayList<>();
+        List<CostAnomalyResult> persistedResults = new ArrayList<>();
 
         for (var entry : recordsByService.entrySet()) {
             var serviceName = entry.getKey();
@@ -96,7 +102,7 @@ public class AnomalyDetectionService {
                     String severity = classifySeverity(Math.abs(deviation));
 
                     anomalies.add(new CostAnomaly(
-                            java.util.UUID.randomUUID().toString(),
+                            UUID.randomUUID().toString(),
                             serviceName,
                             record.getDate(),
                             record.getAmount(),
@@ -104,12 +110,31 @@ public class AnomalyDetectionService {
                             Math.round(deviation * 100.0) / 100.0,
                             severity
                     ));
+
+                    // Persist result
+                    var result = new CostAnomalyResult(
+                            environmentId, serviceName, record.getDate(),
+                            record.getAmount(), Math.round(expectedAmount * 100.0) / 100.0,
+                            Math.round(deviation * 100.0) / 100.0, severity);
+                    persistedResults.add(result);
                 }
             }
         }
 
+        if (!persistedResults.isEmpty()) {
+            costAnomalyResultRepository.saveAll(persistedResults);
+        }
+
         anomalies.sort(Comparator.comparing(CostAnomaly::date).reversed());
         return anomalies;
+    }
+
+    /**
+     * Retrieves persisted anomaly results for an environment.
+     */
+    @Transactional(readOnly = true)
+    public List<CostAnomalyResult> getPersistedAnomalies(String environmentId) {
+        return costAnomalyResultRepository.findByEnvironmentIdOrderByDetectedAtDesc(environmentId);
     }
 
     /**

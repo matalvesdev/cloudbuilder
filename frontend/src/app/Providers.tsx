@@ -1,9 +1,9 @@
-import { Suspense, useEffect, type ReactNode } from 'react'
-import { Cloud } from 'lucide-react'
-import { ToastProvider } from '@/lib/toast'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { wsClient } from '@/shared/websocket'
-import { registerCommandHandlers } from '@/shared/command-bus/handlers'
+import { Suspense, useEffect, type ReactNode } from "react";
+import { Cloud } from "lucide-react";
+import { ToastProvider } from "@/lib/toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { wsClient } from "@/shared/websocket";
+import { registerCommandHandlers } from "@/shared/command-bus/handlers";
 
 function ModuleFallback() {
   return (
@@ -15,34 +15,32 @@ function ModuleFallback() {
         <div className="w-5 h-5 border-2 border-brand-navy border-t-transparent rounded-full animate-spin" />
       </div>
     </div>
-  )
+  );
 }
 
 interface AppProvidersProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
   useEffect(() => {
     // Register command handlers for CommandBus
-    registerCommandHandlers()
+    registerCommandHandlers();
 
     // Connect WebSocket and bridge events to EventBus
-    wsClient.connect()
-    wsClient.bridgeToEventBus()
+    wsClient.connect();
+    wsClient.bridgeToEventBus();
 
     return () => {
-      wsClient.disconnect()
-    }
-  }, [])
+      wsClient.disconnect();
+    };
+  }, []);
 
   return (
     <ToastProvider>
       <ErrorBoundary moduleName="Geral">
-        <Suspense fallback={<ModuleFallback />}>
-          {children}
-        </Suspense>
+        <Suspense fallback={<ModuleFallback />}>{children}</Suspense>
       </ErrorBoundary>
     </ToastProvider>
-  )
+  );
 }

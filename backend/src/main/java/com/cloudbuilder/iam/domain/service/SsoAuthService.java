@@ -13,6 +13,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URLEncoder;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -50,6 +52,9 @@ public class SsoAuthService {
     private final RestTemplate restTemplate;
     private final Cache<String, SsoStateData> oauthStateCache;
     private final ObjectMapper objectMapper;
+
+    @Value("${cloudbuilder.sso.redirect-uris:http://localhost:3000/auth/callback,http://localhost:5173/auth/callback}")
+    private String allowedRedirectUris;
 
     public SsoAuthService(SsoProviderConfigRepository providerConfigRepository,
                           SsoProviderService ssoProviderService,
@@ -82,6 +87,7 @@ public class SsoAuthService {
      * @return the authorization URL to redirect the user's browser to
      */
     public String buildAuthorizationUrl(String tenantId, String providerType, String redirectUri) {
+        String validatedRedirectUri = validateRedirectUri(redirectUri);
         SsoProviderConfig config = ssoProviderService.getConfigByTenantAndType(tenantId, providerType)
             .orElseThrow(() -> new IllegalArgumentException(
                 "SSO provider não configurado para este tenant: " + providerType));
@@ -96,20 +102,23 @@ public class SsoAuthService {
 
         // Generate state parameter (CSRF)
         String state = generateState();
+        String nonce = generateState();
 
-        // Store state + verifier in cache for callback validation
+        // Bind every security-sensitive authorization parameter to the single-use state.
         oauthStateCache.put("oauth2:state:" + state,
-            new SsoStateData(config.getId(), codeVerifier, tenantId, providerType));
+            new SsoStateData(config.getId(), codeVerifier, tenantId, providerType,
+                validatedRedirectUri, nonce));
 
         // Build provider-specific authorization URL
-        String authUrl = getAuthorizationEndpoint(config.getProviderType());
+        String authUrl = getAuthorizationEndpoint(config);
 
         return UriComponentsBuilder.fromUriString(authUrl)
             .queryParam("client_id", config.getClientId())
-            .queryParam("redirect_uri", redirectUri)
+            .queryParam("redirect_uri", validatedRedirectUri)
             .queryParam("response_type", "code")
             .queryParam("scope", "openid email profile")
             .queryParam("state", state)
+            .queryParam("nonce", nonce)
             .queryParam("code_challenge", codeChallenge)
             .queryParam("code_challenge_method", "S256")
             .build()
@@ -121,11 +130,10 @@ public class SsoAuthService {
      *
      * @param code        the authorization code from the provider
      * @param state       the state parameter for CSRF validation
-     * @param redirectUri the original redirect URI used in the auth request
      * @return AuthResult with CloudBuilder JWT token
      */
     @Transactional
-    public AuthResult handleCallback(String code, String state, String redirectUri) {
+    public AuthResult handleCallback(String code, String state) {
         // Validate state parameter
         String cacheKey = "oauth2:state:" + state;
         SsoStateData stateData = oauthStateCache.getIfPresent(cacheKey);
@@ -140,11 +148,11 @@ public class SsoAuthService {
 
         // Exchange authorization code for tokens
         Map<String, Object> tokenResponse = exchangeCodeForToken(
-            config, code, redirectUri, stateData.codeVerifier());
+            config, code, stateData.redirectUri(), stateData.codeVerifier());
 
         // Extract ID token claims (with JWKS signature verification)
         String idToken = (String) tokenResponse.get("id_token");
-        Map<String, Object> claims = decodeIdToken(idToken, config.getProviderType());
+        Map<String, Object> claims = decodeIdToken(idToken, config, stateData.nonce());
 
         String email = (String) claims.get("email");
         String name = (String) claims.getOrDefault("name", email);
@@ -185,7 +193,7 @@ public class SsoAuthService {
 
         return new AuthResult(accessToken, refreshToken, 900000,
             user.getId(), user.getName(), user.getEmail(), roles,
-            stateData.tenantId());
+            stateData.tenantId(), stateData.redirectUri());
     }
 
     /**
@@ -194,7 +202,7 @@ public class SsoAuthService {
     private Map<String, Object> exchangeCodeForToken(SsoProviderConfig config,
                                                       String code, String redirectUri,
                                                       String codeVerifier) {
-        String tokenUrl = getTokenEndpoint(config.getProviderType());
+        String tokenUrl = getTokenEndpoint(config);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -299,66 +307,150 @@ public class SsoAuthService {
      * the JWT signature against the public key matching the {@code kid} header.
      *
      * @param idToken      the raw JWT ID token from the provider
-     * @param providerType the SSO provider type (google, azure, okta)
+     * @param config       configured OIDC provider
+     * @param expectedNonce nonce bound to the authorization request
      * @return decoded claims
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> decodeIdToken(String idToken, String providerType) {
+    private Map<String, Object> decodeIdToken(String idToken, SsoProviderConfig config,
+                                              String expectedNonce) {
+        if (idToken == null || idToken.isBlank()) {
+            throw new IllegalArgumentException("Resposta OIDC sem ID token.");
+        }
         String[] parts = idToken.split("\\.");
-        if (parts.length < 2) {
+        if (parts.length != 3) {
             throw new IllegalArgumentException("ID token inválido.");
         }
 
-        // Verify JWT signature via JWKS before decoding
-        String jwksUrl = getJwksUrl(providerType);
-        if (jwksUrl != null && !jwksVerifier.verify(idToken, jwksUrl)) {
+        String jwksUrl = getJwksUrl(config);
+        if (!jwksVerifier.verify(idToken, jwksUrl)) {
             throw new SecurityException("Assinatura do ID token inválida — possível adulteração.");
         }
 
         try {
             String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-            return objectMapper.readValue(payload, LinkedHashMap.class);
+            Map<String, Object> claims = objectMapper.readValue(payload, LinkedHashMap.class);
+            validateIdTokenClaims(claims, config, expectedNonce);
+            return claims;
         } catch (Exception e) {
+            if (e instanceof IllegalArgumentException illegalArgumentException) {
+                throw illegalArgumentException;
+            }
+            if (e instanceof SecurityException securityException) {
+                throw securityException;
+            }
             throw new IllegalArgumentException("Falha ao decodificar ID token.", e);
         }
     }
 
-    /**
-     * Get the OAuth2 authorization endpoint for a provider type.
-     */
-    private String getAuthorizationEndpoint(String providerType) {
-        return switch (providerType.toLowerCase()) {
+    private String getAuthorizationEndpoint(SsoProviderConfig config) {
+        return switch (config.getProviderType().toLowerCase()) {
             case "google" -> "https://accounts.google.com/o/oauth2/v2/auth";
             case "azure" -> "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
-            case "okta" -> "https://{okta-domain}/oauth2/default/v1/authorize";
-            default -> throw new IllegalArgumentException("Provedor SSO não suportado: " + providerType);
+            case "okta" -> oktaIssuer(config) + "/v1/authorize";
+            default -> throw new IllegalArgumentException(
+                "Provedor SSO não suportado: " + config.getProviderType());
         };
     }
 
-    /**
-     * Get the OAuth2 token endpoint for a provider type.
-     */
-    private String getTokenEndpoint(String providerType) {
-        return switch (providerType.toLowerCase()) {
+    private String getTokenEndpoint(SsoProviderConfig config) {
+        return switch (config.getProviderType().toLowerCase()) {
             case "google" -> "https://oauth2.googleapis.com/token";
             case "azure" -> "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-            case "okta" -> "https://{okta-domain}/oauth2/default/v1/token";
-            default -> throw new IllegalArgumentException("Provedor SSO não suportado: " + providerType);
+            case "okta" -> oktaIssuer(config) + "/v1/token";
+            default -> throw new IllegalArgumentException(
+                "Provedor SSO não suportado: " + config.getProviderType());
         };
     }
 
-    /**
-     * Get the JWKS endpoint URL for a provider type.
-     * These are the standard public key endpoints for each provider.
-     * Returns null if the provider does not support JWKS.
-     */
-    private static String getJwksUrl(String providerType) {
-        return switch (providerType.toLowerCase()) {
+    private static String getJwksUrl(SsoProviderConfig config) {
+        return switch (config.getProviderType().toLowerCase()) {
             case "google" -> "https://www.googleapis.com/oauth2/v3/certs";
             case "azure" -> "https://login.microsoftonline.com/common/discovery/v2.0/keys";
-            case "okta" -> null; // Okta domains are tenant-specific; must use metadataUrl
-            default -> null;
+            case "okta" -> oktaIssuer(config) + "/v1/keys";
+            default -> throw new IllegalArgumentException(
+                "Provedor SSO não suportado: " + config.getProviderType());
         };
+    }
+
+    private String validateRedirectUri(String redirectUri) {
+        if (redirectUri == null || redirectUri.isBlank()) {
+            throw new IllegalArgumentException("redirect_uri é obrigatório.");
+        }
+        URI uri;
+        try {
+            uri = URI.create(redirectUri).normalize();
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("redirect_uri inválido.", e);
+        }
+        if (!uri.isAbsolute() || uri.getFragment() != null || uri.getUserInfo() != null) {
+            throw new IllegalArgumentException("redirect_uri inválido.");
+        }
+        boolean allowed = Arrays.stream(allowedRedirectUris.split(","))
+            .map(String::trim)
+            .filter(value -> !value.isBlank())
+            .anyMatch(uri.toString()::equals);
+        if (!allowed) {
+            throw new IllegalArgumentException("redirect_uri não autorizado.");
+        }
+        return uri.toString();
+    }
+
+    private static String oktaIssuer(SsoProviderConfig config) {
+        String metadataUrl = config.getMetadataUrl();
+        if (metadataUrl == null || metadataUrl.isBlank()) {
+            throw new IllegalArgumentException(
+                "metadataUrl do Okta é obrigatório e deve apontar para o issuer OIDC.");
+        }
+        URI uri = URI.create(metadataUrl).normalize();
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+                || uri.getUserInfo() != null || uri.getFragment() != null) {
+            throw new IllegalArgumentException("metadataUrl do Okta inválido.");
+        }
+        String issuer = uri.toString();
+        String discoverySuffix = "/.well-known/openid-configuration";
+        if (issuer.endsWith(discoverySuffix)) {
+            issuer = issuer.substring(0, issuer.length() - discoverySuffix.length());
+        }
+        return issuer.endsWith("/") ? issuer.substring(0, issuer.length() - 1) : issuer;
+    }
+
+    private static void validateIdTokenClaims(Map<String, Object> claims,
+                                              SsoProviderConfig config,
+                                              String expectedNonce) {
+        Object audience = claims.get("aud");
+        boolean audienceMatches = config.getClientId().equals(audience)
+            || (audience instanceof Collection<?> values && values.contains(config.getClientId()));
+        if (!audienceMatches) {
+            throw new SecurityException("Audience do ID token inválida.");
+        }
+        if (audience instanceof Collection<?> values && values.size() > 1
+                && !config.getClientId().equals(claims.get("azp"))) {
+            throw new SecurityException("Authorized party do ID token inválida.");
+        }
+        Object expiration = claims.get("exp");
+        if (!(expiration instanceof Number exp)
+                || Instant.now().getEpochSecond() >= exp.longValue()) {
+            throw new SecurityException("ID token expirado ou sem expiração válida.");
+        }
+        if (!Objects.equals(expectedNonce, claims.get("nonce"))) {
+            throw new SecurityException("Nonce do ID token inválido.");
+        }
+        if (!(claims.get("sub") instanceof String subject) || subject.isBlank()) {
+            throw new SecurityException("ID token sem subject válido.");
+        }
+        String issuer = Objects.toString(claims.get("iss"), "");
+        boolean issuerMatches = switch (config.getProviderType().toLowerCase()) {
+            case "google" -> issuer.equals("https://accounts.google.com")
+                || issuer.equals("accounts.google.com");
+            case "azure" -> issuer.startsWith("https://login.microsoftonline.com/")
+                && issuer.endsWith("/v2.0");
+            case "okta" -> issuer.equals(oktaIssuer(config));
+            default -> false;
+        };
+        if (!issuerMatches) {
+            throw new SecurityException("Issuer do ID token inválido.");
+        }
     }
 
     /**
@@ -372,7 +464,8 @@ public class SsoAuthService {
         String name,
         String email,
         Set<String> roles,
-        String tenantId
+        String tenantId,
+        String redirectUri
     ) {}
 
     /**
@@ -380,7 +473,7 @@ public class SsoAuthService {
      * Validates the current refresh token and issues a new access + refresh token pair.
      */
     public Map<String, Object> refreshToken(String refreshToken) {
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
+        if (!jwtTokenProvider.isRefreshToken(refreshToken)) {
             throw new RuntimeException("Token de refresh inválido ou expirado.");
         }
 

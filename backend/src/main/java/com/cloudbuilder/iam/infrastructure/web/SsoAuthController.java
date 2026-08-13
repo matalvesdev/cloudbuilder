@@ -73,23 +73,21 @@ public class SsoAuthController {
      *
      * @param code        the authorization code
      * @param state       the state parameter for CSRF validation
-     * @param redirectUri the original redirect URI
      * @return 302 redirect to frontend with JWT token as hash fragment
      */
     @GetMapping("/callback")
     public ResponseEntity<Void> callback(
             @RequestParam("code") String code,
-            @RequestParam("state") String state,
-            @RequestParam(name = "redirect_uri", defaultValue = "http://localhost:3000/auth/callback") String redirectUri) {
+            @RequestParam("state") String state) {
 
         log.info("SSO callback received");
 
         try {
-            AuthResult result = ssoAuthService.handleCallback(code, state, redirectUri);
+            AuthResult result = ssoAuthService.handleCallback(code, state);
 
             // Redirect to frontend with token in URL fragment (URL-encoded per OWASP)
             // Email intentionally omitted to avoid PII leakage in browser URL history
-            String frontendUrl = redirectUri + "#token=" + URLEncoder.encode(result.accessToken(), StandardCharsets.UTF_8)
+            String frontendUrl = result.redirectUri() + "#token=" + URLEncoder.encode(result.accessToken(), StandardCharsets.UTF_8)
                 + "&refreshToken=" + URLEncoder.encode(result.refreshToken(), StandardCharsets.UTF_8)
                 + "&userId=" + URLEncoder.encode(result.userId(), StandardCharsets.UTF_8);
 

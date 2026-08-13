@@ -1,0 +1,28 @@
+# Development overrides
+server:
+  http:
+    addr: ":8080"
+  grpc:
+    addr: ":9090"
+
+database:
+  postgres:
+    host: localhost
+    password: pe_secret
+
+redis:
+  host: localhost
+
+messaging:
+  kafka:
+    brokers:
+      - localhost:9092
+
+engine:
+  workers:
+    concurrency: 2
+
+observability:
+  logging:
+    level: debug
+    format: console

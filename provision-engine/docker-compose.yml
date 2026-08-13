@@ -1,0 +1,207 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Provision Engine — Docker Compose
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+  # ─── PostgreSQL ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: pe-postgres
+    environment:
+      POSTGRES_DB: provision_engine
+      POSTGRES_USER: pe
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pe_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/migrations
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pe -d provision_engine"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 512M
+    networks:
+      - pe-net
+
+  # ─── Redis ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pe-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-pe_secret}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-pe_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 256M
+    networks:
+      - pe-net
+
+  # ─── Kafka (KRaft mode) ────────────────────────────────────────────────
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: pe-kafka
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafkadata:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+    networks:
+      - pe-net
+
+  # ─── API Server ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: api-runtime
+      args:
+        VERSION: ${VERSION:-dev}
+    container_name: pe-api
+    environment:
+      PE_SERVER_HTTP_ADDR: ":8080"
+      PE_SERVER_GRPC_ADDR: ":9090"
+      PE_DATABASE_POSTGRES_HOST: postgres
+      PE_DATABASE_POSTGRES_PORT: "5432"
+      PE_DATABASE_POSTGRES_DATABASE: provision_engine
+      PE_DATABASE_POSTGRES_USERNAME: pe
+      PE_DATABASE_POSTGRES_PASSWORD: ${DB_PASSWORD:-pe_secret}
+      PE_REDIS_HOST: redis
+      PE_REDIS_PORT: "6379"
+      PE_REDIS_PASSWORD: ${REDIS_PASSWORD:-pe_secret}
+      PE_KAFKA_BROKERS: kafka:9092
+      PE_LOG_LEVEL: info
+      PE_LOG_FORMAT: json
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 512M
+    networks:
+      - pe-net
+
+  # ─── Worker ────────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      target: worker-runtime
+      args:
+        VERSION: ${VERSION:-dev}
+    container_name: pe-worker
+    environment:
+      PE_DATABASE_POSTGRES_HOST: postgres
+      PE_DATABASE_POSTGRES_PORT: "5432"
+      PE_DATABASE_POSTGRES_DATABASE: provision_engine
+      PE_DATABASE_POSTGRES_USERNAME: pe
+      PE_DATABASE_POSTGRES_PASSWORD: ${DB_PASSWORD:-pe_secret}
+      PE_REDIS_HOST: redis
+      PE_REDIS_PORT: "6379"
+      PE_REDIS_PASSWORD: ${REDIS_PASSWORD:-pe_secret}
+      PE_KAFKA_BROKERS: kafka:9092
+      PE_WORKER_CONCURRENCY: "4"
+      PE_LOG_LEVEL: info
+      PE_LOG_FORMAT: json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 512M
+    networks:
+      - pe-net
+
+  # ─── Scheduler ─────────────────────────────────────────────────────────
+  scheduler:
+    build:
+      context: .
+      target: scheduler-runtime
+      args:
+        VERSION: ${VERSION:-dev}
+    container_name: pe-scheduler
+    environment:
+      PE_DATABASE_POSTGRES_HOST: postgres
+      PE_DATABASE_POSTGRES_PORT: "5432"
+      PE_DATABASE_POSTGRES_DATABASE: provision_engine
+      PE_DATABASE_POSTGRES_USERNAME: pe
+      PE_DATABASE_POSTGRES_PASSWORD: ${DB_PASSWORD:-pe_secret}
+      PE_REDIS_HOST: redis
+      PE_REDIS_PORT: "6379"
+      PE_REDIS_PASSWORD: ${REDIS_PASSWORD:-pe_secret}
+      PE_KAFKA_BROKERS: kafka:9092
+      PE_LOG_LEVEL: info
+      PE_LOG_FORMAT: json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 256M
+    networks:
+      - pe-net
+
+volumes:
+  pgdata:
+    name: pe_pgdata
+  redisdata:
+    name: pe_redisdata
+  kafkadata:
+    name: pe_kafkadata
+
+networks:
+  pe-net:
+    driver: bridge
+    name: pe_network

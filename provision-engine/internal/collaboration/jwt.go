@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	ErrTokenMissing  = errors.New("missing token")
-	ErrTokenExpired  = errors.New("token expired")
-	ErrTokenInvalid  = errors.New("invalid token signature")
+	ErrTokenMissing   = errors.New("missing token")
+	ErrTokenExpired   = errors.New("token expired")
+	ErrTokenInvalid   = errors.New("invalid token signature")
 	ErrTokenMalformed = errors.New("malformed token")
 )
 
@@ -22,8 +22,10 @@ var (
 type Claims struct {
 	Sub      string   `json:"sub"`
 	Name     string   `json:"name"`
-	TenantID string   `json:"tenant_id"`
+	Email    string   `json:"email"`
+	TenantID string   `json:"tenantId"`
 	Roles    []string `json:"roles"`
+	Type     string   `json:"type"`
 	Exp      int64    `json:"exp"`
 	Iat      int64    `json:"iat"`
 }
@@ -33,6 +35,19 @@ type Claims struct {
 func ValidateJWT(tokenString string, secret []byte) (*Claims, error) {
 	parts := strings.Split(tokenString, ".")
 	if len(parts) != 3 {
+		return nil, ErrTokenMalformed
+	}
+
+	headerBytes, err := base64RawURLEncodeDecode(parts[0])
+	if err != nil {
+		return nil, ErrTokenMalformed
+	}
+	var header struct {
+		Algorithm string `json:"alg"`
+		Type      string `json:"typ"`
+	}
+	if err := json.Unmarshal(headerBytes, &header); err != nil ||
+		header.Algorithm != "HS256" || header.Type != "JWT" {
 		return nil, ErrTokenMalformed
 	}
 
@@ -63,8 +78,11 @@ func ValidateJWT(tokenString string, secret []byte) (*Claims, error) {
 	}
 
 	// Check expiration
-	if claims.Exp > 0 && time.Now().Unix() > claims.Exp {
+	if claims.Exp <= 0 || time.Now().Unix() >= claims.Exp {
 		return nil, ErrTokenExpired
+	}
+	if claims.Sub == "" || claims.TenantID == "" || claims.Type == "refresh" {
+		return nil, ErrTokenMalformed
 	}
 
 	return &claims, nil

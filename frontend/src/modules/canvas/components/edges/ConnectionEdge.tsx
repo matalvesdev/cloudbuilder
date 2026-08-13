@@ -1,5 +1,8 @@
-import { EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
+import { useCallback } from 'react'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
 import { EDGE_TYPE_STYLES, type ConnectionEdgeType } from './EdgeTypes'
+import EdgeToolbar from './EdgeToolbar'
+import { useCanvasStore } from '@/store/canvasStore'
 import { cn } from '@/lib/utils'
 
 export function ConnectionEdge({
@@ -15,34 +18,45 @@ export function ConnectionEdge({
 }: EdgeProps) {
   const edgeType = (data?.edgeType as ConnectionEdgeType) ?? 'default'
   const config = EDGE_TYPE_STYLES[edgeType] ?? EDGE_TYPE_STYLES.default
+  const updateEdgeType = useCanvasStore((s: any) => s.updateEdgeType)
+  const removeEdge = useCanvasStore((s) => s.removeEdge)
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  })
+  const handleTypeChange = useCallback(
+    (newType: ConnectionEdgeType) => updateEdgeType(id, newType),
+    [id, updateEdgeType]
+  )
+  const handleDelete = useCallback(() => removeEdge(id), [id, removeEdge])
 
-  const markerId = `arrow-${edgeType}`
+  const pathParams = { sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition }
+  const [edgePath, labelX, labelY] = (config as any).pathType === 'smoothstep'
+    ? getSmoothStepPath({ ...pathParams, borderRadius: 12 })
+    : getBezierPath(pathParams)
 
   return (
     <>
-      <path
+      <BaseEdge
         id={id}
-        d={edgePath}
+        path={edgePath}
         className={config.animated ? 'edge-animated' : ''}
         style={{
           stroke: config.color,
           strokeWidth: selected ? config.strokeWidth + 1 : config.strokeWidth,
-          strokeDasharray: config.dashed && !config.animated
-            ? '5 4'
-            : 'none',
-          fill: 'none',
-          strokeLinecap: 'round',
+          strokeDasharray: config.dashed && !config.animated ? '5 4' : 'none',
         }}
-        markerEnd={`url(#${markerId})`}
+        markerEnd={`url(#arrow-${id})`}
+      />
+      <defs>
+        <marker id={`arrow-${id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={config.color} />
+        </marker>
+      </defs>
+      <EdgeToolbar
+        edgeType={edgeType}
+        labelX={labelX}
+        labelY={labelY}
+        onTypeChange={handleTypeChange}
+        onDelete={handleDelete}
+        selected={selected}
       />
       <EdgeLabelRenderer>
         <div

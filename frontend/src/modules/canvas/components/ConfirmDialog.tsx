@@ -4,18 +4,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title: string
-  description: string
-  confirmLabel?: string
-  cancelLabel?: string
-  variant?: 'default' | 'destructive'
-  onConfirm: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "default" | "destructive";
+  onConfirm: () => void;
 }
 
 export function ConfirmDialog({
@@ -23,9 +23,9 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
-  variant = 'default',
+  confirmLabel = "Confirmar",
+  cancelLabel = "Cancelar",
+  variant = "default",
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -33,7 +33,9 @@ export function ConfirmDialog({
       <DialogContent className="sm:max-w-[400px] rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-brand-navy">{title}</DialogTitle>
-          <DialogDescription className="text-slate-500">{description}</DialogDescription>
+          <DialogDescription className="text-slate-500">
+            {description}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex justify-end gap-3 mt-2">
           <Button
@@ -44,8 +46,11 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button
-            variant={variant === 'destructive' ? 'destructive' : 'default'}
-            onClick={() => { onConfirm(); onOpenChange(false) }}
+            variant={variant === "destructive" ? "destructive" : "default"}
+            onClick={() => {
+              onConfirm();
+              onOpenChange(false);
+            }}
             className="rounded-xl"
           >
             {confirmLabel}
@@ -53,5 +58,5 @@ export function ConfirmDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,16 +1,24 @@
-import { Wrench, FileCheck } from 'lucide-react'
-import type { Message, Incident, FixSuggestion } from './aiops.types'
+import { Wrench, FileCheck } from "lucide-react";
+import type { Message, Incident, FixSuggestion } from "./aiops.types";
 
 interface FixWidgetProps {
-  msg: Message
-  selectedIncident: Incident | null
-  onOpenFixDialog: (fix: FixSuggestion, incidentId: string, incidentTitle: string) => void
+  msg: Message;
+  selectedIncident: Incident | null;
+  onOpenFixDialog: (
+    fix: FixSuggestion,
+    incidentId: string,
+    incidentTitle: string,
+  ) => void;
 }
 
-export function FixWidget({ msg, selectedIncident, onOpenFixDialog }: FixWidgetProps) {
-  if (!msg.fixSuggestion || !msg.incidentId) return null
-  const fix = msg.fixSuggestion
-  const incidentTitle = selectedIncident?.title || 'Incidente'
+export function FixWidget({
+  msg,
+  selectedIncident,
+  onOpenFixDialog,
+}: FixWidgetProps) {
+  if (!msg.fixSuggestion || !msg.incidentId) return null;
+  const fix = msg.fixSuggestion;
+  const incidentTitle = selectedIncident?.title || "Incidente";
 
   return (
     <div className="mt-4 space-y-3 border border-emerald-200 rounded-xl bg-gradient-to-br from-emerald-50 to-transparent p-4">
@@ -27,21 +35,30 @@ export function FixWidget({ msg, selectedIncident, onOpenFixDialog }: FixWidgetP
       </div>
 
       <div className="bg-white rounded-lg p-3 border border-emerald-100">
-        <p className="text-xs font-bold text-brand-navy mb-1">Correção Sugerida</p>
+        <p className="text-xs font-bold text-brand-navy mb-1">
+          Correção Sugerida
+        </p>
         <p className="text-xs text-slate-600">{fix.description}</p>
       </div>
 
       {/* Modifications Preview */}
       <div className="space-y-1.5">
         {fix.modifications.map((mod, i) => (
-          <div key={i} className="flex items-start gap-2 text-xs bg-white p-2.5 rounded-lg border border-slate-100">
+          <div
+            key={i}
+            className="flex items-start gap-2 text-xs bg-white p-2.5 rounded-lg border border-slate-100"
+          >
             <FileCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="font-bold text-brand-navy">{mod.nodeLabel}</p>
               <p className="text-slate-500 mt-0.5">
-                <span className="text-red-500 line-through">{String(mod.oldValue)}</span>
+                <span className="text-red-500 line-through">
+                  {String(mod.oldValue)}
+                </span>
                 <span className="mx-1 text-slate-300">→</span>
-                <span className="text-green-600 font-medium">{String(mod.newValue)}</span>
+                <span className="text-green-600 font-medium">
+                  {String(mod.newValue)}
+                </span>
                 <span className="text-slate-400 ml-1">({mod.property})</span>
               </p>
             </div>
@@ -57,5 +74,5 @@ export function FixWidget({ msg, selectedIncident, onOpenFixDialog }: FixWidgetP
         Aplicar Correção
       </button>
     </div>
-  )
+  );
 }

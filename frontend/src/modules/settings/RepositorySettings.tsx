@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Plus,
   Trash2,
@@ -14,79 +14,90 @@ import {
   Settings,
   ScanLine,
   ExternalLink,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useRepoStore } from '@/store/repoStore'
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useRepoStore } from "@/store/repoStore";
 import {
   REPO_PROVIDER_LABELS,
   REPO_STATUS_LABELS,
   type RepoProvider,
   type RepoScanResult,
-} from '@/types/repo.types'
-import { CiCdPipeline } from '@/modules/provisioning/CiCdPipeline'
+} from "@/types/repo.types";
+import { CiCdPipeline } from "@/modules/provisioning/CiCdPipeline";
 
-function ProviderIcon({ provider, className }: { provider: RepoProvider; className?: string }) {
+function ProviderIcon({
+  provider,
+  className,
+}: {
+  provider: RepoProvider;
+  className?: string;
+}) {
   const icons: Record<RepoProvider, typeof GitBranch> = {
     github: GitBranch,
     gitlab: GitFork,
     bitbucket: Globe,
-  }
-  const Icon = icons[provider]
+  };
+  const Icon = icons[provider];
   const colors: Record<RepoProvider, string> = {
-    github: 'text-gray-800',
-    gitlab: 'text-orange-500',
-    bitbucket: 'text-blue-600',
-  }
-  return <Icon className={cn(className, colors[provider])} />
+    github: "text-gray-800",
+    gitlab: "text-orange-500",
+    bitbucket: "text-blue-600",
+  };
+  return <Icon className={cn(className, colors[provider])} />;
 }
 
 function ConnectDialog({
   open,
   onClose,
 }: {
-  open: boolean
-  onClose: () => void
+  open: boolean;
+  onClose: () => void;
 }) {
-  const { connectRepo, connectedRepos } = useRepoStore()
-  const [provider, setProvider] = useState<RepoProvider>('github')
-  const [token, setToken] = useState('')
-  const [repoUrl, setRepoUrl] = useState('')
-  const [connecting, setConnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { connectRepo, connectedRepos } = useRepoStore();
+  const [provider, setProvider] = useState<RepoProvider>("github");
+  const [token, setToken] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!open) return null
+  if (!open) return null;
 
   const handleConnect = async () => {
     if (!token.trim() || !repoUrl.trim()) {
-      setError('Preencha o token e a URL do repositório')
-      return
+      setError("Preencha o token e a URL do repositório");
+      return;
     }
-    setConnecting(true)
-    setError(null)
+    setConnecting(true);
+    setError(null);
     try {
-      const { api } = await import('@/api/client')
-      const response = await api.post<{ id: string }>('/git/connect', {
+      const { api } = await import("@/api/client");
+      const response = await api.post<{ id: string }>("/git/connect", {
         provider,
         repoUrl,
         token,
-      })
+      });
       if (response?.id) {
         connectRepo(provider, token, {
           repoUrl,
-          repoName: repoUrl.split('/').pop() || 'repo',
-          fullName: repoUrl.replace(/https?:\/\/(www\.)?(github|gitlab|bitbucket)\.com\//, ''),
-          owner: repoUrl.split('/').slice(-2)[0] || 'owner',
-          defaultBranch: 'main',
-        })
+          repoName: repoUrl.split("/").pop() || "repo",
+          fullName: repoUrl.replace(
+            /https?:\/\/(www\.)?(github|gitlab|bitbucket)\.com\//,
+            "",
+          ),
+          owner: repoUrl.split("/").slice(-2)[0] || "owner",
+          defaultBranch: "main",
+        });
       }
     } catch (err) {
-      setError(err && typeof err === 'object' && 'message' in err
-        ? (err as { message: string }).message
-        : 'Erro ao conectar repositório')
+      setError(
+        err && typeof err === "object" && "message" in err
+          ? (err as { message: string }).message
+          : "Erro ao conectar repositório",
+      );
     } finally {
-      setConnecting(false)
+      setConnecting(false);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -95,9 +106,12 @@ function ConnectDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-brand-navy font-display">Conectar Repositório</h2>
+          <h2 className="text-lg font-bold text-brand-navy font-display">
+            Conectar Repositório
+          </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Conecte um repositório Git para escanear infraestrutura e configurar pipelines
+            Conecte um repositório Git para escanear infraestrutura e configurar
+            pipelines
           </p>
         </div>
         <div className="p-6 space-y-4">
@@ -106,15 +120,17 @@ function ConnectDialog({
               Provedor
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {(Object.entries(REPO_PROVIDER_LABELS) as [RepoProvider, string][]).map(([key, label]) => (
+              {(
+                Object.entries(REPO_PROVIDER_LABELS) as [RepoProvider, string][]
+              ).map(([key, label]) => (
                 <button
                   key={key}
                   onClick={() => setProvider(key)}
                   className={cn(
-                    'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-xs font-medium',
+                    "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-xs font-medium",
                     provider === key
-                      ? 'border-brand-navy bg-brand-navy/5 text-brand-navy'
-                      : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                      ? "border-brand-navy bg-brand-navy/5 text-brand-navy"
+                      : "border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50",
                   )}
                 >
                   <ProviderIcon provider={key} className="w-5 h-5" />
@@ -134,19 +150,19 @@ function ConnectDialog({
               onChange={(e) => setToken(e.target.value)}
               className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy bg-white transition-all"
               placeholder={
-                provider === 'github'
-                  ? 'ghp_xxxxxxxxxxxxxxxxxxxx'
-                  : provider === 'gitlab'
-                    ? 'glpat-xxxxxxxxxxxxxxxxxxxx'
-                    : 'BBxxxx-xxxxxxxxxxxxxxxxxxxx'
+                provider === "github"
+                  ? "ghp_xxxxxxxxxxxxxxxxxxxx"
+                  : provider === "gitlab"
+                    ? "glpat-xxxxxxxxxxxxxxxxxxxx"
+                    : "BBxxxx-xxxxxxxxxxxxxxxxxxxx"
               }
             />
             <p className="text-[10px] text-slate-400 mt-1.5">
-              {provider === 'github'
-                ? 'Crie um token em Settings → Developer settings → Personal access tokens'
-                : provider === 'gitlab'
-                  ? 'Crie um token em Preferences → Access Tokens'
-                  : 'Crie um token em Personal settings → App passwords'}
+              {provider === "github"
+                ? "Crie um token em Settings → Developer settings → Personal access tokens"
+                : provider === "gitlab"
+                  ? "Crie um token em Preferences → Access Tokens"
+                  : "Crie um token em Personal settings → App passwords"}
             </p>
           </div>
 
@@ -170,7 +186,12 @@ function ConnectDialog({
         </div>
         <div className="p-6 pt-0 flex items-center justify-end gap-2">
           <button
-            onClick={() => { setToken(''); setRepoUrl(''); setError(null); onClose() }}
+            onClick={() => {
+              setToken("");
+              setRepoUrl("");
+              setError(null);
+              onClose();
+            }}
             className="px-4 h-9 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
           >
             Cancelar
@@ -180,19 +201,23 @@ function ConnectDialog({
             disabled={connecting || !token.trim() || !repoUrl.trim()}
             className="inline-flex items-center gap-1.5 px-5 h-9 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all disabled:opacity-50"
           >
-            {connecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-            {connecting ? 'Conectando...' : 'Conectar'}
+            {connecting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
+            {connecting ? "Conectando..." : "Conectar"}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function ScanResultsSection({ result }: { result: RepoScanResult }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false);
 
-  if (!result) return null
+  if (!result) return null;
 
   return (
     <div className="bg-slate-50 rounded-xl mt-3">
@@ -203,10 +228,15 @@ function ScanResultsSection({ result }: { result: RepoScanResult }) {
         <div className="flex items-center gap-2">
           <FileCode2 className="w-3.5 h-3.5" />
           <span>
-            {result.iacFiles.length} arquivos IaC detectados · {result.resources} recursos estimados
+            {result.iacFiles.length} arquivos IaC detectados ·{" "}
+            {result.resources} recursos estimados
           </span>
         </div>
-        {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        {expanded ? (
+          <ChevronDown className="w-3.5 h-3.5" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5" />
+        )}
       </button>
       {expanded && (
         <div className="px-3 pb-3 space-y-1">
@@ -215,25 +245,32 @@ function ScanResultsSection({ result }: { result: RepoScanResult }) {
               key={file.path}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono text-slate-600"
             >
-              {file.type === 'dir' ? (
+              {file.type === "dir" ? (
                 <FolderOpen className="w-3 h-3 text-amber-500 shrink-0" />
               ) : (
                 <FileCode2 className="w-3 h-3 text-blue-500 shrink-0" />
               )}
               <span className="truncate">{file.path}</span>
-              <span className={cn(
-                'text-[9px] px-1 rounded font-semibold uppercase ml-auto shrink-0',
-                file.extension === '.tf' ? 'bg-purple-50 text-purple-700' :
-                file.extension === '.yaml' || file.extension === '.yml' ? 'bg-cyan-50 text-cyan-700' :
-                'bg-slate-100 text-slate-500'
-              )}>
+              <span
+                className={cn(
+                  "text-[9px] px-1 rounded font-semibold uppercase ml-auto shrink-0",
+                  file.extension === ".tf"
+                    ? "bg-purple-50 text-purple-700"
+                    : file.extension === ".yaml" || file.extension === ".yml"
+                      ? "bg-cyan-50 text-cyan-700"
+                      : "bg-slate-100 text-slate-500",
+                )}
+              >
                 {file.extension.slice(1)}
               </span>
             </div>
           ))}
           <div className="flex flex-wrap gap-2 mt-2">
             {result.languages.map((lang) => (
-              <span key={lang} className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">
+              <span
+                key={lang}
+                className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium"
+              >
                 {lang}
               </span>
             ))}
@@ -251,25 +288,34 @@ function ScanResultsSection({ result }: { result: RepoScanResult }) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export function RepositorySettings() {
-  const { connectedRepos, scanResults, scanRepo, disconnectRepo, detectAppType, getRepoById } = useRepoStore()
-  const [showConnect, setShowConnect] = useState(false)
-  const [scanningId, setScanningId] = useState<string | null>(null)
-  const [pipelineRepoId, setPipelineRepoId] = useState<string | null>(null)
+  const {
+    connectedRepos,
+    scanResults,
+    scanRepo,
+    disconnectRepo,
+    detectAppType,
+    getRepoById,
+  } = useRepoStore();
+  const [showConnect, setShowConnect] = useState(false);
+  const [scanningId, setScanningId] = useState<string | null>(null);
+  const [pipelineRepoId, setPipelineRepoId] = useState<string | null>(null);
 
   const handleScan = async (id: string) => {
-    setScanningId(id)
-    await scanRepo(id)
-    setScanningId(null)
-  }
+    setScanningId(id);
+    await scanRepo(id);
+    setScanningId(null);
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-slate-400">{connectedRepos.length} repositórios conectados</p>
+        <p className="text-xs text-slate-400">
+          {connectedRepos.length} repositórios conectados
+        </p>
         <button
           onClick={() => setShowConnect(true)}
           className="inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-bold bg-brand-navy text-white hover:bg-[#0D1B2A] transition-all"
@@ -284,10 +330,13 @@ export function RepositorySettings() {
           <div className="w-14 h-14 rounded-2xl bg-ice-blue flex items-center justify-center mb-4">
             <GitBranch className="w-7 h-7 text-brand-navy" />
           </div>
-          <p className="text-sm font-semibold text-brand-navy mb-1">Nenhum repositório conectado</p>
+          <p className="text-sm font-semibold text-brand-navy mb-1">
+            Nenhum repositório conectado
+          </p>
           <p className="text-xs text-slate-400 mb-4 max-w-sm">
-            Conecte seus repositórios GitHub, GitLab ou Bitbucket para escanear infraestrutura como código
-            e configurar pipelines de CI/CD automaticamente.
+            Conecte seus repositórios GitHub, GitLab ou Bitbucket para escanear
+            infraestrutura como código e configurar pipelines de CI/CD
+            automaticamente.
           </p>
           <button
             onClick={() => setShowConnect(true)}
@@ -300,9 +349,9 @@ export function RepositorySettings() {
       ) : (
         <div className="grid gap-3">
           {connectedRepos.map((repo) => {
-            const result = scanResults.find((r) => r.repoId === repo.id)
-            const detection = repo.id ? detectAppType(repo.id) : null
-            const isScanning = scanningId === repo.id
+            const result = scanResults.find((r) => r.repoId === repo.id);
+            const detection = repo.id ? detectAppType(repo.id) : null;
+            const isScanning = scanningId === repo.id;
 
             return (
               <div
@@ -311,33 +360,53 @@ export function RepositorySettings() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className={cn(
-                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                      repo.provider === 'github' ? 'bg-gray-100' :
-                      repo.provider === 'gitlab' ? 'bg-orange-50' :
-                      'bg-blue-50'
-                    )}>
-                      <ProviderIcon provider={repo.provider} className="w-5 h-5" />
+                    <div
+                      className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        repo.provider === "github"
+                          ? "bg-gray-100"
+                          : repo.provider === "gitlab"
+                            ? "bg-orange-50"
+                            : "bg-blue-50",
+                      )}
+                    >
+                      <ProviderIcon
+                        provider={repo.provider}
+                        className="w-5 h-5"
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-brand-navy truncate max-w-[280px]">{repo.fullName}</p>
-                        <span className={cn(
-                          'text-[10px] px-1.5 py-0.5 rounded-full border font-medium',
-                          repo.provider === 'github' ? 'border-gray-300 text-gray-700 bg-gray-50' :
-                          repo.provider === 'gitlab' ? 'border-orange-300 text-orange-700 bg-orange-50' :
-                          'border-blue-300 text-blue-700 bg-blue-50'
-                        )}>
+                        <p className="text-sm font-bold text-brand-navy truncate max-w-[280px]">
+                          {repo.fullName}
+                        </p>
+                        <span
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
+                            repo.provider === "github"
+                              ? "border-gray-300 text-gray-700 bg-gray-50"
+                              : repo.provider === "gitlab"
+                                ? "border-orange-300 text-orange-700 bg-orange-50"
+                                : "border-blue-300 text-blue-700 bg-blue-50",
+                          )}
+                        >
                           {REPO_PROVIDER_LABELS[repo.provider]}
                         </span>
-                        <span className={cn(
-                          'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium',
-                          repo.status === 'connected' ? 'bg-green-50 text-green-700 border-green-200' :
-                          repo.status === 'scanning' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          repo.status === 'error' ? 'bg-red-50 text-red-700 border-red-200' :
-                          'bg-slate-50 text-slate-600 border-slate-200'
-                        )}>
-                          {repo.status === 'scanning' && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-medium",
+                            repo.status === "connected"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : repo.status === "scanning"
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : repo.status === "error"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : "bg-slate-50 text-slate-600 border-slate-200",
+                          )}
+                        >
+                          {repo.status === "scanning" && (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                          )}
                           {REPO_STATUS_LABELS[repo.status]}
                         </span>
                       </div>
@@ -348,13 +417,19 @@ export function RepositorySettings() {
                         </span>
                         <span className="text-slate-300">•</span>
                         <span>
-                          Conectado {new Date(repo.connectedAt).toLocaleDateString('pt-BR')}
+                          Conectado{" "}
+                          {new Date(repo.connectedAt).toLocaleDateString(
+                            "pt-BR",
+                          )}
                         </span>
                         {repo.lastScanAt && (
                           <>
                             <span className="text-slate-300">•</span>
                             <span>
-                              Último scan: {new Date(repo.lastScanAt).toLocaleDateString('pt-BR')}
+                              Último scan:{" "}
+                              {new Date(repo.lastScanAt).toLocaleDateString(
+                                "pt-BR",
+                              )}
                             </span>
                           </>
                         )}
@@ -364,18 +439,29 @@ export function RepositorySettings() {
                       {result && (
                         <div className="mt-2 flex items-center gap-2 flex-wrap">
                           {result.appType && (
-                            <span className={cn(
-                              'text-[10px] px-2 py-0.5 rounded-full font-semibold border',
-                              result.appType === 'web-app' ? 'bg-green-50 text-green-700 border-green-200' :
-                              result.appType === 'microservice' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                              result.appType === 'data-pipeline' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                              result.appType === 'docker-compose' ? 'bg-sky-50 text-sky-700 border-sky-200' :
-                              'bg-slate-50 text-slate-500 border-slate-200'
-                            )}>
-                              {result.appType === 'web-app' ? 'Web App' :
-                               result.appType === 'microservice' ? 'Microsserviço' :
-                               result.appType === 'data-pipeline' ? 'Data Pipeline' :
-                               result.appType === 'docker-compose' ? 'Docker Compose' : ''}
+                            <span
+                              className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-full font-semibold border",
+                                result.appType === "web-app"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : result.appType === "microservice"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : result.appType === "data-pipeline"
+                                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                                      : result.appType === "docker-compose"
+                                        ? "bg-sky-50 text-sky-700 border-sky-200"
+                                        : "bg-slate-50 text-slate-500 border-slate-200",
+                              )}
+                            >
+                              {result.appType === "web-app"
+                                ? "Web App"
+                                : result.appType === "microservice"
+                                  ? "Microsserviço"
+                                  : result.appType === "data-pipeline"
+                                    ? "Data Pipeline"
+                                    : result.appType === "docker-compose"
+                                      ? "Docker Compose"
+                                      : ""}
                             </span>
                           )}
                           {result.resources > 0 && (
@@ -402,7 +488,7 @@ export function RepositorySettings() {
                     </a>
                     <button
                       onClick={() => handleScan(repo.id)}
-                      disabled={isScanning || repo.status === 'scanning'}
+                      disabled={isScanning || repo.status === "scanning"}
                       className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all disabled:opacity-50"
                     >
                       {isScanning ? (
@@ -410,16 +496,16 @@ export function RepositorySettings() {
                       ) : (
                         <ScanLine className="w-3 h-3" />
                       )}
-                      {isScanning ? 'Escaneando...' : 'Scanear'}
+                      {isScanning ? "Escaneando..." : "Scanear"}
                     </button>
                     <button
                       onClick={() => setPipelineRepoId(repo.id)}
                       disabled={!result}
                       className={cn(
-                        'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold transition-all',
+                        "inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold transition-all",
                         result
-                          ? 'bg-brand-navy text-white hover:bg-[#0D1B2A]'
-                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                          ? "bg-brand-navy text-white hover:bg-[#0D1B2A]"
+                          : "bg-slate-100 text-slate-400 cursor-not-allowed",
                       )}
                     >
                       <Settings className="w-3 h-3" />
@@ -434,16 +520,13 @@ export function RepositorySettings() {
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       )}
 
       {/* Connect Dialog */}
-      <ConnectDialog
-        open={showConnect}
-        onClose={() => setShowConnect(false)}
-      />
+      <ConnectDialog open={showConnect} onClose={() => setShowConnect(false)} />
 
       {/* Pipeline Config Dialog */}
       {pipelineRepoId && (
@@ -453,5 +536,5 @@ export function RepositorySettings() {
         />
       )}
     </div>
-  )
+  );
 }

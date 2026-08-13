@@ -1,5 +1,6 @@
 package com.cloudbuilder.design.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -11,6 +12,7 @@ public class CanvasNode {
     @Id
     private String id;
 
+    @JsonBackReference("canvas-nodes")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "canvas_id", nullable = false)
     private Canvas canvas;

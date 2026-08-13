@@ -106,11 +106,11 @@ public class OpaPolicyEvaluator implements ComplianceRuleEvaluator {
             log.debug("Could not parse config for fallback evaluation: {}", e.getMessage());
         }
 
-        // Default: mark as passed with warning
+        // Fail closed when neither OPA nor a deterministic local rule can decide.
         return new ComplianceEvaluation(
             rule.getId(), rule.getName(), rule.getCategory(),
-            rule.getSeverity(), true,
-            "Fallback Java: OPA indisponível, regra assumida conforme",
+            rule.getSeverity(), false,
+            "Fallback Java: OPA indisponível e regra sem fallback determinístico",
             Instant.now());
     }
 

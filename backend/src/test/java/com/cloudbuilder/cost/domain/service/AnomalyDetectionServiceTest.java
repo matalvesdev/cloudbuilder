@@ -1,6 +1,7 @@
 package com.cloudbuilder.cost.domain.service;
 
 import com.cloudbuilder.cost.domain.model.CostRecord;
+import com.cloudbuilder.cost.domain.port.CostAnomalyResultRepository;
 import com.cloudbuilder.cost.domain.port.CostRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,11 +22,14 @@ class AnomalyDetectionServiceTest {
     @Mock
     private CostRecordRepository costRecordRepository;
 
+    @Mock
+    private CostAnomalyResultRepository costAnomalyResultRepository;
+
     private AnomalyDetectionService anomalyDetectionService;
 
     @BeforeEach
     void setUp() {
-        anomalyDetectionService = new AnomalyDetectionService(costRecordRepository);
+        anomalyDetectionService = new AnomalyDetectionService(costRecordRepository, costAnomalyResultRepository);
     }
 
     @Test

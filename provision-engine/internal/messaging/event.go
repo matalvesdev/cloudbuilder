@@ -2,10 +2,10 @@ package messaging
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type EventType string
@@ -98,9 +98,11 @@ func (p *EventPublisher) Unsubscribe(id string) {
 func (p *EventPublisher) Publish(ctx context.Context, event DeploymentEvent) error {
 	event.Timestamp = time.Now()
 
-	// Always log to stdout (backward compatible)
-	data, _ := json.Marshal(event)
-	fmt.Printf("[EVENT] %s\n", string(data))
+	log.Debug().
+		Str("deploymentId", event.DeploymentID).
+		Str("eventType", string(event.EventType)).
+		Str("status", event.Status).
+		Msg("event published")
 
 	// Fan out to all subscribers
 	p.mu.RLock()
@@ -110,16 +112,18 @@ func (p *EventPublisher) Publish(ctx context.Context, event DeploymentEvent) err
 		select {
 		case sub.Events <- event:
 		default:
-			// Subscriber too slow; drop event to avoid blocking
-			fmt.Printf("[EVENT] dropping event for subscriber %s (buffer full)\n", sub.ID)
+			log.Warn().Str("subscriber", sub.ID).Msg("dropping event (buffer full)")
 		}
 	}
 
-	// Optionally publish to Kafka (non-blocking best-effort)
+	// Publish to Kafka with timeout to prevent goroutine leaks
 	if p.kafka != nil && p.kafka.IsEnabled() {
 		go func() {
-			if err := p.kafka.Produce(ctx, event); err != nil {
-				fmt.Printf("[EVENT] kafka publish failed: %v\n", err)
+			// CRITICAL FIX: Add timeout to prevent goroutine leak
+			kafkaCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := p.kafka.Produce(kafkaCtx, event); err != nil {
+				log.Warn().Err(err).Str("deploymentId", event.DeploymentID).Msg("kafka publish failed")
 			}
 		}()
 	}

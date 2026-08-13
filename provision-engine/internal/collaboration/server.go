@@ -1,26 +1,29 @@
 package collaboration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 const (
-	roomIDIndex = 2 // Path segments: "" / "ws" / "{roomId}"
+	roomIDIndex = 1 // Trimmed path segments: "ws" / "{tenantId}:{canvasId}"
 )
 
 // Server manages WebSocket connections and collaborative rooms.
 type Server struct {
-	addr       string
-	jwtSecret  []byte
+	addr        string
+	jwtSecret   []byte
 	allowOrigin func(r *http.Request) bool
-	upgrader   websocket.Upgrader
+	upgrader    websocket.Upgrader
+	httpServer  *http.Server
 
 	mu      sync.RWMutex
 	rooms   map[string]*Room
@@ -28,13 +31,12 @@ type Server struct {
 }
 
 // NewServer creates a new collaboration WebSocket server.
-// Pass jwtSecret=nil to disable authentication (dev mode).
 func NewServer(addr string, opts ...ServerOption) *Server {
 	s := &Server{
 		addr:      addr,
 		jwtSecret: nil,
 		allowOrigin: func(r *http.Request) bool {
-			return true // default: allow all (dev mode)
+			return false
 		},
 		rooms:   make(map[string]*Room),
 		clients: make(map[*Client]bool),
@@ -67,20 +69,47 @@ func WithCheckOrigin(fn func(r *http.Request) bool) ServerOption {
 	}
 }
 
-// Start begins listening for WebSocket connections.
+// Start begins listening for WebSocket connections. Non-blocking.
 func (s *Server) Start() error {
+	if len(s.jwtSecret) < 32 {
+		return fmt.Errorf("JWT secret must be configured with at least 32 bytes")
+	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws/", s.handleWebSocket) // Path-based room: /ws/{roomId}
+	mux.HandleFunc("/ws/", s.handleWebSocket)
 	mux.HandleFunc("/health", s.handleHealth)
+
+	s.httpServer = &http.Server{
+		Addr:         s.addr,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
 
 	log.Printf("[collaboration] WebSocket server starting on %s/ws/{roomId} (auth=%v)",
 		s.addr, s.jwtSecret != nil)
-	return http.ListenAndServe(s.addr, mux)
+	return s.httpServer.ListenAndServe()
+}
+
+// Stop gracefully shuts down the server, closing all client connections.
+func (s *Server) Stop() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if s.httpServer != nil {
+		s.httpServer.Shutdown(ctx)
+	}
+
+	// Close all client connections
+	s.mu.RLock()
+	for client := range s.clients {
+		client.conn.Close()
+	}
+	s.mu.RUnlock()
+
+	log.Printf("[collaboration] server stopped")
 }
 
 // handleWebSocket upgrades HTTP to WebSocket with path-based room id.
-// Path format: /ws/{roomId} — e.g. /ws/canvas:abc123
-// Authentication: JWT via ?token= query param or Authorization: Bearer header.
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	var roomID string
@@ -121,12 +150,18 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			clientID = generateID()
 		}
 		if userName == "" {
+			userName = claims.Email
+		}
+		if userName == "" {
 			userName = fmt.Sprintf("User-%s", clientID[:min(6, len(clientID))])
 		}
-	} else {
-		// Dev mode: no auth, generate random ID
-		clientID = generateID()
-		userName = fmt.Sprintf("User-%s", clientID[:6])
+	}
+
+	expectedPrefix := tenantID + ":"
+	if !strings.HasPrefix(roomID, expectedPrefix) ||
+		len(strings.TrimPrefix(roomID, expectedPrefix)) == 0 {
+		http.Error(w, "room does not belong to authenticated tenant", http.StatusForbidden)
+		return
 	}
 
 	conn, err := s.upgrader.Upgrade(w, r, nil)
@@ -139,6 +174,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		ID:       clientID,
 		TenantID: tenantID,
 		Roles:    roles,
+		CanEdit:  hasEditRole(roles),
 		User: UserInfo{
 			ID:     clientID,
 			Name:   userName,
@@ -161,7 +197,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[collaboration] client %s (%s) connected to room %s from %s",
 		clientID, userName, roomID, r.RemoteAddr)
 
-	// Broadcast presence to room
 	presence, _ := json.Marshal(map[string]interface{}{
 		"type":  "presence",
 		"users": client.room.PresenceList(),
@@ -170,6 +205,16 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	go client.writePump()
 	go client.readPump()
+}
+
+func hasEditRole(roles []string) bool {
+	for _, role := range roles {
+		switch strings.ToLower(role) {
+		case "admin", "editor":
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

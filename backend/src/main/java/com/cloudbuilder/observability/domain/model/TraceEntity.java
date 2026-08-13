@@ -34,7 +34,7 @@ public class TraceEntity {
     @Column(name = "is_error")
     private boolean isError;
 
-    @Column(columnDefinition = "JSONB DEFAULT '{}'")
+    @Column(columnDefinition = "TEXT DEFAULT '{}'")
     private String metadata;
 
     public TraceEntity() {}

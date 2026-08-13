@@ -1,0 +1,36 @@
+# Build artifacts
+/bin/
+/provision-engine
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+coverage.out
+coverage.html
+*.test
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+vendor/
+
+# Generated
+*.pb.go
+*_grpc.pb.go

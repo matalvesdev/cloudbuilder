@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from "react";
 import {
   Flag,
   RefreshCw,
@@ -9,117 +9,158 @@ import {
   ToggleRight,
   AlertTriangle,
   Search,
-} from 'lucide-react'
-import { useUiStore } from '@/store/uiStore'
-import { useAuthStore } from '@/store/authStore'
-import { featureFlagsApi, type FeatureFlagDTO, type UpdateFlagRequest } from '@/api/featureFlags'
-import { showSuccess, showError } from '@/lib/toast'
-import { cn } from '@/lib/utils'
+} from "lucide-react";
+import { useUiStore } from "@/store/uiStore";
+import { useAuthStore } from "@/store/authStore";
+import {
+  featureFlagsApi,
+  type FeatureFlagDTO,
+  type UpdateFlagRequest,
+} from "@/api/featureFlags";
+import { showSuccess, showError } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 const defaultFlags = [
-  { key: 'module.cost', label: 'Módulo Custos', desc: 'Habilitar módulo de Custos' },
-  { key: 'module.platform', label: 'Módulo Plataforma', desc: 'Habilitar módulo de Plataforma' },
-  { key: 'module.aiops', label: 'Módulo AIOps', desc: 'Habilitar módulo AIOps' },
-  { key: 'module.audit', label: 'Módulo Auditoria', desc: 'Habilitar módulo de Auditoria' },
-  { key: 'module.iam', label: 'Módulo IAM', desc: 'Habilitar módulo IAM (identidade, papéis, permissões)' },
-  { key: 'feature.what-if-cost', label: 'What-if Custos', desc: 'Cenários what-if de custos' },
-  { key: 'feature.preview-workflow', label: 'Preview Workflow', desc: 'Preview de deploy workflow' },
-  { key: 'config.max-users', label: 'Limite de Usuários', desc: 'Limite máximo de usuários por tenant' },
-]
+  {
+    key: "module.cost",
+    label: "Módulo Custos",
+    desc: "Habilitar módulo de Custos",
+  },
+  {
+    key: "module.platform",
+    label: "Módulo Plataforma",
+    desc: "Habilitar módulo de Plataforma",
+  },
+  {
+    key: "module.aiops",
+    label: "Módulo AIOps",
+    desc: "Habilitar módulo AIOps",
+  },
+  {
+    key: "module.audit",
+    label: "Módulo Auditoria",
+    desc: "Habilitar módulo de Auditoria",
+  },
+  {
+    key: "module.iam",
+    label: "Módulo IAM",
+    desc: "Habilitar módulo IAM (identidade, papéis, permissões)",
+  },
+  {
+    key: "feature.what-if-cost",
+    label: "What-if Custos",
+    desc: "Cenários what-if de custos",
+  },
+  {
+    key: "feature.preview-workflow",
+    label: "Preview Workflow",
+    desc: "Preview de deploy workflow",
+  },
+  {
+    key: "config.max-users",
+    label: "Limite de Usuários",
+    desc: "Limite máximo de usuários por tenant",
+  },
+];
 
 export function FeatureFlagsPage() {
-  const { featureFlags, refreshFlags, flagsLoaded, flagsLoading } = useUiStore()
-  const { user } = useAuthStore()
-  const [localFlags, setLocalFlags] = useState<FeatureFlagDTO[]>([])
-  const [toggling, setToggling] = useState<Record<string, boolean>>({})
-  const [searchQuery, setSearchQuery] = useState('')
-  const [editingConfig, setEditingConfig] = useState<string | null>(null)
-  const [configValue, setConfigValue] = useState('')
+  const { featureFlags, refreshFlags, flagsLoaded, flagsLoading } =
+    useUiStore();
+  const { user } = useAuthStore();
+  const [localFlags, setLocalFlags] = useState<FeatureFlagDTO[]>([]);
+  const [toggling, setToggling] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [editingConfig, setEditingConfig] = useState<string | null>(null);
+  const [configValue, setConfigValue] = useState("");
 
-  const isAdmin = user?.roles?.includes('admin') ?? false
+  const isAdmin = user?.roles?.includes("admin") ?? false;
 
   const loadFlags = useCallback(async () => {
     try {
-      const flags = await featureFlagsApi.listFlags()
-      setLocalFlags(flags)
+      const flags = await featureFlagsApi.listFlags();
+      setLocalFlags(flags);
     } catch {
       // uiStore already has flags, use those
-      setLocalFlags(Object.values(featureFlags))
+      setLocalFlags(Object.values(featureFlags));
     }
-  }, [featureFlags])
+  }, [featureFlags]);
 
   useEffect(() => {
     if (flagsLoaded) {
-      setLocalFlags(Object.values(featureFlags))
+      setLocalFlags(Object.values(featureFlags));
     } else {
-      loadFlags()
+      loadFlags();
     }
-  }, [flagsLoaded, featureFlags, loadFlags])
+  }, [flagsLoaded, featureFlags, loadFlags]);
 
   const handleToggle = async (flag: FeatureFlagDTO) => {
-    if (!isAdmin) return
-    setToggling((prev) => ({ ...prev, [flag.id]: true }))
+    if (!isAdmin) return;
+    setToggling((prev) => ({ ...prev, [flag.id]: true }));
     try {
       const updated = await featureFlagsApi.updateFlag(flag.id, {
         enabled: !flag.enabled,
-      })
+      });
       setLocalFlags((prev) =>
-        prev.map((f) => (f.id === flag.id ? updated : f))
-      )
-      await refreshFlags()
-      showSuccess(flag.enabled ? `Flag "${flag.flagKey}" desabilitada` : `Flag "${flag.flagKey}" habilitada`)
+        prev.map((f) => (f.id === flag.id ? updated : f)),
+      );
+      await refreshFlags();
+      showSuccess(
+        flag.enabled
+          ? `Flag "${flag.flagKey}" desabilitada`
+          : `Flag "${flag.flagKey}" habilitada`,
+      );
     } catch (err: any) {
-      showError(err?.message || 'Erro ao alterar flag')
+      showError(err?.message || "Erro ao alterar flag");
     } finally {
-      setToggling((prev) => ({ ...prev, [flag.id]: false }))
+      setToggling((prev) => ({ ...prev, [flag.id]: false }));
     }
-  }
+  };
 
   const handleUpdateConfig = async (flag: FeatureFlagDTO) => {
-    if (!isAdmin) return
+    if (!isAdmin) return;
     try {
-      const req: UpdateFlagRequest = { valueJson: configValue }
-      const updated = await featureFlagsApi.updateFlag(flag.id, req)
+      const req: UpdateFlagRequest = { valueJson: configValue };
+      const updated = await featureFlagsApi.updateFlag(flag.id, req);
       setLocalFlags((prev) =>
-        prev.map((f) => (f.id === flag.id ? updated : f))
-      )
-      await refreshFlags()
-      setEditingConfig(null)
-      showSuccess(`Config da flag "${flag.flagKey}" atualizada`)
+        prev.map((f) => (f.id === flag.id ? updated : f)),
+      );
+      await refreshFlags();
+      setEditingConfig(null);
+      showSuccess(`Config da flag "${flag.flagKey}" atualizada`);
     } catch (err: any) {
-      showError(err?.message || 'Erro ao atualizar config')
+      showError(err?.message || "Erro ao atualizar config");
     }
-  }
+  };
 
   const handleRefresh = async () => {
     try {
-      await refreshFlags()
-      await loadFlags()
-      showSuccess('Cache de flags recarregado')
+      await refreshFlags();
+      await loadFlags();
+      showSuccess("Cache de flags recarregado");
     } catch {
-      showError('Erro ao recarregar cache')
+      showError("Erro ao recarregar cache");
     }
-  }
+  };
 
   const filteredFlags = localFlags.filter((f) => {
-    if (!searchQuery) return true
-    const q = searchQuery.toLowerCase()
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
     return (
       f.flagKey.toLowerCase().includes(q) ||
-      (f.description ?? '').toLowerCase().includes(q)
-    )
-  })
+      (f.description ?? "").toLowerCase().includes(q)
+    );
+  });
 
   // Group flags by prefix
-  const groupedFlags: Record<string, FeatureFlagDTO[]> = {}
+  const groupedFlags: Record<string, FeatureFlagDTO[]> = {};
   for (const flag of filteredFlags) {
-    const group = flag.flagKey.startsWith('module.')
-      ? 'Módulos'
-      : flag.flagKey.startsWith('feature.')
-        ? 'Funcionalidades'
-        : 'Configurações'
-    if (!groupedFlags[group]) groupedFlags[group] = []
-    groupedFlags[group].push(flag)
+    const group = flag.flagKey.startsWith("module.")
+      ? "Módulos"
+      : flag.flagKey.startsWith("feature.")
+        ? "Funcionalidades"
+        : "Configurações";
+    if (!groupedFlags[group]) groupedFlags[group] = [];
+    groupedFlags[group].push(flag);
   }
 
   return (
@@ -132,7 +173,9 @@ export function FeatureFlagsPage() {
               <Flag className="w-4 h-4 text-brand-lime" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-brand-navy">Feature Flags</h1>
+              <h1 className="text-lg font-bold text-brand-navy">
+                Feature Flags
+              </h1>
               <p className="text-xs text-slate-500">
                 Gerencie flags de funcionalidades por tenant (ADR-032)
               </p>
@@ -143,7 +186,9 @@ export function FeatureFlagsPage() {
             disabled={flagsLoading}
             className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-bold bg-ice-blue/60 text-brand-navy hover:bg-ice-blue border border-brand-navy/10 transition-all disabled:opacity-50"
           >
-            <RefreshCw className={cn('w-3.5 h-3.5', flagsLoading && 'animate-spin')} />
+            <RefreshCw
+              className={cn("w-3.5 h-3.5", flagsLoading && "animate-spin")}
+            />
             Recarregar
           </button>
         </div>
@@ -158,7 +203,7 @@ export function FeatureFlagsPage() {
           />
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => setSearchQuery("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
               <X className="w-3.5 h-3.5" />
@@ -213,7 +258,9 @@ export function FeatureFlagsPage() {
                           )}
                         </div>
                         {flag.description && (
-                          <p className="text-xs text-slate-500">{flag.description}</p>
+                          <p className="text-xs text-slate-500">
+                            {flag.description}
+                          </p>
                         )}
                         <div className="flex items-center gap-3 mt-1.5">
                           {flag.tenantId ? (
@@ -228,13 +275,15 @@ export function FeatureFlagsPage() {
                           {flag.valueJson && (
                             <button
                               onClick={() => {
-                                setEditingConfig(editingConfig === flag.id ? null : flag.id)
-                                setConfigValue(flag.valueJson ?? '')
+                                setEditingConfig(
+                                  editingConfig === flag.id ? null : flag.id,
+                                );
+                                setConfigValue(flag.valueJson ?? "");
                               }}
                               className="text-[10px] font-medium text-ice-blue-600 hover:text-brand-navy transition-colors"
                               disabled={!isAdmin}
                             >
-                              {editingConfig === flag.id ? 'Fechar' : 'Config'}
+                              {editingConfig === flag.id ? "Fechar" : "Config"}
                             </button>
                           )}
                         </div>
@@ -246,10 +295,10 @@ export function FeatureFlagsPage() {
                             onClick={() => handleToggle(flag)}
                             disabled={toggling[flag.id]}
                             className={cn(
-                              'inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-bold border transition-all disabled:opacity-50',
+                              "inline-flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-bold border transition-all disabled:opacity-50",
                               flag.enabled
-                                ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
-                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                                ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100",
                             )}
                           >
                             {toggling[flag.id] ? (
@@ -259,15 +308,15 @@ export function FeatureFlagsPage() {
                             ) : (
                               <ToggleLeft className="w-3.5 h-3.5" />
                             )}
-                            {flag.enabled ? 'Ativo' : 'Inativo'}
+                            {flag.enabled ? "Ativo" : "Inativo"}
                           </button>
                         ) : (
                           <span
                             className={cn(
-                              'inline-flex items-center gap-1 px-2 h-6 rounded-full text-[10px] font-semibold',
+                              "inline-flex items-center gap-1 px-2 h-6 rounded-full text-[10px] font-semibold",
                               flag.enabled
-                                ? 'bg-green-50 text-green-700'
-                                : 'bg-slate-100 text-slate-500'
+                                ? "bg-green-50 text-green-700"
+                                : "bg-slate-100 text-slate-500",
                             )}
                           >
                             {flag.enabled ? (
@@ -275,7 +324,7 @@ export function FeatureFlagsPage() {
                             ) : (
                               <X className="w-3 h-3" />
                             )}
-                            {flag.enabled ? 'Ativo' : 'Inativo'}
+                            {flag.enabled ? "Ativo" : "Inativo"}
                           </span>
                         )}
                       </div>
@@ -311,5 +360,5 @@ export function FeatureFlagsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

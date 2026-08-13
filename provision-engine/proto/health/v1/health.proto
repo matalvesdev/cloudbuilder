@@ -1,0 +1,58 @@
+syntax = "proto3";
+package health.v1;
+option go_package = "github.com/cloudbuilder/provision-engine/proto/health/v1";
+
+// Health check service following gRPC health checking protocol.
+service HealthService {
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  ServingStatus status = 1;
+}
+
+enum ServingStatus {
+  UNKNOWN = 0;
+  SERVING = 1;
+  NOT_SERVING = 2;
+  SERVICE_UNKNOWN = 3;
+}
+
+// Readiness checks — verifies the service is ready to accept traffic.
+service ReadinessService {
+  rpc Check(ReadinessCheckRequest) returns (ReadinessCheckResponse);
+}
+
+message ReadinessCheckRequest {
+  string service = 1;
+}
+
+message ReadinessCheckResponse {
+  bool ready = 1;
+  map<string, ComponentHealth> components = 2;
+}
+
+message ComponentHealth {
+  string name = 1;
+  bool healthy = 2;
+  string message = 3;
+  int64 latency_ms = 4;
+}
+
+// Liveness checks — verifies the service is alive and should not be restarted.
+service LivenessService {
+  rpc Check(LivenessCheckRequest) returns (LivenessCheckResponse);
+}
+
+message LivenessCheckRequest {
+  string service = 1;
+}
+
+message LivenessCheckResponse {
+  bool alive = 1;
+}

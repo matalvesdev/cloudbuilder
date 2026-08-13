@@ -5,23 +5,31 @@
  * No ID mapping is needed — IDs pass through directly.
  */
 
-export function positionToBackend(pos: { x: number; y: number }): { positionX: number; positionY: number } {
-  return { positionX: pos.x, positionY: pos.y }
+export function positionToBackend(pos: { x: number; y: number }): {
+  positionX: number;
+  positionY: number;
+} {
+  return { positionX: pos.x, positionY: pos.y };
 }
 
-export function positionToFrontend(positionX: number, positionY: number): { x: number; y: number } {
-  return { x: positionX, y: positionY }
+export function positionToFrontend(
+  positionX: number,
+  positionY: number,
+): { x: number; y: number } {
+  return { x: positionX, y: positionY };
 }
 
 export function propertiesToBackend(props: Record<string, unknown>): string {
-  return JSON.stringify(props)
+  return JSON.stringify(props);
 }
 
-export function propertiesToFrontend(props: string | null): Record<string, unknown> {
-  if (!props) return {}
+export function propertiesToFrontend(
+  props: string | null,
+): Record<string, unknown> {
+  if (!props) return {};
   try {
-    return JSON.parse(props)
+    return JSON.parse(props);
   } catch {
-    return {}
+    return {};
   }
 }

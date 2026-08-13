@@ -1,124 +1,171 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
-  FileText, Folder, FolderOpen, Search,
-  Upload, Sparkles, Loader2, ChevronRight,
-  BookOpen, Hash, AlertTriangle,
-  ExternalLink, Save, Edit3, X,
-  Link2, RefreshCw,
-} from 'lucide-react'
-import { useDocsStore, type DocTreeItem, type DocLink } from './docsStore'
-import { fetchDocTree, fetchDocContent, searchDocs, fetchStaleDocs, fetchDocLinks, saveDocContent, generateDocFromCanvas } from '@/api/docs'
-import type { StaleDoc } from './docsStore'
-import { cn } from '@/lib/utils'
-import { showSuccess, showError, showInfo } from '@/lib/toast'
-import { useCanvasStore } from '@/store/canvasStore'
+  FileText,
+  Folder,
+  FolderOpen,
+  Search,
+  Upload,
+  Sparkles,
+  Loader2,
+  ChevronRight,
+  BookOpen,
+  Hash,
+  AlertTriangle,
+  ExternalLink,
+  Save,
+  Edit3,
+  X,
+  Link2,
+  RefreshCw,
+} from "lucide-react";
+import { useDocsStore, type DocTreeItem, type DocLink } from "./docsStore";
+import {
+  fetchDocTree,
+  fetchDocContent,
+  searchDocs,
+  fetchStaleDocs,
+  fetchDocLinks,
+  saveDocContent,
+  generateDocFromCanvas,
+  importDoc,
+  scanDocs,
+} from "@/api/docs";
+import type { StaleDoc } from "./docsStore";
+import { cn } from "@/lib/utils";
+import { showSuccess, showError, showInfo } from "@/lib/toast";
+import { useCanvasStore } from "@/store/canvasStore";
 
 /* ──────────────── Renderer de Markdown Nativo ──────────────── */
 
 function renderMarkdown(md: string): string {
-  if (!md) return ''
+  if (!md) return "";
 
-  let html = md
+  let html = md;
 
   // Code blocks (triple backticks) — must come before inline code
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_match, lang, code) => {
     const escaped = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-    const langClass = lang ? ` class="lang-${lang}"` : ''
-    return `<pre class="code-block"><code${langClass}>${escaped}</code></pre>`
-  })
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const langClass = lang ? ` class="lang-${lang}"` : "";
+    return `<pre class="code-block"><code${langClass}>${escaped}</code></pre>`;
+  });
 
   // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
+  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
 
   // Headers
-  html = html.replace(/^###### (.*$)/gm, '<h6>$1</h6>')
-  html = html.replace(/^##### (.*$)/gm, '<h5>$1</h5>')
-  html = html.replace(/^#### (.*$)/gm, '<h4>$1</h4>')
-  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>')
-  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>')
-  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>')
+  html = html.replace(/^###### (.*$)/gm, "<h6>$1</h6>");
+  html = html.replace(/^##### (.*$)/gm, "<h5>$1</h5>");
+  html = html.replace(/^#### (.*$)/gm, "<h4>$1</h4>");
+  html = html.replace(/^### (.*$)/gm, "<h3>$1</h3>");
+  html = html.replace(/^## (.*$)/gm, "<h2>$1</h2>");
+  html = html.replace(/^# (.*$)/gm, "<h1>$1</h1>");
 
   // Bold + Italic
-  html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
+  html = html.replace(/\*\*\*(.*?)\*\*\*/g, "<strong><em>$1</em></strong>");
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
 
   // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+  html = html.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
 
   // Horizontal rules
-  html = html.replace(/^---$/gm, '<hr />')
+  html = html.replace(/^---$/gm, "<hr />");
 
   // Unordered lists
-  html = html.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>')
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`)
+  html = html.replace(/^\s*[-*]\s+(.*)$/gm, "<li>$1</li>");
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
 
   // Ordered lists
-  html = html.replace(/^\s*\d+\.\s+(.*)$/gm, '<li>$1</li>')
+  html = html.replace(/^\s*\d+\.\s+(.*)$/gm, "<li>$1</li>");
 
   // Tables
   html = html.replace(/\|(.+)\|/g, (_match, content) => {
-    const cells = content.split('|').map((c: string) => c.trim())
-    const isHeader = cells[0] && cells[0].includes('---')
-    if (isHeader) return ''
-    return `<tr>${cells.map((c: string) => `<td>${c}</td>`).join('')}</tr>`
-  })
-  html = html.replace(/(<tr>.*<\/tr>\n?)+/g, (match) => `<table><tbody>${match}</tbody></table>`)
+    const cells = content.split("|").map((c: string) => c.trim());
+    const isHeader = cells[0] && cells[0].includes("---");
+    if (isHeader) return "";
+    return `<tr>${cells.map((c: string) => `<td>${c}</td>`).join("")}</tr>`;
+  });
+  html = html.replace(
+    /(<tr>.*<\/tr>\n?)+/g,
+    (match) => `<table><tbody>${match}</tbody></table>`,
+  );
 
   // Paragraphs (catch-all for remaining text lines)
-  const lines = html.split('\n')
-  const result: string[] = []
-  let inBlock = false
+  const lines = html.split("\n");
+  const result: string[] = [];
+  let inBlock = false;
 
   for (const line of lines) {
-    const trimmed = line.trim()
+    const trimmed = line.trim();
 
     // Skip mermaid code blocks visually (they'll render as plaintext placeholder)
-    if (trimmed.startsWith('```')) {
-      if (inBlock) { inBlock = false; continue }
-      inBlock = trimmed.includes('mermaid')
-      continue
+    if (trimmed.startsWith("```")) {
+      if (inBlock) {
+        inBlock = false;
+        continue;
+      }
+      inBlock = trimmed.includes("mermaid");
+      continue;
     }
-    if (inBlock) continue
+    if (inBlock) continue;
 
     // Skip lines that are already wrapped in block-level tags
-    if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<li') ||
-        trimmed.startsWith('<pre') || trimmed.startsWith('<table') || trimmed.startsWith('<tr') ||
-        trimmed.startsWith('<td') || trimmed.startsWith('<hr') || trimmed.startsWith('<p') ||
-        trimmed.startsWith('<a') || trimmed === '' || trimmed.startsWith('<')) {
-      if (trimmed) result.push(trimmed)
-      continue
+    if (
+      trimmed.startsWith("<h") ||
+      trimmed.startsWith("<ul") ||
+      trimmed.startsWith("<li") ||
+      trimmed.startsWith("<pre") ||
+      trimmed.startsWith("<table") ||
+      trimmed.startsWith("<tr") ||
+      trimmed.startsWith("<td") ||
+      trimmed.startsWith("<hr") ||
+      trimmed.startsWith("<p") ||
+      trimmed.startsWith("<a") ||
+      trimmed === "" ||
+      trimmed.startsWith("<")
+    ) {
+      if (trimmed) result.push(trimmed);
+      continue;
     }
 
-    result.push(`<p>${trimmed}</p>`)
+    result.push(`<p>${trimmed}</p>`);
   }
 
-  return result.join('\n')
+  return result.join("\n");
 }
 
 /* ──────────────── Subcomponents ──────────────── */
 
 function TocSidebar({ content }: { content: string }) {
   const headings = useMemo(() => {
-    const matches = content.match(/^(#{2,4})\s+(.+)$/gm)
-    if (!matches) return []
+    const matches = content.match(/^(#{2,4})\s+(.+)$/gm);
+    if (!matches) return [];
     return matches.map((h) => {
-      const level = h.match(/^(#+)/)?.[1].length || 2
-      const text = h.replace(/^#+\s+/, '').trim()
-      return { level, text, id: text.toLowerCase().replace(/[^a-z0-9]+/g, '-') }
-    })
-  }, [content])
+      const level = h.match(/^(#+)/)?.[1].length || 2;
+      const text = h.replace(/^#+\s+/, "").trim();
+      return {
+        level,
+        text,
+        id: text.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      };
+    });
+  }, [content]);
 
-  if (headings.length === 0) return null
+  if (headings.length === 0) return null;
 
   return (
     <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
       <div className="flex items-center gap-2 mb-3">
         <Hash className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Neste documento</span>
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          Neste documento
+        </span>
       </div>
       <nav className="space-y-1">
         {headings.map((h) => (
@@ -126,12 +173,14 @@ function TocSidebar({ content }: { content: string }) {
             key={h.id}
             href={`#${h.id}`}
             className={cn(
-              'block text-xs text-slate-500 hover:text-brand-navy transition-colors rounded px-2 py-1 hover:bg-white',
-              h.level === 2 ? 'font-medium' : 'pl-6'
+              "block text-xs text-slate-500 hover:text-brand-navy transition-colors rounded px-2 py-1 hover:bg-white",
+              h.level === 2 ? "font-medium" : "pl-6",
             )}
             onClick={(e) => {
-              e.preventDefault()
-              document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' })
+              e.preventDefault();
+              document
+                .getElementById(h.id)
+                ?.scrollIntoView({ behavior: "smooth" });
             }}
           >
             {h.text}
@@ -139,20 +188,29 @@ function TocSidebar({ content }: { content: string }) {
         ))}
       </nav>
     </div>
-  )
+  );
 }
 
-function StaleBanner({ staleDocs, onNavigate }: { staleDocs: StaleDoc[]; onNavigate: (path: string) => void }) {
-  if (staleDocs.length === 0) return null
+function StaleBanner({
+  staleDocs,
+  onNavigate,
+}: {
+  staleDocs: StaleDoc[];
+  onNavigate: (path: string) => void;
+}) {
+  if (staleDocs.length === 0) return null;
 
   return (
     <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
       <div className="flex items-start gap-2.5">
         <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
         <div>
-          <p className="text-xs font-bold text-amber-800">Documentação desatualizada</p>
+          <p className="text-xs font-bold text-amber-800">
+            Documentação desatualizada
+          </p>
           <p className="text-[11px] text-amber-600 mt-0.5">
-            {staleDocs.length} documento(s) não refletem o estado atual do sistema.
+            {staleDocs.length} documento(s) não refletem o estado atual do
+            sistema.
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {staleDocs.map((s) => (
@@ -168,13 +226,13 @@ function StaleBanner({ staleDocs, onNavigate }: { staleDocs: StaleDoc[]; onNavig
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 /* ──────────────── Links Panel ──────────────── */
 
 function DocLinksPanel({ links }: { links: DocLink[] }) {
-  if (links.length === 0) return null
+  if (links.length === 0) return null;
 
   return (
     <div className="mt-6 p-4 bg-ice-blue/20 rounded-xl border border-ice-blue/40">
@@ -190,35 +248,47 @@ function DocLinksPanel({ links }: { links: DocLink[] }) {
             key={link.id}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-white border border-ice-blue/50 text-brand-navy"
           >
-            <span className="uppercase text-[9px] opacity-60">{link.entityType}</span>
+            <span className="uppercase text-[9px] opacity-60">
+              {link.entityType}
+            </span>
             <span>{link.entityId}</span>
           </span>
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 /* ──────────────── Tree Node ──────────────── */
 
 function TreeNode({
-  item, depth, activePath, onSelect, expandedPaths, onToggle,
+  item,
+  depth,
+  activePath,
+  onSelect,
+  expandedPaths,
+  onToggle,
 }: {
-  item: DocTreeItem; depth: number; activePath: string | null
-  onSelect: (path: string) => void
-  expandedPaths: Set<string>; onToggle: (path: string) => void
+  item: DocTreeItem;
+  depth: number;
+  activePath: string | null;
+  onSelect: (path: string) => void;
+  expandedPaths: Set<string>;
+  onToggle: (path: string) => void;
 }) {
-  const isExpanded = expandedPaths.has(item.path)
-  const isActive = activePath === item.path
+  const isExpanded = expandedPaths.has(item.path);
+  const isActive = activePath === item.path;
 
-  if (item.type === 'directory') {
+  if (item.type === "directory") {
     return (
       <div>
         <button
           onClick={() => onToggle(item.path)}
           className={cn(
-            'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all text-left',
-            isExpanded ? 'bg-ice-blue/40 text-brand-navy font-semibold' : 'text-slate-500 hover:text-brand-navy hover:bg-slate-100'
+            "w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all text-left",
+            isExpanded
+              ? "bg-ice-blue/40 text-brand-navy font-semibold"
+              : "text-slate-500 hover:text-brand-navy hover:bg-slate-100",
           )}
           style={{ paddingLeft: `${12 + depth * 16}px` }}
         >
@@ -228,223 +298,243 @@ function TreeNode({
             <Folder className="w-3.5 h-3.5 shrink-0 text-slate-400" />
           )}
           <span className="truncate">{item.name}</span>
-          <ChevronRight className={cn('w-3 h-3 ml-auto shrink-0 transition-transform', isExpanded && 'rotate-90')} />
-        </button>
-        {isExpanded && item.children?.map((child) => (
-          <TreeNode
-            key={child.path}
-            item={child}
-            depth={depth + 1}
-            activePath={activePath}
-            onSelect={onSelect}
-            expandedPaths={expandedPaths}
-            onToggle={onToggle}
+          <ChevronRight
+            className={cn(
+              "w-3 h-3 ml-auto shrink-0 transition-transform",
+              isExpanded && "rotate-90",
+            )}
           />
-        ))}
+        </button>
+        {isExpanded &&
+          item.children?.map((child) => (
+            <TreeNode
+              key={child.path}
+              item={child}
+              depth={depth + 1}
+              activePath={activePath}
+              onSelect={onSelect}
+              expandedPaths={expandedPaths}
+              onToggle={onToggle}
+            />
+          ))}
       </div>
-    )
+    );
   }
 
   return (
     <button
       onClick={() => onSelect(item.path)}
       className={cn(
-        'w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all text-left',
+        "w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all text-left",
         isActive
-          ? 'bg-brand-navy text-white font-semibold shadow-sm'
-          : 'text-slate-500 hover:text-brand-navy hover:bg-slate-100'
+          ? "bg-brand-navy text-white font-semibold shadow-sm"
+          : "text-slate-500 hover:text-brand-navy hover:bg-slate-100",
       )}
       style={{ paddingLeft: `${12 + depth * 16}px` }}
     >
       <FileText className="w-3.5 h-3.5 shrink-0" />
-      <span className="truncate">{item.title || item.name.replace('.md', '')}</span>
+      <span className="truncate">
+        {item.title || item.name.replace(".md", "")}
+      </span>
     </button>
-  )
+  );
 }
 
 /* ──────────────── Main Module ──────────────── */
 
 export function DocsModule() {
-  const { tree, activeDoc, loading, importing, editing, saving, docLinks } = useDocsStore()
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(['docs']))
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<DocTreeItem[]>([])
-  const [staleDocs, setStaleDocs] = useState<StaleDoc[]>([])
-  const [showImportMenu, setShowImportMenu] = useState(false)
-  const [editContent, setEditContent] = useState('')
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { tree, activeDoc, loading, importing, editing, saving, docLinks } =
+    useDocsStore();
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => new Set(["docs"]),
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<DocTreeItem[]>([]);
+  const [staleDocs, setStaleDocs] = useState<StaleDoc[]>([]);
+  const [showImportMenu, setShowImportMenu] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "success" | "error"
+  >("idle");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchTree = useCallback(async () => {
     try {
-      const t = await fetchDocTree()
-      useDocsStore.setState({ tree: t })
+      const t = await fetchDocTree();
+      useDocsStore.setState({ tree: t });
     } catch {
-      useDocsStore.getState().fetchTree()
+      useDocsStore.getState().fetchTree();
     }
-  }, [])
+  }, []);
 
   const openDoc = useCallback(async (path: string) => {
-    useDocsStore.setState({ editing: false })
+    useDocsStore.setState({ editing: false });
     try {
-      const doc = await fetchDocContent(path)
-      useDocsStore.setState({ activeDoc: doc })
-      setEditContent(doc.content)
+      const doc = await fetchDocContent(path);
+      useDocsStore.setState({ activeDoc: doc });
+      setEditContent(doc.content);
     } catch {
-      useDocsStore.getState().fetchDoc(path)
+      useDocsStore.getState().fetchDoc(path);
     }
     // Auto-expand parent directories
-    const parts = path.split('/')
+    const parts = path.split("/");
     for (let i = 1; i <= parts.length; i++) {
-      const parentPath = parts.slice(0, i).join('/')
-      setExpandedPaths((prev) => new Set(prev).add(parentPath))
+      const parentPath = parts.slice(0, i).join("/");
+      setExpandedPaths((prev) => new Set(prev).add(parentPath));
     }
     // Fetch linked resources
     try {
-      const links = await fetchDocLinks(path)
-      useDocsStore.setState({ docLinks: links })
+      const links = await fetchDocLinks(path);
+      useDocsStore.setState({ docLinks: links });
     } catch {
-      useDocsStore.setState({ docLinks: [] })
+      useDocsStore.setState({ docLinks: [] });
     }
-  }, [])
+  }, []);
 
   const handleSearch = useCallback(async (q: string) => {
-    setSearchQuery(q)
+    setSearchQuery(q);
     if (!q.trim()) {
-      setSearchResults([])
-      return
+      setSearchResults([]);
+      return;
     }
     try {
-      const results = await searchDocs(q)
-      setSearchResults(results)
+      const results = await searchDocs(q);
+      setSearchResults(results);
     } catch {
-      setSearchResults([])
+      setSearchResults([]);
     }
-  }, [])
+  }, []);
 
-  const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !file.name.endsWith('.md')) {
-      showError('Apenas arquivos .md são aceitos')
-      return
-    }
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const resp = await fetch('/api/v1/docs/import', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('cloudbuilder-auth-token')}` },
-        body: formData,
-      })
-      if (resp.ok) {
-        showSuccess(`"${file.name}" importado com sucesso`)
-        fetchTree()
-      } else {
-        showError('Falha ao importar arquivo')
+  const handleImport = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !file.name.endsWith(".md")) {
+        showError("Apenas arquivos .md são aceitos");
+        return;
       }
-    } catch {
-      showError('Erro de conexão ao importar')
-    }
-    e.target.value = ''
-  }, [fetchTree])
+      try {
+        const result = await importDoc(file);
+        if (result) {
+          showSuccess(`"${file.name}" importado com sucesso`);
+          fetchTree();
+        } else {
+          showError("Falha ao importar arquivo");
+        }
+      } catch {
+        showError("Erro de conexão ao importar");
+      }
+      e.target.value = "";
+    },
+    [fetchTree],
+  );
 
   const handleScan = useCallback(async () => {
     try {
-      await fetch('/api/v1/docs/scan', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('cloudbuilder-auth-token')}` },
-      })
-      showSuccess('Diretório escaneado com sucesso')
-      fetchTree()
+      await scanDocs();
+      showSuccess("Diretório escaneado com sucesso");
+      fetchTree();
     } catch {
-      showError('Falha ao escanear diretório')
+      showError("Falha ao escanear diretório");
     }
-  }, [fetchTree])
+  }, [fetchTree]);
 
   const handleSave = useCallback(async () => {
-    if (!activeDoc) return
-    setSaveStatus('saving')
+    if (!activeDoc) return;
+    setSaveStatus("saving");
     try {
-      await saveDocContent(activeDoc.path, editContent)
-      useDocsStore.setState({ activeDoc: { ...activeDoc, content: editContent } })
-      setSaveStatus('success')
-      useDocsStore.setState({ editing: false })
-      showSuccess('Documento salvo com sucesso')
+      await saveDocContent(activeDoc.path, editContent);
+      useDocsStore.setState({
+        activeDoc: { ...activeDoc, content: editContent },
+      });
+      setSaveStatus("success");
+      useDocsStore.setState({ editing: false });
+      showSuccess("Documento salvo com sucesso");
     } catch {
-      setSaveStatus('error')
-      showError('Falha ao salvar documento')
+      setSaveStatus("error");
+      showError("Falha ao salvar documento");
     }
-  }, [activeDoc, editContent])
+  }, [activeDoc, editContent]);
 
   const handleToggleEdit = useCallback(() => {
     if (editing) {
       // Cancel editing - revert to original content
-      useDocsStore.setState({ editing: false })
-      if (activeDoc) setEditContent(activeDoc.content)
+      useDocsStore.setState({ editing: false });
+      if (activeDoc) setEditContent(activeDoc.content);
     } else {
-      useDocsStore.setState({ editing: true })
-      if (activeDoc) setEditContent(activeDoc.content)
+      useDocsStore.setState({ editing: true });
+      if (activeDoc) setEditContent(activeDoc.content);
     }
-  }, [editing, activeDoc])
+  }, [editing, activeDoc]);
 
   const handleRefreshLinks = useCallback(async () => {
-    if (!activeDoc) return
+    if (!activeDoc) return;
     try {
-      const links = await fetchDocLinks(activeDoc.path)
-      useDocsStore.setState({ docLinks: links })
+      const links = await fetchDocLinks(activeDoc.path);
+      useDocsStore.setState({ docLinks: links });
     } catch {
-      useDocsStore.setState({ docLinks: [] })
+      useDocsStore.setState({ docLinks: [] });
     }
-  }, [activeDoc])
+  }, [activeDoc]);
 
   const handleGenerateAdr = useCallback(async () => {
-    const { canvasId, canvasName, nodes } = useCanvasStore.getState()
+    const { canvasId, canvasName, nodes } = useCanvasStore.getState();
     if (!canvasId || nodes.length === 0) {
-      showInfo('Crie um design no módulo Design primeiro para gerar um ADR automaticamente.')
-      return
+      showInfo(
+        "Crie um design no módulo Design primeiro para gerar um ADR automaticamente.",
+      );
+      return;
     }
-    const description = `Documentação automática gerada a partir do design "${canvasName}" com ${nodes.length} recursos.`
+    const description = `Documentação automática gerada a partir do design "${canvasName}" com ${nodes.length} recursos.`;
     try {
-      const result = await generateDocFromCanvas(canvasId, canvasName, description)
-      useDocsStore.setState({ activeDoc: result })
-      showSuccess(`ADR gerado com sucesso: "${result.title}"`)
-      fetchTree()
+      const result = await generateDocFromCanvas(
+        canvasId,
+        canvasName,
+        description,
+      );
+      useDocsStore.setState({ activeDoc: result });
+      showSuccess(`ADR gerado com sucesso: "${result.title}"`);
+      fetchTree();
     } catch {
-      showError('Falha ao gerar ADR. Verifique se o backend está disponível.')
+      showError("Falha ao gerar ADR. Verifique se o backend está disponível.");
     }
-  }, [fetchTree])
+  }, [fetchTree]);
 
   useEffect(() => {
-    fetchTree()
-    fetchStaleDocs().then(setStaleDocs).catch(() => {})
-  }, [fetchTree])
+    fetchTree();
+    fetchStaleDocs()
+      .then(setStaleDocs)
+      .catch(() => {});
+  }, [fetchTree]);
 
   useEffect(() => {
     if (editing && textareaRef.current) {
-      textareaRef.current.focus()
+      textareaRef.current.focus();
     }
-  }, [editing])
+  }, [editing]);
 
   // Render doc content with anchors for headings
   const renderedContent = useMemo(() => {
-    if (!activeDoc?.content) return ''
-    const html = renderMarkdown(activeDoc.content)
+    if (!activeDoc?.content) return "";
+    const html = renderMarkdown(activeDoc.content);
 
     // Add IDs to headings for anchor links
     return html.replace(/<h([2-4])>(.*?)<\/h\1>/g, (_match, level, text) => {
-      const id = text.toLowerCase().replace(/<[^>]*>/g, '').replace(/[^a-z0-9]+/g, '-')
-      return `<h${level} id="${id}">${text}</h${level}>`
-    })
-  }, [activeDoc?.content])
+      const id = text
+        .toLowerCase()
+        .replace(/<[^>]*>/g, "")
+        .replace(/[^a-z0-9]+/g, "-");
+      return `<h${level} id="${id}">${text}</h${level}>`;
+    });
+  }, [activeDoc?.content]);
 
   const togglePath = useCallback((path: string) => {
     setExpandedPaths((prev) => {
-      const next = new Set(prev)
-      if (next.has(path)) next.delete(path)
-      else next.add(path)
-      return next
-    })
-  }, [])
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
 
   return (
     <div className="h-full flex bg-white">
@@ -454,7 +544,9 @@ export function DocsModule() {
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center gap-2 mb-3">
             <BookOpen className="w-4 h-4 text-brand-navy" />
-            <h2 className="text-sm font-bold text-brand-navy font-display">Documentação</h2>
+            <h2 className="text-sm font-bold text-brand-navy font-display">
+              Documentação
+            </h2>
           </div>
 
           {/* Search */}
@@ -480,7 +572,11 @@ export function DocsModule() {
               {searchResults.map((r) => (
                 <button
                   key={r.path}
-                  onClick={() => { openDoc(r.path); setSearchQuery(''); setSearchResults([]) }}
+                  onClick={() => {
+                    openDoc(r.path);
+                    setSearchQuery("");
+                    setSearchResults([]);
+                  }}
                   className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-ice-blue/40 hover:text-brand-navy transition-all text-left"
                 >
                   <FileText className="w-3 h-3 shrink-0" />
@@ -489,7 +585,9 @@ export function DocsModule() {
               ))}
             </div>
           ) : searchQuery ? (
-            <p className="text-xs text-slate-400 px-3 py-4 text-center">Nenhum resultado encontrado</p>
+            <p className="text-xs text-slate-400 px-3 py-4 text-center">
+              Nenhum resultado encontrado
+            </p>
           ) : loading && tree.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
@@ -527,15 +625,26 @@ export function DocsModule() {
             </button>
             {showImportMenu && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowImportMenu(false)} />
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowImportMenu(false)}
+                />
                 <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-xl border border-slate-200 shadow-lg z-50 p-1">
                   <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 cursor-pointer transition-colors">
                     <Upload className="w-3.5 h-3.5" />
                     Upload .md
-                    <input type="file" accept=".md" className="hidden" onChange={handleImport} />
+                    <input
+                      type="file"
+                      accept=".md"
+                      className="hidden"
+                      onChange={handleImport}
+                    />
                   </label>
                   <button
-                    onClick={() => { handleScan(); setShowImportMenu(false) }}
+                    onClick={() => {
+                      handleScan();
+                      setShowImportMenu(false);
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-50 transition-colors text-left"
                   >
                     <Folder className="w-3.5 h-3.5" />
@@ -565,13 +674,17 @@ export function DocsModule() {
               <div className="w-14 h-14 rounded-2xl bg-ice-blue/50 flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="w-7 h-7 text-brand-navy" />
               </div>
-              <h2 className="text-lg font-bold text-brand-navy font-display mb-1">Documentação do Sistema</h2>
+              <h2 className="text-lg font-bold text-brand-navy font-display mb-1">
+                Documentação do Sistema
+              </h2>
               <p className="text-sm text-slate-400 mb-6">
-                Selecione um documento na barra lateral para visualizar, ou importe documentação existente.
+                Selecione um documento na barra lateral para visualizar, ou
+                importe documentação existente.
               </p>
               <div className="flex items-center justify-center gap-3 text-xs text-slate-400">
                 <span className="flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" /> {tree.length > 0 ? `${countFiles(tree)} arquivos` : 'Navegue'}
+                  <FileText className="w-3.5 h-3.5" />{" "}
+                  {tree.length > 0 ? `${countFiles(tree)} arquivos` : "Navegue"}
                 </span>
                 <span className="w-1 h-1 rounded-full bg-slate-300" />
                 <span className="flex items-center gap-1.5">
@@ -595,7 +708,13 @@ export function DocsModule() {
                 <p className="text-xs text-slate-400 mt-0.5">
                   {activeDoc.path}
                   {activeDoc.lastModified && (
-                    <> · Última mod: {new Date(activeDoc.lastModified).toLocaleDateString('pt-BR')}</>
+                    <>
+                      {" "}
+                      · Última mod:{" "}
+                      {new Date(activeDoc.lastModified).toLocaleDateString(
+                        "pt-BR",
+                      )}
+                    </>
                   )}
                 </p>
               </div>
@@ -612,10 +731,10 @@ export function DocsModule() {
                     </button>
                     <button
                       onClick={handleSave}
-                      disabled={saveStatus === 'saving'}
+                      disabled={saveStatus === "saving"}
                       className="inline-flex items-center gap-1.5 px-4 h-8 rounded-lg text-xs font-bold bg-brand-lime text-brand-navy hover:bg-brand-lime/90 transition-all shadow-sm disabled:opacity-50"
                     >
-                      {saveStatus === 'saving' ? (
+                      {saveStatus === "saving" ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <Save className="w-3.5 h-3.5" />
@@ -649,7 +768,9 @@ export function DocsModule() {
             ) : editing ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Editar Markdown</span>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Editar Markdown
+                  </span>
                   <span className="text-[10px] text-slate-400">
                     {(editContent.match(/\n/g) || []).length + 1} linhas
                   </span>
@@ -662,7 +783,8 @@ export function DocsModule() {
                   spellCheck={false}
                 />
                 <p className="text-[10px] text-slate-400">
-                  Edite o conteúdo em formato Markdown. Use `Ctrl+S` para salvar.
+                  Edite o conteúdo em formato Markdown. Use `Ctrl+S` para
+                  salvar.
                 </p>
               </div>
             ) : (
@@ -708,14 +830,14 @@ export function DocsModule() {
         )}
       </main>
     </div>
-  )
+  );
 }
 
 function countFiles(items: DocTreeItem[]): number {
-  let count = 0
+  let count = 0;
   for (const item of items) {
-    if (item.type === 'file') count++
-    if (item.children) count += countFiles(item.children)
+    if (item.type === "file") count++;
+    if (item.children) count += countFiles(item.children);
   }
-  return count
+  return count;
 }

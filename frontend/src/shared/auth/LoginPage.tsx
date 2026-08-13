@@ -1,54 +1,70 @@
-import { useState, FormEvent, useCallback } from 'react'
-import { Cloud, Eye, EyeOff, Loader2, AlertCircle, Compass, Github, Globe, Shield, ExternalLink, X, ArrowRight } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-import { useTenantStore } from '@/store/tenantStore'
-import { cn } from '@/lib/utils'
-import { showInfo } from '@/lib/toast'
+import { useState, FormEvent, useCallback } from "react";
+import {
+  Cloud,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
+  Compass,
+  Github,
+  Globe,
+  Shield,
+  ExternalLink,
+  X,
+  ArrowRight,
+} from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { useTenantStore } from "@/store/tenantStore";
+import { cn } from "@/lib/utils";
+import { showInfo } from "@/lib/toast";
 
 interface LoginPageProps {
-  onSwitchToRegister?: () => void
-  onSwitchToForgotPassword?: () => void
+  onSwitchToRegister?: () => void;
+  onSwitchToForgotPassword?: () => void;
 }
 
-export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: LoginPageProps) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [genericSSOpen, setGenericSSOpen] = useState(false)
-  const [customProvider, setCustomProvider] = useState('')
-  const { login, isLoading, error, user } = useAuthStore()
-  const activeProject = useTenantStore((s) => s.getActiveProject())
+export function LoginPage({
+  onSwitchToRegister,
+  onSwitchToForgotPassword,
+}: LoginPageProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [genericSSOpen, setGenericSSOpen] = useState(false);
+  const [customProvider, setCustomProvider] = useState("");
+  const { login, isLoading, error, user } = useAuthStore();
+  const activeProject = useTenantStore((s) => s.getActiveProject());
 
   const handleGoogleSSO = useCallback(() => {
-    const tenantId = user?.tenantId || activeProject?.id || ''
-    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/google`
-  }, [user, activeProject])
+    const tenantId = user?.tenantId || activeProject?.id || "";
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/google`;
+  }, [user, activeProject]);
 
   const handleGitHubSSO = useCallback(() => {
-    const tenantId = user?.tenantId || activeProject?.id || ''
-    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/github`
-  }, [user, activeProject])
+    const tenantId = user?.tenantId || activeProject?.id || "";
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/github`;
+  }, [user, activeProject]);
 
   const handleSamlSSO = useCallback(() => {
-    const tenantId = user?.tenantId || activeProject?.id || ''
-    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/saml`
-  }, [user, activeProject])
+    const tenantId = user?.tenantId || activeProject?.id || "";
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/saml`;
+  }, [user, activeProject]);
 
   const handleGenericSSO = useCallback(() => {
-    if (!customProvider.trim()) return
-    const tenantId = user?.tenantId || activeProject?.id || ''
-    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/${encodeURIComponent(customProvider.trim())}`
-  }, [customProvider, user, activeProject])
+    if (!customProvider.trim()) return;
+    const tenantId = user?.tenantId || activeProject?.id || "";
+    window.location.href = `/api/v1/auth/oauth2/${encodeURIComponent(tenantId)}/${encodeURIComponent(customProvider.trim())}`;
+  }, [customProvider, user, activeProject]);
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!email.trim() || !password.trim()) return
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) return;
     try {
-      await login(email.trim(), password.trim())
+      await login(email.trim(), password.trim());
     } catch {
       // error is set in store
     }
-  }
+  };
 
   return (
     <div className="h-screen w-screen flex bg-slate-50">
@@ -62,9 +78,12 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
           <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-6 ring-1 ring-white/20">
             <Cloud className="h-8 w-8 text-brand-lime" />
           </div>
-          <h1 className="text-3xl font-display font-bold text-white mb-3">CloudBuilder</h1>
+          <h1 className="text-3xl font-display font-bold text-white mb-3">
+            CloudBuilder
+          </h1>
           <p className="text-base text-slate-300 leading-relaxed">
-            Plataforma de engenharia de plataforma — projete, provisione e observe sua infraestrutura em nuvem com design visual.
+            Plataforma de engenharia de plataforma — projete, provisione e
+            observe sua infraestrutura em nuvem com design visual.
           </p>
           <div className="mt-8 flex items-center justify-center gap-6 text-sm text-slate-400">
             <span>Design Visual</span>
@@ -83,13 +102,19 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
             <div className="w-12 h-12 rounded-xl bg-brand-navy flex items-center justify-center mx-auto mb-4">
               <Cloud className="h-6 w-6 text-brand-lime" />
             </div>
-            <h1 className="text-xl font-display font-bold text-brand-navy">CloudBuilder</h1>
+            <h1 className="text-xl font-display font-bold text-brand-navy">
+              CloudBuilder
+            </h1>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
             <div className="mb-6">
-              <h2 className="text-lg font-display font-bold text-brand-navy">Acessar plataforma</h2>
-              <p className="text-sm text-slate-400 mt-1">Faça login para continuar</p>
+              <h2 className="text-lg font-display font-bold text-brand-navy">
+                Acessar plataforma
+              </h2>
+              <p className="text-sm text-slate-400 mt-1">
+                Faça login para continuar
+              </p>
             </div>
 
             {error && (
@@ -121,7 +146,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                 </label>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
@@ -133,7 +158,11 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
                 <div className="flex items-center justify-between mt-1.5">
@@ -158,7 +187,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                     Entrando...
                   </>
                 ) : (
-                  'Entrar'
+                  "Entrar"
                 )}
               </button>
 
@@ -167,7 +196,9 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                   <span className="w-full border-t border-slate-200" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-400 font-medium">Ou continuar com</span>
+                  <span className="bg-white px-2 text-slate-400 font-medium">
+                    Ou continuar com
+                  </span>
                 </div>
               </div>
 
@@ -177,7 +208,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                   onClick={handleGitHubSSO}
                   className={cn(
                     "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
-                    "border border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40"
+                    "border border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40",
                   )}
                 >
                   <Github className="w-4 h-4" />
@@ -188,7 +219,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                   onClick={handleGoogleSSO}
                   className={cn(
                     "flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
-                    "border border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40"
+                    "border border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40",
                   )}
                 >
                   <Globe className="w-4 h-4" />
@@ -200,7 +231,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                 onClick={handleSamlSSO}
                 className={cn(
                   "w-full flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
-                  "border border-dashed border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40"
+                  "border border-dashed border-brand-navy/20 text-brand-navy bg-brand-lime/10 hover:bg-brand-lime/30 hover:border-brand-navy/40",
                 )}
               >
                 <Shield className="w-4 h-4" />
@@ -215,7 +246,9 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                       type="text"
                       value={customProvider}
                       onChange={(e) => setCustomProvider(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleGenericSSO() }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleGenericSSO();
+                      }}
                       placeholder="Nome do provedor (ex: okta, azure)"
                       className="flex-1 h-10 px-3.5 rounded-xl border border-brand-navy/30 text-sm focus:ring-2 focus:ring-brand-navy/20 focus:border-brand-navy outline-none transition-all placeholder:text-slate-300"
                       autoFocus
@@ -230,7 +263,10 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setGenericSSOpen(false); setCustomProvider('') }}
+                      onClick={() => {
+                        setGenericSSOpen(false);
+                        setCustomProvider("");
+                      }}
                       className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
                     >
                       <X className="w-4 h-4" />
@@ -242,7 +278,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
                     onClick={() => setGenericSSOpen(true)}
                     className={cn(
                       "w-full flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-medium transition-all",
-                      "border border-dashed border-brand-navy/20 text-slate-500 bg-transparent hover:bg-slate-50 hover:border-brand-navy/40"
+                      "border border-dashed border-brand-navy/20 text-slate-500 bg-transparent hover:bg-slate-50 hover:border-brand-navy/40",
                     )}
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -254,7 +290,7 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
 
             <div className="mt-4 text-center">
               <span className="text-xs text-slate-400">
-                Não tem uma conta?{' '}
+                Não tem uma conta?{" "}
                 <button
                   type="button"
                   onClick={onSwitchToRegister}
@@ -271,8 +307,8 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
             <button
               type="button"
               onClick={() => {
-                localStorage.setItem('cloudbuilder-tour-seen', 'false')
-                showInfo('Tour guiado será iniciado após o login!')
+                localStorage.setItem("cloudbuilder-tour-seen", "false");
+                showInfo("Tour guiado será iniciado após o login!");
               }}
               className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-brand-navy transition-colors"
               aria-label="Iniciar tour guiado pela plataforma"
@@ -288,5 +324,5 @@ export function LoginPage({ onSwitchToRegister, onSwitchToForgotPassword }: Logi
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,0 +1,97 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Provision Engine — Configuration
+# ═══════════════════════════════════════════════════════════════════════════
+# All values can be overridden by environment variables:
+#   PE_SECTION_KEY → e.g. PE_DATABASE_POSTGRES_HOST
+# ═══════════════════════════════════════════════════════════════════════════
+
+server:
+  http:
+    addr: ":8080"
+    read_timeout: 10s
+    write_timeout: 30s
+    shutdown_timeout: 15s
+  grpc:
+    addr: ":9090"
+    max_concurrent_streams: 100
+    keepalive: 30s
+
+database:
+  postgres:
+    host: localhost
+    port: 5432
+    database: provision_engine
+    username: pe
+    password: pe_secret
+    max_open_conns: 25
+    max_idle_conns: 10
+    max_lifetime: 5m
+    sslmode: disable
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  timeout: 5s
+
+messaging:
+  kafka:
+    brokers:
+      - localhost:9092
+    consumer_group: provision-engine
+    write_timeout: 10s
+    read_timeout: 10s
+    batch_size: 100
+  nats:
+    url: "nats://localhost:4222"
+    enabled: false
+
+engine:
+  workers:
+    concurrency: 4
+    max_concurrent: 10
+  scheduler:
+    poll_interval: 1s
+    lock_ttl: 30s
+  drift:
+    scan_interval: 15m
+  retry:
+    max_attempts: 3
+    backoff: exponential
+    initial_delay: 5s
+    max_delay: 5m
+
+security:
+  jwt:
+    secret: "change-me-in-production"
+    expiry: 24h
+    issuer: "cloudbuilder-provision-engine"
+  rbac:
+    enabled: true
+  vault:
+    address: ""
+    token: ""
+    enabled: false
+
+observability:
+  otel:
+    endpoint: "localhost:4317"
+    service_name: provision-engine
+    enabled: false
+  metrics:
+    port: 9090
+    path: "/metrics"
+  logging:
+    level: info
+    format: console
+
+plugins:
+  directory: "./plugins"
+  sandbox: false
+  timeout: 30s
+
+multi_tenant:
+  enabled: true
+  default_limit: 1000

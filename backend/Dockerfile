@@ -15,12 +15,12 @@ COPY pom.xml ./
 COPY .mvn .mvn
 
 # Download dependencies offline (docker layer cache)
-RUN --mount=type=cache,target=/root/.m2 \
+RUN \
     mvn dependency:go-offline -q
 
 # Copy sources and build
 COPY src src
-RUN --mount=type=cache,target=/root/.m2 \
+RUN \
     mvn package -DskipTests -Dmaven.test.skip=true -q
 
 # ─── Stage 2: Extract Layered JAR ────────────────────────────────────────

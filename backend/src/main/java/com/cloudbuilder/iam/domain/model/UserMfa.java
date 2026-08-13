@@ -1,9 +1,9 @@
 package com.cloudbuilder.iam.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.UUID;
 
 /**
@@ -52,10 +52,12 @@ public class UserMfa {
 
     public String getId() { return id; }
     public String getUserId() { return userId; }
+    @JsonIgnore
     public String getSecret() { return secret; }
     public void setSecret(String secret) { this.secret = secret; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; this.updatedAt = Instant.now(); }
+    @JsonIgnore
     public String getBackupCodes() { return backupCodes; }
     public void setBackupCodes(String backupCodes) { this.backupCodes = backupCodes; }
     public Instant getCreatedAt() { return createdAt; }
@@ -64,10 +66,7 @@ public class UserMfa {
     public void setLastVerifiedAt(Instant lastVerifiedAt) { this.lastVerifiedAt = lastVerifiedAt; }
 
     private static String generateSecret() {
-        SecureRandom random = new SecureRandom();
-        byte[] bytes = new byte[20];
-        random.nextBytes(bytes);
-        return Base64.getEncoder().encodeToString(bytes);
+        return MfaSecretCodec.generate();
     }
 
     private static String generateBackupCodes() {
@@ -78,8 +77,8 @@ public class UserMfa {
             // Generate 8-character alphanumeric backup code
             byte[] codeBytes = new byte[6];
             random.nextBytes(codeBytes);
-            String code = Base64.getEncoder().encodeToString(codeBytes)
-                    .replaceAll("[^A-Za-z0-9]", "").substring(0, 8);
+            String code = java.util.HexFormat.of().formatHex(codeBytes)
+                    .substring(0, 8).toUpperCase();
             codes.append(code);
         }
         return codes.toString();

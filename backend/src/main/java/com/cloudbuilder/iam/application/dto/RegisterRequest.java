@@ -21,5 +21,8 @@ public record RegisterRequest(
 
     @Size(max = 50, message = "Slug muito longo")
     @Pattern(regexp = "^[a-z0-9]([a-z0-9\\-]*[a-z0-9])?$", message = "Slug deve conter apenas letras minúsculas, números e hífens")
-    String tenantSlug
+    String tenantSlug,
+
+    @Pattern(regexp = "^(admin|editor|viewer)$", message = "Patente deve ser admin, editor ou viewer")
+    String role
 ) {}
