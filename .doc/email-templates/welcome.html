@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao CloudBuilder!</title>
+    <style>
+        body { font-family: 'Inter', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background: #0a1128; padding: 40px; text-align: center; }
+        .header h1 { color: #ccff00; margin: 0; font-size: 24px; }
+        .header p { color: #E3E2FD; margin: 10px 0 0; font-size: 14px; }
+        .content { padding: 40px; }
+        .content h2 { color: #0a1128; font-size: 20px; margin-top: 0; }
+        .content p { color: #475569; line-height: 1.6; }
+        .feature { background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #ccff00; }
+        .feature strong { color: #0a1128; }
+        .btn { display: inline-block; background: #ccff00; color: #0a1128; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0; }
+        .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+        .footer a { color: #0a1128; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CloudBuilder</h1>
+            <p>Infraestrutura Cloud. Visual. Inteligente.</p>
+        </div>
+        <div class="content">
+            <h2>Bem-vindo, {{name}}! 🚀</h2>
+            <p>Sua conta foi criada com sucesso. Aqui está o que você pode fazer agora:</p>
+            
+            <div class="feature">
+                <strong>🎯 Criar seu primeiro design</strong>
+                <p>Acesse o Canvas e arraste recursos cloud para criar sua infraestrutura visualmente.</p>
+            </div>
+            
+            <div class="feature">
+                <strong>💰 Monitorar custos</strong>
+                <p>Configure seu provider e comece a rastrear gastos com FinOps integrado.</p>
+            </div>
+            
+            <div class="feature">
+                <strong>📖 Documentação</strong>
+                <p>Acesse nossos tutoriais em docs.cloudbuilder.dev</p>
+            </div>
+            
+            <a href="{{dashboard_url}}" class="btn">Acessar Dashboard</a>
+            
+            <p>Precisa de ajuda? Responda este email ou acesse nosso <a href="https://discord.gg/cloudbuilder">Discord</a>.</p>
+        </div>
+        <div class="footer">
+            <p>© 2026 CloudBuilder. Todos os direitos reservados.</p>
+            <p><a href="{{unsubscribe_url}}">Cancelar inscrição</a></p>
+        </div>
+    </div>
+</body>
+</html>

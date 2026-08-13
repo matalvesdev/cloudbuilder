@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerta de Segurança - CloudBuilder</title>
+    <style>
+        body { font-family: 'Inter', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background: #dc2626; padding: 40px; text-align: center; }
+        .header h1 { color: white; margin: 0; font-size: 24px; }
+        .content { padding: 40px; }
+        .content h2 { color: #0a1128; font-size: 20px; margin-top: 0; }
+        .content p { color: #475569; line-height: 1.6; }
+        .alert { background: #fef2f2; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626; }
+        .info { background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+        .btn { display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0; }
+        .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Alerta de Segurança</h1>
+        </div>
+        <div class="content">
+            <h2>Atividade Suspeita Detectada</h2>
+            <p>Olá {{name}},</p>
+            <p>Detectamos atividade incomum na sua conta:</p>
+            
+            <div class="alert">
+                <strong>⚠️ Detalhes:</strong>
+                <ul>
+                    <li>IP: {{ip}}</li>
+                    <li>Localização: {{location}}</li>
+                    <li>Data: {{timestamp}}</li>
+                </ul>
+            </div>
+            
+            <div class="info">
+                <strong>Se foi você:</strong>
+                <p>Ignore este email. Nenhuma ação necessária.</p>
+            </div>
+            
+            <p><strong>Se NÃO foi você:</strong></p>
+            <ol>
+                <li>Altere sua senha imediatamente</li>
+                <li>Ative autenticação de dois fatores</li>
+                <li>Entre em contato conosco</li>
+            </ol>
+            
+            <a href="{{security_url}}" class="btn">Revisar Segurança</a>
+        </div>
+        <div class="footer">
+            <p>© 2026 CloudBuilder. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

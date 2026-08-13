@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinatura Cancelada - CloudBuilder</title>
+    <style>
+        body { font-family: 'Inter', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { background: #0a1128; padding: 40px; text-align: center; }
+        .header h1 { color: #ccff00; margin: 0; font-size: 24px; }
+        .content { padding: 40px; }
+        .content h2 { color: #0a1128; font-size: 20px; margin-top: 0; }
+        .content p { color: #475569; line-height: 1.6; }
+        .info { background: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6; }
+        .btn { display: inline-block; background: #ccff00; color: #0a1128; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 20px 0; }
+        .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CloudBuilder</h1>
+        </div>
+        <div class="content">
+            <h2>Assinatura Cancelada</h2>
+            <p>Olá {{name}},</p>
+            <p>Sua assinatura foi cancelada com sucesso.</p>
+            
+            <div class="info">
+                <strong>📋 O que acontece agora:</strong>
+                <ul>
+                    <li>Seu acesso permanece até {{end_date}}</li>
+                    <li>Seus dados serão mantidos por 30 dias</li>
+                    <li>Você pode reativar a qualquer momento</li>
+                </ul>
+            </div>
+            
+            <p>Conte-nos o motivo do cancelamento (opcional):</p>
+            <a href="{{feedback_url}}" class="btn">Dar Feedback</a>
+            
+            <p>Se mudar de ideia, estamos aqui para ajudar. Basta acessar sua conta e reativar.</p>
+        </div>
+        <div class="footer">
+            <p>© 2026 CloudBuilder. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
