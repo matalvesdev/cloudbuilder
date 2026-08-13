@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import path from "path"
@@ -8,7 +7,7 @@ import compress from "vite-plugin-compression"
 const isAnalyze = process.env.ANALYZE === "true"
 
 export default defineConfig({
-  base: process.env.CDN_BASE || "/",
+  base: process.env.VITE_BASE_PATH || process.env.CDN_BASE || "/",
   plugins: [
     react(),
     compress({ algorithm: "brotliCompress", ext: ".br", deleteOriginFile: false }),

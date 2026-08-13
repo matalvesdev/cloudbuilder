@@ -1,29 +1,31 @@
 # ═══════════════════════════════════════════════════════════════
-# CloudBuilder — Frontend Deploy (Vercel)
+# CloudBuilder — Deploy to GitHub Pages
 # ═══════════════════════════════════════════════════════════════
-# Deploys the frontend to Vercel on push to main.
-# Preview deployments on PRs.
+# Free hosting for the frontend (landing page + blog)
+# Runs on push to main branch
 # ═══════════════════════════════════════════════════════════════
 
-name: Deploy Frontend
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
       - 'frontend/**'
-      - '.github/workflows/deploy-frontend.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'frontend/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
 
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,19 +51,28 @@ jobs:
       - name: Run tests
         run: npx vitest run --testTimeout=30000
 
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+      - name: Build for GitHub Pages
+        run: npm run build
+        env:
+          VITE_BASE_PATH: /cloudbuilder/
+          VITE_API_URL: https://api.cloudbuilder.dev/api/v1
 
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Build
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './frontend/dist'
 
-      - name: Deploy to Vercel
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-          else
-            vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-          fi
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
