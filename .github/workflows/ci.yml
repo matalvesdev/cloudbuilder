@@ -2,14 +2,14 @@ name: CloudBuilder CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'feature/**', 'hotfix/**']
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 env:
   JAVA_VERSION: '21'
   NODE_VERSION: '22'
-  GO_VERSION: '1.23'
+  GO_VERSION: '1.24'
 
 jobs:
   backend:
@@ -92,7 +92,18 @@ jobs:
           name: go-coverage
           path: provision-engine/coverage.out
 
-  # === Test Pyramid L5: Mutation Testing ===
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          languages: java, javascript
+        continue-on-error: true
+
   mutation-testing:
     name: Mutation Testing (Stryker)
     runs-on: ubuntu-latest
@@ -117,7 +128,6 @@ jobs:
           name: stryker-report
           path: frontend/reports/mutation-report.html
 
-  # === Test Pyramid L8: E2E Playwright ===
   e2e-visual:
     name: E2E + Visual Regression
     runs-on: ubuntu-latest

@@ -43,9 +43,15 @@ temp/
 # Debug scripts
 frontend/debug_*.mjs
 frontend/test-results/
-// session tracking files
-.omo/run-continuation/
-.env.prod
+
+# Terraform
 deploy/terraform-oci/.terraform/
 deploy/terraform-oci/*.tfstate*
 deploy/terraform-oci/*.tfvars
+
+# OPA
+.opencode/
+
+# Session tracking
+.omo/run-continuation/
+.env.prod
