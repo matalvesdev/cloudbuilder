@@ -4,7 +4,7 @@
  */
 
 const PLUNK_API_KEY = import.meta.env.VITE_PLUNK_API_KEY || '';
-const PLUNK_API_URL = 'https://api.useplunk.com/v1';
+const PLUNK_API_URL = 'https://next-api.useplunk.com';
 
 export interface Subscriber {
   email: string;
@@ -30,7 +30,7 @@ export interface NewsletterCampaign {
  */
 export async function subscribe(data: Subscriber): Promise<{ success: boolean; message: string }> {
   try {
-    const response = await fetch(`${PLUNK_API_URL}/subscribers`, {
+    const response = await fetch(`${PLUNK_API_URL}/contacts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -38,6 +38,7 @@ export async function subscribe(data: Subscriber): Promise<{ success: boolean; m
       },
       body: JSON.stringify({
         email: data.email,
+        subscribed: true,
         data: {
           name: data.name,
           source: data.source,
@@ -62,11 +63,17 @@ export async function subscribe(data: Subscriber): Promise<{ success: boolean; m
  */
 export async function unsubscribe(email: string): Promise<{ success: boolean }> {
   try {
-    const response = await fetch(`${PLUNK_API_URL}/subscribers/${encodeURIComponent(email)}`, {
-      method: 'DELETE',
+    // Plunk doesn't have a direct delete endpoint, use track with unsubscribed event
+    const response = await fetch(`${PLUNK_API_URL}/v1/track`, {
+      method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${PLUNK_API_KEY}`,
       },
+      body: JSON.stringify({
+        email: email,
+        event: 'unsubscribed',
+      }),
     });
 
     return { success: response.ok };
@@ -85,7 +92,7 @@ export async function sendTransactionalEmail(params: {
   replyTo?: string;
 }): Promise<boolean> {
   try {
-    const response = await fetch(`${PLUNK_API_URL}/emails`, {
+    const response = await fetch(`${PLUNK_API_URL}/v1/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -95,7 +102,6 @@ export async function sendTransactionalEmail(params: {
         to: params.to,
         subject: params.subject,
         body: params.body,
-        from: 'CloudBuilder <noreply@cloudbuilder.com>',
         replyTo: params.replyTo,
       }),
     });
