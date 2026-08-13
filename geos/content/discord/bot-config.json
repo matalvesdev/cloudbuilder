@@ -1,0 +1,83 @@
+{
+  "name": "CloudBuilder Bot",
+  "description": "Bot oficial da comunidade CloudBuilder",
+  "version": "1.0.0",
+  "prefix": "!",
+  "features": {
+    "welcome": {
+      "enabled": true,
+      "channel": "apresentações",
+      "message": "Bem-vindo ao CloudBuilder Discord! 👋\n\nApresente-se em <#apresentações> e escolha seus interesses em #reaction-roles."
+    },
+    "reaction_roles": {
+      "enabled": true,
+      "channel": "reaction-roles",
+      "roles": {
+        "🛠️": "Platform Engineering",
+        "💰": "FinOps",
+        "☁️": "Multi-Cloud",
+        "🔒": "Security",
+        "📊": "Observability",
+        "🤖": "AIOps"
+      }
+    },
+    "github_notifications": {
+      "enabled": true,
+      "channel": "github",
+      "repos": [
+        "cloudbuilder/cloud-builder"
+      ]
+    },
+    "auto_moderation": {
+      "enabled": true,
+      "rules": {
+        "spam_detection": true,
+        "link_filter": true,
+        "profanity_filter": false,
+        "caps_lock_limit": true
+      }
+    },
+    "analytics": {
+      "enabled": true,
+      "track_messages": true,
+      "track_members": true,
+      "track_channels": true
+    }
+  },
+  "commands": {
+    "help": {
+      "description": "Mostra ajuda",
+      "usage": "!help"
+    },
+    "docs": {
+      "description": "Busca na documentação",
+      "usage": "!docs <query>"
+    },
+    "blog": {
+      "description": "Mostra posts recentes do blog",
+      "usage": "!blog"
+    },
+    "newsletter": {
+      "description": "Link para inscrição na newsletter",
+      "usage": "!newsletter"
+    },
+    "status": {
+      "description": "Status do CloudBuilder",
+      "usage": "!status"
+    },
+    "invite": {
+      "description": "Link de convite do servidor",
+      "usage": "!invite"
+    }
+  },
+  "webhooks": {
+    "github": {
+      "url": "DISCORD_WEBHOOK_URL_GITHUB",
+      "events": ["push", "pull_request", "release"]
+    },
+    "blog": {
+      "url": "DISCORD_WEBHOOK_URL_BLOG",
+      "events": ["new_post"]
+    }
+  }
+}
