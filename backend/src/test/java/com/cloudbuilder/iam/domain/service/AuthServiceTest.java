@@ -23,6 +23,10 @@ class AuthServiceTest {
     private RoleRepository roleRepository;
     private PermissionRepository permissionRepository;
     private PasswordResetTokenRepository passwordResetTokenRepository;
+    private OrganizationRepository organizationRepository;
+    private MembershipRepository membershipRepository;
+    private ProjectRepository projectRepository;
+    private TeamRepository teamRepository;
     private JwtTokenProviderStub jwtTokenProvider;
     private PasswordEncoder passwordEncoder;
 
@@ -36,18 +40,23 @@ class AuthServiceTest {
         roleRepository = mock(RoleRepository.class);
         permissionRepository = mock(PermissionRepository.class);
         passwordResetTokenRepository = mock(PasswordResetTokenRepository.class);
+        organizationRepository = mock(OrganizationRepository.class);
+        membershipRepository = mock(MembershipRepository.class);
+        projectRepository = mock(ProjectRepository.class);
+        teamRepository = mock(TeamRepository.class);
         jwtTokenProvider = new JwtTokenProviderStub();
         passwordEncoder = mock(PasswordEncoder.class);
 
         authService = new AuthService(userRepository, tenantRepository, tenantUserRepository,
                 roleRepository, permissionRepository, passwordResetTokenRepository,
+                organizationRepository, membershipRepository, projectRepository, teamRepository,
                 jwtTokenProvider, passwordEncoder);
     }
 
     @Test
     void register_WithValidData_ShouldCreateTenantAndUser() {
-        var request = new RegisterRequest("user@test.com", "pass123", "Test User",
-                "Test Org", "test-org");
+        var request = new RegisterRequest("Test User", "user@test.com", "Admin@123",
+                "Test Org", "test-org", "admin");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.empty());
         when(tenantRepository.findBySlug(request.tenantSlug())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
@@ -55,6 +64,12 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
         when(tenantUserRepository.save(any(TenantUser.class))).thenAnswer(i -> i.getArgument(0));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded-pass");
+        when(organizationRepository.save(any(Organization.class))).thenAnswer(i -> {
+            var org = i.getArgument(0, Organization.class);
+            // ID is set by the constructor when calling setName/setSlug or similar
+            return org;
+        });
+        when(projectRepository.save(any(Project.class))).thenAnswer(i -> i.getArgument(0));
 
         var result = authService.register(request);
 
@@ -69,8 +84,8 @@ class AuthServiceTest {
 
     @Test
     void register_WithDuplicateEmail_ShouldThrow() {
-        var request = new RegisterRequest("dup@test.com", "pass123", "Dup",
-                "Org", "org");
+        var request = new RegisterRequest("Dup", "dup@test.com", "Admin@123",
+                "Org", "org", "admin");
         when(userRepository.findByEmail(request.email())).thenReturn(Optional.of(new User("dup@test.com", "pass", "Dup")));
 
         var ex = assertThrows(RuntimeException.class, () -> authService.register(request));
@@ -79,8 +94,8 @@ class AuthServiceTest {
 
     @Test
     void register_WithDuplicateSlug_ShouldThrow() {
-        var request = new RegisterRequest("u@test.com", "pass", "U",
-                "Org", "dup-slug");
+        var request = new RegisterRequest("U", "u@test.com", "Admin@123",
+                "Org", "dup-slug", "admin");
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
         when(tenantRepository.findBySlug(request.tenantSlug())).thenReturn(Optional.of(new Tenant()));
 

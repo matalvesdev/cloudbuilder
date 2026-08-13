@@ -1,0 +1,105 @@
+# CloudBuilder — Content Marketing Pipeline
+# Workflow: Research → Knowledge → Brief → Draft → SEO Review → Approval → Publish
+# Rode: geos workflows run cloudbuilder-content-pipeline
+
+workflow:
+  id: cloudbuilder-content-pipeline
+  description: "Pipeline completo de conteúdo para CloudBuilder — de pesquisa a publicação."
+  trigger:
+    kind: cron
+    cron: "0 7 * * 1"  # Toda segunda-feira às 7h
+
+  steps:
+    - id: research
+      type: agent
+      agent: research.run
+      input:
+        question: "tendências de platform engineering e finOps 2026"
+        sources_limit: 10
+        context: "CloudBuilder é uma plataforma de Platform Engineering para empresas LatAm"
+
+    - id: knowledge
+      type: agent
+      agent: knowledge.search
+      input:
+        query: "$ref steps.research.question"
+        limit: 10
+
+    - id: brief
+      type: agent
+      agent: content.brief
+      input:
+        topic: "$ref steps.research.question"
+        brand: "CloudBuilder"
+        tone: "técnico mas acessível"
+        target: "DevOps engineers e Platform leads"
+
+    - id: draft
+      type: agent
+      agent: content.draft
+      input:
+        topic: "$ref steps.brief.topic"
+        format: "blog_post"
+        word_count: 1500
+        include_code_examples: true
+
+    - id: seo_review
+      type: agent
+      agent: seo.audit
+      input:
+        content: "$ref steps.draft.content"
+        target_keywords:
+          - "platform engineering"
+          - "finops"
+          - "terraform visual"
+        check:
+          - "title_tag"
+          - "meta_description"
+          - "heading_structure"
+          - "keyword_density"
+          - "internal_links"
+
+    - id: geo_optimize
+      type: agent
+      agent: content.optimize_geo
+      input:
+        content: "$ref steps.draft.content"
+        strategy:
+          - "Adicionar seção 'O que é Platform Engineering?'"
+          - "Incluir tabela comparativa com concorrentes"
+          - "Adicionar FAQ estruturado"
+          - "Incluir estatísticas e dados verificáveis"
+          - "Adicionar links para documentação técnica"
+
+    - id: approval
+      type: approval
+      approval:
+        mode: required
+        channel: "marketing-review"
+
+    - id: publish
+      type: task
+      task: blog.publish
+      input:
+        title: "$ref steps.draft.title"
+        content: "$ref steps.geo_optimize.content"
+        platform: blog
+        status: draft
+
+    - id: social
+      type: agent
+      agent: social.draft
+      input:
+        title: "$ref steps.draft.title"
+        summary: "$ref steps.draft.summary"
+        platforms:
+          - linkedin
+          - twitter
+
+    - id: schedule
+      type: task
+      task: schedule.record
+      input:
+        title: "$ref steps.draft.title"
+        platform: blog
+        publish_date: "next_week"

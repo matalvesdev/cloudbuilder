@@ -1,0 +1,69 @@
+# CloudBuilder — Daily Intelligence
+# Scan diário de mercado, concorrentes e tendências
+# Rode: geos workflows run cloudbuilder-daily-intelligence
+
+workflow:
+  id: cloudbuilder-daily-intelligence
+  description: "Inteligência diária de mercado para CloudBuilder — concorrentes, tendências, oportunidades."
+  trigger:
+    kind: cron
+    cron: "0 8 * * 1-5"  # Seg-Sex às 8h
+
+  steps:
+    - id: competitor_scan
+      type: agent
+      agent: research.run
+      input:
+        question: "últimas atualizações de Terraform Cloud, Pulumi, Spacelift"
+        sources_limit: 5
+        focus: "novas features, pricing, mudanças de produto"
+
+    - id: trend_scan
+      type: agent
+      agent: research.run
+      input:
+        question: "tendências de platform engineering e finOps"
+        sources_limit: 5
+        focus: "conferências, artigos, open source"
+
+    - id: geo_trends
+      type: agent
+      agent: research.run
+      input:
+        question: "generative engine optimization GEO trends 2026"
+        sources_limit: 5
+        focus: "como otimizar para ChatGPT, Perplexity, AI search"
+
+    - id: knowledge_update
+      type: agent
+      agent: knowledge.ingest
+      input:
+        sources:
+          - "$ref steps.competitor_scan.insights"
+          - "$ref steps.trend_scan.insights"
+          - "$ref steps.geo_trends.insights"
+
+    - id: synthesis
+      type: agent
+      agent: research.synthesize
+      input:
+        sources:
+          - "$ref steps.competitor_scan.insights"
+          - "$ref steps.trend_scan.insights"
+          - "$ref steps.geo_trends.insights"
+        format: "executive_summary"
+
+    - id: content_opportunities
+      type: agent
+      agent: content.ideate
+      input:
+        from: "$ref steps.synthesis.insights"
+        brand: "CloudBuilder"
+        limit: 5
+
+    - id: record
+      type: task
+      task: analytics.record
+      input:
+        type: daily_intelligence
+        data: "$ref steps.synthesis"

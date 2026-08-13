@@ -1,0 +1,116 @@
+# CloudBuilder — GEOs Configuration
+# Growth, Education & Organizational System
+# Para marketing, SEO e growth do CloudBuilder
+
+company:
+  name: CloudBuilder
+  tagline: "Projete, provisione e monitore sua infraestrutura — tudo em um lugar."
+  website: https://cloudbuilder.com
+  industry: Platform Engineering / FinOps / DevOps
+  target_audience:
+    - "Arquitetos de Solução"
+    - "Equipes DevOps/SRE"
+    - "FinOps/Financeiro"
+    - "CTOs/Heads de Platform"
+    - "Empresas em crescimento"
+  competitors:
+    - "Terraform Cloud"
+    - "Pulumi"
+    - "Spacelift"
+    - "Datadog"
+    - "CloudHealth"
+    - "Vercel"
+
+storage:
+  provider: sqlite
+  mode: isolated
+  path: .geos/geos.db
+
+knowledge:
+  rag: true
+  graph: true
+  sources:
+    - path: docs
+      type: markdown
+      description: "Documentação técnica do CloudBuilder"
+    - path: .doc
+      type: markdown
+      description: "Documentação da empresa"
+    - path: geos/knowledge
+      type: markdown
+      description: "Conteúdo de marketing e growth"
+
+agents:
+  research: true
+  content: true
+  seo: true
+  leads: true
+  crm: true
+  social: true
+  email: true
+  analytics: true
+  blog: true
+  campaigns: true
+
+automations:
+  daily_intelligence: true
+  content_pipeline: true
+  seo_audit: true
+  lead_scoring: true
+
+approvals:
+  social_publish: required
+  blog_publish: required
+  newsletter_send: required
+  meeting_invite: required
+  ad_spend: required
+
+features:
+  rag: true
+  graph: true
+  social_publish:
+    enabled: false  # Ativar quando pronto para publicar
+  meeting_scheduler:
+    enabled: false
+    shadow_mode: true
+  email_nurture:
+    enabled: false  # Ativar quando tiver lista
+
+# GEO (Generative Engine Optimization) Config
+geo:
+  # Otimização para motores de busca generativos (ChatGPT, Perplexity, etc.)
+  enabled: true
+  strategy:
+    - "Crear conteúdo técnico autoritativo sobre Platform Engineering"
+    - "Gerar comparações detalhadas com concorrentes"
+    - "Publicar case studies e benchmarks"
+    - "Manter documentação técnica completa e atualizada"
+    - "Criar glossário de termos de Platform Engineering"
+  content_types:
+    - "blog_post"
+    - "technical_guide"
+    - "comparison_page"
+    - "case_study"
+    - "documentation"
+    - "landing_page"
+    - "social_thread"
+  seo_keywords:
+    primary:
+      - "platform engineering"
+      - "finops"
+      - "terraform visual"
+      - "infraestrutura cloud"
+      - "drift detection"
+      - "cost optimization cloud"
+    secondary:
+      - "devops platform"
+      - "internal developer platform"
+      - "cloud cost management"
+      - "infrastructure as code visual"
+      - "multi-cloud management"
+    long_tail:
+      - "como otimizar custos aws"
+      - "terraform visual drag and drop"
+      - "plataforma de engenharia para devs"
+      - "finops para empresas brasileiras"
+      - "gestão de infraestrutura cloud"

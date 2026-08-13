@@ -116,8 +116,10 @@ class OpaPolicyEvaluatorTest {
 
         var result = evaluator.evaluate(rule);
 
-        assertTrue(result.passed());
-        assertTrue(result.message().contains("assumida conforme"));
+        // When OPA is unavailable and config is null, fallback fails closed
+        // (no deterministic rule to evaluate)
+        assertFalse(result.passed());
+        assertTrue(result.message().contains("OPA indisponível") || result.message().contains("fallback"));
     }
 
     @Test

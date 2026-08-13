@@ -1,0 +1,87 @@
+# CloudBuilder — Lead Generation Pipeline
+# Workflow: Identify → Qualify → Nurture → Convert
+# Rode: geos workflows run cloudbuilder-lead-generation
+
+workflow:
+  id: cloudbuilder-lead-generation
+  description: "Pipeline de geração de leads para CloudBuilder — de identificação a conversão."
+  trigger:
+    kind: cron
+    cron: "0 9 * * 1-5"  # Seg-Sex às 9h
+
+  steps:
+    - id: identify
+      type: agent
+      agent: leads.capture
+      input:
+        sources:
+          - "github_stars"
+          - "documentation_visits"
+          - "blog_comments"
+          - "social_mentions"
+        criteria:
+          role: ["devops", "sre", "platform_engineer", "cto", "finops"]
+          company_size: "50-500"
+          tech_stack: ["aws", "azure", "gcp", "terraform", "kubernetes"]
+
+    - id: qualify
+      type: agent
+      agent: leads.qualify
+      input:
+        method: "BANT"
+        scoring:
+          budget: "companies with cloud spend > $10k/mo"
+          authority: "decision makers or influencers"
+          need: "teams struggling with cloud costs or infra complexity"
+          timeline: "actively looking for solutions"
+
+    - id: enrich
+      type: agent
+      agent: leads.enrich
+      input:
+        data:
+          - "company_info"
+          - "tech_stack"
+          - "recent_funding"
+          - "hiring_patterns"
+
+    - id: nurture_sequence
+      type: agent
+      agent: email.sequence
+      input:
+        sequence: "cloudbuilder-welcome"
+        steps:
+          - day: 0
+            template: "welcome"
+            subject: "Bem-vindo ao CloudBuilder"
+          - day: 3
+            template: "education"
+            subject: "O que é Platform Engineering?"
+          - day: 7
+            template: "case_study"
+            subject: "Como a [empresa] reduziu custos em 40%"
+          - day: 14
+            template: "demo_invite"
+            subject: "Veja o CloudBuilder em ação"
+
+    - id: social_engagement
+      type: agent
+      agent: social.engage
+      input:
+        platforms:
+          - linkedin
+          - twitter
+        actions:
+          - "comment_on_relevant_posts"
+          - "share_tech_insights"
+          - "engage_with_competitor_followers"
+
+    - id: record
+      type: task
+      task: analytics.record
+      input:
+        type: lead_generation
+        data:
+          captured: "$ref steps.identify.leads"
+          qualified: "$ref steps.qualify.leads"
+          nurture_started: "$ref steps.nurture_sequence.enrolled"

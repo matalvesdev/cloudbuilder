@@ -39,6 +39,18 @@
 | Datadog       | Infrastructure design, não só monitor |
 | CloudHealth   | FinOps + Design + Provision           |
 
+## GEOs — Growth Engine
+
+O CloudBuilder usa **GEOs** (Growth, Education & Organizational System) como framework de growth engineering:
+
+- **Inteligência**: Scan diário de mercado e concorrentes
+- **Conteúdo**: Pipeline automatizado de criação de conteúdo
+- **SEO/GEO**: Otimização para buscadores tradicionais e generativos
+- **Leads**: Captura, qualificação e nurturing
+- **Social**: Agendamento e engajamento
+
+Documentação completa: `geos-integration.md`
+
 ## Métricas de Marketing
 
 - **MRR**: Monthly Recurring Revenue
@@ -47,3 +59,4 @@
 - **Churn**: Taxa de cancelamento
 - **NPS**: Net Promoter Score
 - **Trial-to-Paid**: Conversão de trial
+- **GEO Share of Voice**: Presença em respostas de AI (ChatGPT, Perplexity)

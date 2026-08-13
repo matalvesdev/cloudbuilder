@@ -54,6 +54,14 @@
 | Backend (Spring Boot)   | 8080 | Dockerfile in ./backend        |
 | Frontend (Vite)         | 3000 | Dockerfile in ./frontend       |
 
+## Growth & Marketing (GEOs)
+
+- **GEOs**: Framework open-source para growth engineering (https://github.com/matalvesdev/geos)
+- **Config**: `geos/geos.yaml`
+- **Workflows**: `geos/workflows/` (content pipeline, daily intelligence, SEO audit, lead gen)
+- **Knowledge**: `geos/knowledge/` (FAQ, comparisons, GEO guide)
+- **Setup**: `cd geos && pip install -e . && geos init --mode brownfield`
+
 ## Git Flow
 
 - `main` — production-ready, always deployable

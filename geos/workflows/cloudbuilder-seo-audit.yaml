@@ -1,0 +1,82 @@
+# CloudBuilder — SEO & GEO Audit
+# Auditoria completa de SEO e Generative Engine Optimization
+# Rode: geos workflows run cloudbuilder-seo-audit
+
+workflow:
+  id: cloudbuilder-seo-audit
+  description: "Auditoria de SEO e GEO para todo o conteúdo do CloudBuilder."
+  trigger:
+    kind: cron
+    cron: "0 6 * * 1"  # Toda segunda às 6h
+
+  steps:
+    - id: scan_content
+      type: agent
+      agent: seo.crawl
+      input:
+        paths:
+          - docs
+          - .doc
+        check:
+          - "broken_links"
+          - "orphan_pages"
+          - "thin_content"
+          - "missing_meta"
+          - "duplicate_content"
+
+    - id: keyword_analysis
+      type: agent
+      agent: seo.keywords
+      input:
+        target_keywords:
+          - "platform engineering"
+          - "finops"
+          - "terraform visual"
+          - "drift detection"
+          - "cloud cost management"
+          - "multi-cloud"
+          - "devops platform"
+        competitors:
+          - "hashicorp.com"
+          - "pulumi.com"
+          - "spacelift.io"
+
+    - id: geo_analysis
+      type: agent
+      agent: seo.geo_audit
+      input:
+        content: "all"
+        checks:
+          - "faq_schema"
+          - "structured_data"
+          - "entity_coverage"
+          - "citation_quality"
+          - "answer_completeness"
+          - "source_attribution"
+
+    - id: competitor_content
+      type: agent
+      agent: research.run
+      input:
+        question: "CloudBuilder vs Terraform Cloud vs Pulumi comparison"
+        sources_limit: 5
+        focus: "content gaps and opportunities"
+
+    - id: recommendations
+      type: agent
+      agent: content.ideate
+      input:
+        from: "$ref steps.geo_analysis.gaps"
+        priority: "high"
+        limit: 10
+
+    - id: report
+      type: task
+      task: analytics.record
+      input:
+        type: seo_audit
+        data:
+          content_health: "$ref steps.scan_content.summary"
+          keyword_gaps: "$ref steps.keyword_analysis.gaps"
+          geo_gaps: "$ref steps.geo_analysis.gaps"
+          recommendations: "$ref steps.recommendations"

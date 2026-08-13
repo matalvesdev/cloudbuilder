@@ -9,6 +9,7 @@ import java.util.*;
 public class JwtTokenProviderStub extends JwtTokenProvider {
 
     private boolean validateTokenResult = true;
+    private boolean isRefreshTokenResult = true;
     private String userId = UUID.randomUUID().toString();
     private final Set<String> roles = new HashSet<>(Set.of("admin"));
     private String tenantId;
@@ -17,6 +18,10 @@ public class JwtTokenProviderStub extends JwtTokenProvider {
 
     public void setValidateTokenResult(boolean result) {
         this.validateTokenResult = result;
+    }
+
+    public void setIsRefreshTokenResult(boolean result) {
+        this.isRefreshTokenResult = result;
     }
 
     public void setUserId(String userId) {
@@ -49,6 +54,11 @@ public class JwtTokenProviderStub extends JwtTokenProvider {
     @Override
     public boolean validateToken(String token) {
         return validateTokenResult;
+    }
+
+    @Override
+    public boolean isRefreshToken(String token) {
+        return isRefreshTokenResult;
     }
 
     @Override
