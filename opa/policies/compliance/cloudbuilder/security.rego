@@ -24,7 +24,7 @@ allow if {
     not any_open_ssh(input.inboundRules)
 }
 
-any_open_ssh(rules) := true {
+any_open_ssh(rules) := true if {
     some rule in rules
     rule.cidr == "0.0.0.0/0"
     rule.port == 22

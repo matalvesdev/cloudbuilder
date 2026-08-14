@@ -37,7 +37,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cloudbuilder
       SPRING_DATASOURCE_USERNAME: cloudbuilder
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-cloudbuilder}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       SPRING_FLYWAY_ENABLED: "true"
       JWT_SECRET: "${JWT_SECRET:?ERRO - Defina JWT_SECRET no .env. Gere com openssl rand -base64 64}"
@@ -110,7 +110,7 @@ services:
       PE_DATABASE_POSTGRES_PASSWORD: "${DB_PASSWORD:-cloudbuilder}"
       PE_LOG_LEVEL: "${LOG_LEVEL:-info}"
       PE_LOG_FORMAT: "${LOG_FORMAT:-json}"
-    command: ["api", "--config", "/app/configs/config.yaml"]
+    command: ["api", "--test"]
     ports:
       - "50052:50052"
     depends_on:
@@ -171,7 +171,7 @@ services:
       - frontend-net
 
   opa:
-    image: openpolicyagent/opa:latest
+    image: openpolicyagent/opa:latest-debug
     container_name: cloudbuilder-opa
     command: ["run", "--server", "-b", "/policies"]
     volumes:
@@ -179,7 +179,7 @@ services:
     ports:
       - "8181:8181"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8181/health || exit 1"]
+      test: ["CMD-SHELL", "/opa eval --format=raw 'data.system.health' 2>/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -211,7 +211,7 @@ services:
       frontend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ || exit 1"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:80/ || wget -qO- http://127.0.0.1:80/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
