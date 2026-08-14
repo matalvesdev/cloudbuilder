@@ -129,6 +129,7 @@ func New(cfg *Config) (*App, error) {
 	rest.NewProviderHandler(provRepo).RegisterRoutes(mux)
 	rest.NewDriftHandler(resRepo, stateRepo).RegisterRoutes(mux)
 	rest.NewAuditHandler(auditRepo).RegisterRoutes(mux)
+	rest.NewProvisionHandler("/tmp/cloudbuilder-provision").RegisterRoutes(mux)
 
 	return &App{
 		Config:         cfg,
@@ -194,6 +195,7 @@ func NewTest(cfg *Config) *App {
 	rest.NewProviderHandler(provStore).RegisterRoutes(mux)
 	rest.NewDriftHandler(resStore, stateStore).RegisterRoutes(mux)
 	rest.NewAuditHandler(auditStore).RegisterRoutes(mux)
+	rest.NewProvisionHandler("/tmp/cloudbuilder-provision-test").RegisterRoutes(mux)
 
 	return &App{
 		Config:         cfg,

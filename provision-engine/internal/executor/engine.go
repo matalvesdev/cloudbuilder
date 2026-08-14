@@ -18,6 +18,7 @@ type Executor struct {
 	engine     EngineType
 	workDir    string
 	binaryPath string
+	envVars    []string
 }
 
 type ExecutionResult struct {
@@ -82,6 +83,7 @@ func (e *Executor) WorkspaceSelect(ctx context.Context, name string) (*Execution
 func (e *Executor) run(ctx context.Context, args ...string) (*ExecutionResult, error) {
 	cmd := exec.CommandContext(ctx, e.binaryPath, args...)
 	cmd.Dir = e.workDir
+	cmd.Env = append(cmd.Env, e.envVars...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -107,6 +109,11 @@ func (e *Executor) run(ctx context.Context, args ...string) (*ExecutionResult, e
 		Stderr:   stderr.String(),
 		ExitCode: exitCode,
 	}, nil
+}
+
+// SetEnv sets additional environment variables for all terraform commands.
+func (e *Executor) SetEnv(vars []string) {
+	e.envVars = append(e.envVars, vars...)
 }
 
 func (e *Executor) GetEngine() EngineType { return e.engine }
