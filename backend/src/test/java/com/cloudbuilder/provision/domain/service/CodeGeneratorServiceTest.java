@@ -255,10 +255,12 @@ class CodeGeneratorServiceTest {
         var template = "resource \"aws_vpc\" \"{{id}}\" {\n  cidr_block = \"{{cidr_block}}\"\n}\n";
         var props = Map.of("cidr_block", "10.0.0.0/16");
 
-        var result = CodeGeneratorService.renderTemplate(template, props);
+        var result = CodeGeneratorService.renderTemplate(template, props, "my-vpc");
 
         assertTrue(result.contains("10.0.0.0/16"));
+        assertTrue(result.contains("my-vpc"));
         assertFalse(result.contains("{{cidr_block}}"));
+        assertFalse(result.contains("{{id}}"));
     }
 
     @Test
@@ -266,7 +268,7 @@ class CodeGeneratorServiceTest {
         var template = "cidr = \"{{cidr_block}}\"";
         java.util.Map<String, String> props = java.util.Map.of();
 
-        var result = CodeGeneratorService.renderTemplate(template, props);
+        var result = CodeGeneratorService.renderTemplate(template, props, "node-1");
 
         assertEquals("cidr = \"\"", result);
     }
@@ -275,14 +277,14 @@ class CodeGeneratorServiceTest {
     void renderTemplate_WithNoVariables_ShouldReturnAsIs() {
         var template = "resource \"aws_vpc\" \"main\" {}";
 
-        var result = CodeGeneratorService.renderTemplate(template, Map.of());
+        var result = CodeGeneratorService.renderTemplate(template, Map.of(), "node-1");
 
         assertEquals(template, result);
     }
 
     @Test
     void renderTemplate_WithEmptyTemplate_ShouldReturnEmpty() {
-        var result = CodeGeneratorService.renderTemplate("", Map.of("key", "val"));
+        var result = CodeGeneratorService.renderTemplate("", Map.of("key", "val"), "node-1");
 
         assertEquals("", result);
     }

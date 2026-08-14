@@ -3,7 +3,7 @@ package com.cloudbuilder.observe.domain.service;
 import com.cloudbuilder.observe.domain.model.SliSnapshot;
 import com.cloudbuilder.observe.domain.model.SloDefinition;
 import com.cloudbuilder.observe.domain.port.SliSnapshotRepository;
-import com.cloudbuilder.observe.domain.port.SloDefinitionRepository;
+import com.cloudbuilder.observe.domain.port.ObserveSloDefinitionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,14 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Service
+@Service("observeSloService")
 @Transactional
 public class SloService {
 
-    private final SloDefinitionRepository sloDefinitionRepository;
+    private final ObserveSloDefinitionRepository sloDefinitionRepository;
     private final SliSnapshotRepository sliSnapshotRepository;
 
-    public SloService(SloDefinitionRepository sloDefinitionRepository,
+    public SloService(ObserveSloDefinitionRepository sloDefinitionRepository,
                       SliSnapshotRepository sliSnapshotRepository) {
         this.sloDefinitionRepository = sloDefinitionRepository;
         this.sliSnapshotRepository = sliSnapshotRepository;

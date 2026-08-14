@@ -7,6 +7,8 @@ import com.cloudbuilder.aiops.domain.model.PostMortem;
 import com.cloudbuilder.aiops.domain.model.RemediationAction;
 import com.cloudbuilder.aiops.domain.model.Runbook;
 import com.cloudbuilder.aiops.domain.service.AIOpsService;
+import com.cloudbuilder.aiops.domain.service.LogAnalysisService;
+import com.cloudbuilder.aiops.domain.service.MetricsAnomalyService;
 import com.cloudbuilder.aiops.domain.service.PostMortemService;
 import com.cloudbuilder.aiops.domain.service.RemediationService;
 import com.cloudbuilder.aiops.domain.service.RunbookService;
@@ -27,15 +29,21 @@ public class AIOpsController {
     private final RemediationService remediationService;
     private final RunbookService runbookService;
     private final PostMortemService postMortemService;
+    private final MetricsAnomalyService metricsAnomalyService;
+    private final LogAnalysisService logAnalysisService;
 
     public AIOpsController(AIOpsService aiOpsService,
                            RemediationService remediationService,
                            RunbookService runbookService,
-                           PostMortemService postMortemService) {
+                           PostMortemService postMortemService,
+                           MetricsAnomalyService metricsAnomalyService,
+                           LogAnalysisService logAnalysisService) {
         this.aiOpsService = aiOpsService;
         this.remediationService = remediationService;
         this.runbookService = runbookService;
         this.postMortemService = postMortemService;
+        this.metricsAnomalyService = metricsAnomalyService;
+        this.logAnalysisService = logAnalysisService;
     }
 
     /**
@@ -254,6 +262,61 @@ public class AIOpsController {
             request.metricName(), analysis
         ));
     }
+
+    // ── Anomaly Detection endpoints ─────────────────────────────────
+
+    @PostMapping("/anomaly/metrics")
+    public ResponseEntity<MetricsAnomalyService.MetricAnomalyResult> analyzeMetricAnomaly(
+            @RequestBody MetricAnomalyRequest request) {
+        var result = metricsAnomalyService.analyzeMetric(
+            request.tenantId(), request.metricName(),
+            request.windowMinutes() > 0 ? request.windowMinutes() : 60,
+            request.threshold()
+        );
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/anomaly/metrics/batch")
+    public ResponseEntity<List<MetricsAnomalyService.MetricAnomalyResult>> analyzeMultipleMetrics(
+            @RequestBody MetricBatchAnomalyRequest request) {
+        var configs = request.metrics().stream()
+            .map(m -> new MetricsAnomalyService.MetricConfig(m.name(), m.threshold()))
+            .toList();
+        var results = metricsAnomalyService.analyzeMultipleMetrics(
+            request.tenantId(), configs,
+            request.windowMinutes() > 0 ? request.windowMinutes() : 60
+        );
+        return ResponseEntity.ok(results);
+    }
+
+    @PostMapping("/anomaly/logs")
+    public ResponseEntity<LogAnalysisService.LogAnalysisResult> analyzeLogAnomaly(
+            @RequestBody LogAnomalyRequest request) {
+        var result = logAnalysisService.analyzeLogs(
+            request.tenantId(),
+            request.windowMinutes() > 0 ? request.windowMinutes() : 60,
+            request.maxLogs() > 0 ? request.maxLogs() : 200
+        );
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/anomaly/logs/search")
+    public ResponseEntity<LogAnalysisService.LogAnalysisResult> analyzeLogPattern(
+            @RequestBody LogPatternRequest request) {
+        var result = logAnalysisService.analyzeErrorPattern(
+            request.tenantId(), request.query(),
+            request.windowMinutes() > 0 ? request.windowMinutes() : 60,
+            request.maxLogs() > 0 ? request.maxLogs() : 200
+        );
+        return ResponseEntity.ok(result);
+    }
+
+    // Anomaly detection records
+    record MetricAnomalyRequest(String tenantId, String metricName, int windowMinutes, double threshold) {}
+    record MetricConfig(String name, double threshold) {}
+    record MetricBatchAnomalyRequest(String tenantId, List<MetricConfig> metrics, int windowMinutes) {}
+    record LogAnomalyRequest(String tenantId, int windowMinutes, int maxLogs) {}
+    record LogPatternRequest(String tenantId, String query, int windowMinutes, int maxLogs) {}
 
     record ClassifyRequest(String classification) {}
     record RcaRequest(String suggestedRca) {}

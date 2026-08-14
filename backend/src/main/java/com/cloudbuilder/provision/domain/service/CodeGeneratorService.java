@@ -39,7 +39,7 @@ public class CodeGeneratorService {
             if (templateContent == null) {
                 continue;
             }
-            String rendered = renderTemplate(templateContent, node.properties());
+            String rendered = renderTemplate(templateContent, node.properties(), node.id());
             resources.append(rendered).append("\n\n");
             resourceCount++;
 
@@ -60,7 +60,7 @@ public class CodeGeneratorService {
 
         String providerName = (provider != null) ? provider : "aws";
         String providersContent = generateProviders(providerName);
-        String versionsContent = generateVersions(engine);
+        String versionsContent = generateVersionsForProvider(engine, providerName);
 
         if (variableDeclarations.isEmpty()) {
             variableDeclarations.append("# No variables defined\n");
@@ -108,12 +108,16 @@ public class CodeGeneratorService {
         return null;
     }
 
-    static String renderTemplate(String template, Map<String, String> properties) {
+    static String renderTemplate(String template, Map<String, String> properties, String nodeId) {
+        // Merge node ID into properties for {{id}} replacement
+        Map<String, String> merged = new LinkedHashMap<>(properties);
+        merged.putIfAbsent("id", nodeId != null ? nodeId : "");
+        
         StringBuffer result = new StringBuffer();
         Matcher matcher = VARIABLE_PATTERN.matcher(template);
         while (matcher.find()) {
             String varName = matcher.group(1);
-            String replacement = properties.getOrDefault(varName, "");
+            String replacement = merged.getOrDefault(varName, "");
             matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
         }
         matcher.appendTail(result);
@@ -174,31 +178,41 @@ provider "%s" {
     }
 
     private String generateVersions(String engine) {
-        boolean isOpenTofu = "opentofu".equalsIgnoreCase(engine);
-        String requiredVersion = isOpenTofu ? ">= 1.6.0" : ">= 1.6.0";
-        String awsSource = isOpenTofu ? "opentofu/aws" : "hashicorp/aws";
-        String azurermSource = isOpenTofu ? "opentofu/azurerm" : "hashicorp/azurerm";
-        String googleSource = isOpenTofu ? "opentofu/google" : "hashicorp/google";
+        return generateVersionsForProvider(engine, null);
+    }
 
-        return """
-terraform {
-  required_version = "%s"
-  required_providers {
-    aws = {
-      source  = "%s"
-      version = "~> 5.0"
-    }
-    azurerm = {
-      source  = "%s"
-      version = "~> 3.0"
-    }
-    google = {
-      source  = "%s"
-      version = "~> 5.0"
-    }
-  }
-}
-""".formatted(requiredVersion, awsSource, azurermSource, googleSource);
+    private String generateVersionsForProvider(String engine, String provider) {
+        boolean isOpenTofu = "opentofu".equalsIgnoreCase(engine);
+        String requiredVersion = ">= 1.6.0";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("terraform {\n");
+        sb.append("  required_version = \"").append(requiredVersion).append("\"\n");
+        sb.append("  required_providers {\n");
+
+        if (provider == null || provider.equals("aws") || provider.startsWith("aws_")) {
+            String src = isOpenTofu ? "opentofu/aws" : "hashicorp/aws";
+            sb.append("    aws = {\n");
+            sb.append("      source  = \"").append(src).append("\"\n");
+            sb.append("      version = \"~> 5.0\"\n");
+            sb.append("    }\n");
+        }
+        if (provider == null || provider.equals("azurerm") || provider.startsWith("azurerm_")) {
+            String src = isOpenTofu ? "opentofu/azurerm" : "hashicorp/azurerm";
+            sb.append("    azurerm = {\n");
+            sb.append("      source  = \"").append(src).append("\"\n");
+            sb.append("      version = \"~> 3.0\"\n");
+            sb.append("    }\n");
+        }
+        if (provider == null || provider.equals("google") || provider.startsWith("google_")) {
+            String src = isOpenTofu ? "opentofu/google" : "hashicorp/google";
+            sb.append("    google = {\n");
+            sb.append("      source  = \"").append(src).append("\"\n");
+            sb.append("      version = \"~> 5.0\"\n");
+            sb.append("    }\n");
+        }
+        sb.append("  }\n}\n");
+        return sb.toString();
     }
 
     private void initBuiltInTemplates() {
@@ -530,40 +544,78 @@ resource "google_compute_network" "{{id}}" {
             )
         ));
 
+        builtInTemplates.put("google_compute_subnetwork", new BuiltInTemplate(
+            """
+resource "google_compute_subnetwork" "{{id}}" {
+  name          = "{{name}}"
+  network       = "{{network}}"
+  ip_cidr_range = "{{ipCidrRange}}"
+  region        = "{{region}}"
+  project       = var.gcp_project_id
+}
+""",
+            List.of(
+                // Reuse gcp_project_id and gcp_region from google_compute_network
+            ),
+            List.of(
+                new OutputDef("subnet_id", "The subnet ID", "google_compute_subnetwork.{{id}}.id"),
+                new OutputDef("subnet_name", "The subnet name", "google_compute_subnetwork.{{id}}.name"),
+                new OutputDef("subnet_self_link", "The subnet self link", "google_compute_subnetwork.{{id}}.self_link")
+            )
+        ));
+
         builtInTemplates.put("google_compute_instance", new BuiltInTemplate(
             """
 resource "google_compute_instance" "{{id}}" {
   name         = "{{name}}"
-  machine_type = "{{machine_type}}"
+  machine_type = "{{machineType}}"
   zone         = "{{zone}}"
   project      = var.gcp_project_id
   boot_disk {
     initialize_params {
-      image = "{{boot_image}}"
-      size  = {{boot_disk_size}}
+      image = "projects/${var.gcp_project_id}/global/images/family/${{{imageProject}}}-{{imageFamily}}"
     }
   }
   network_interface {
-    network    = google_compute_network.{{network_id}}.self_link
-    subnetwork = google_compute_subnetwork.{{subnetwork_id}}.self_link
+    subnetwork = "{{subnetwork}}"
     access_config {
     }
   }
-  tags = ["{{name}}", "{{environment}}"]
-  metadata = {
-    environment = "{{environment}}"
-  }
+  tags = ["{{name}}"]
 }
 """,
             List.of(
-                new VariableDef("gcp_machine_type", "string", "GCP machine type", "e2-medium"),
-                new VariableDef("gcp_zone", "string", "GCP zone", "us-central1-a"),
-                new VariableDef("gcp_boot_image", "string", "GCP boot image", "ubuntu-os-cloud/ubuntu-2204-lts")
+                // Reuse gcp_project_id from google_compute_network
             ),
             List.of(
                 new OutputDef("instance_id", "The instance ID", "google_compute_instance.{{id}}.id"),
                 new OutputDef("instance_self_link", "The instance self link", "google_compute_instance.{{id}}.self_link"),
                 new OutputDef("instance_nat_ip", "The instance NAT IP", "google_compute_instance.{{id}}.network_interface[0].access_config[0].nat_ip")
+            )
+        ));
+
+        builtInTemplates.put("google_sql_database_instance", new BuiltInTemplate(
+            """
+resource "google_sql_database_instance" "{{id}}" {
+  name             = "{{name}}"
+  database_version = "{{databaseVersion}}"
+  region           = "{{region}}"
+  project          = var.gcp_project_id
+
+  settings {
+    tier = "{{tier}}"
+  }
+
+  deletion_protection = false
+}
+""",
+            List.of(
+                // Reuse gcp_project_id and gcp_region from google_compute_network
+            ),
+            List.of(
+                new OutputDef("sql_instance_id", "The Cloud SQL instance ID", "google_sql_database_instance.{{id}}.id"),
+                new OutputDef("sql_instance_name", "The Cloud SQL instance name", "google_sql_database_instance.{{id}}.name"),
+                new OutputDef("sql_connection_name", "The connection name", "google_sql_database_instance.{{id}}.connection_name")
             )
         ));
     }

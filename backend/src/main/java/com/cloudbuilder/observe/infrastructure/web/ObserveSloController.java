@@ -15,11 +15,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/observe/slos")
 @PreAuthorize("isAuthenticated()")
-public class SloController {
+public class ObserveSloController {
 
     private final SloService sloService;
 
-    public SloController(SloService sloService) {
+    public ObserveSloController(SloService sloService) {
         this.sloService = sloService;
     }
 
