@@ -5,6 +5,7 @@ import com.cloudbuilder.provision.domain.port.ProviderRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -140,17 +141,21 @@ class PropertyMappingServiceTest {
 
     @Test
     void mapProperties_UnknownResourceType_ShouldIncludeFirstFiveRaw() {
-        var raw = Map.of(
-                "id", "res-1",
-                "name", "test",
-                "type", "standard",
-                "region", "us-east-1",
-                "size", "large",
-                "extra", "should-not-appear"
-        );
+        var raw = new LinkedHashMap<String, String>();
+        raw.put("id", "res-1");
+        raw.put("name", "test");
+        raw.put("type", "standard");
+        raw.put("region", "us-east-1");
+        raw.put("size", "large");
+        raw.put("extra", "should-not-appear");
         var result = mappingService.mapProperties("unknown_resource", raw);
         assertEquals(5, result.size());
-        assertTrue(result.containsKey("id") || result.keySet().stream().anyMatch(k -> k.equals("id")));
+        assertTrue(result.containsKey("id"));
+        assertTrue(result.containsKey("name"));
+        assertTrue(result.containsKey("type"));
+        assertTrue(result.containsKey("region"));
+        assertTrue(result.containsKey("size"));
+        assertFalse(result.containsKey("extra"));
     }
 
     @Test
