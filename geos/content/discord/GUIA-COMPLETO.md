@@ -339,7 +339,7 @@ Todo novo membro recebe automaticamente a role @Membro.
 ```bash
 cd geos/content/discord
 set DISCORD_BOT_TOKEN=<seu_token>
-python setup-bot.py --server-id=1530252801052115114
+python setup-bot.py --server-id=1537526878120837132
 ```
 
 ### 7.2 Comandos Disponíveis

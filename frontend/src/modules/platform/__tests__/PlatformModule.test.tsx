@@ -15,6 +15,11 @@ const mockPlatformStore = {
   fetchCatalog: vi.fn(),
   fetchMarketplace: vi.fn(),
   fetchPartners: vi.fn(),
+  versionHistory: [],
+  versionHistoryLoading: false,
+  loadVersionHistory: vi.fn(),
+  publishItem: vi.fn(),
+  unpublishItem: vi.fn(),
 };
 
 const mockCanvasStore = {
@@ -36,6 +41,16 @@ const mockPolicyStore = {
 };
 
 const mockUiStore = {};
+
+vi.mock("@/api/platform", () => ({
+  platformApi: {
+    listCatalog: vi.fn().mockResolvedValue([]),
+    fetchMarketplaceListings: vi.fn().mockResolvedValue([]),
+    fetchPartners: vi.fn().mockResolvedValue([]),
+    activatePartner: vi.fn().mockResolvedValue({}),
+    updatePartnerConfig: vi.fn().mockResolvedValue(undefined),
+  },
+}));
 
 vi.mock("@/store/platformStore", () => ({
   usePlatformStore: vi.fn((selector) =>
