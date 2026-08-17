@@ -1,0 +1,100 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder — Render.com Free Tier Profile
+# ═══════════════════════════════════════════════════════════════════════════
+# Minimal config for Render free tier (512MB RAM, Neon serverless DB)
+# ═══════════════════════════════════════════════════════════════════════════
+
+spring:
+  application:
+    name: cloudbuilder
+  main:
+    allow-bean-definition-overriding: true
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:?DATABASE_URL obrigatorio}
+    username: ${SPRING_DATASOURCE_USERNAME:?}
+    password: ${SPRING_DATASOURCE_PASSWORD:?}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: public
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+  modulith:
+    events:
+      jpa:
+        schema-initialization:
+          enabled: true
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: text/html,text/plain,text/css,application/javascript,application/json
+    min-response-size: 1024
+  error:
+    include-stacktrace: never
+    include-message: never
+
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+    info:
+      enabled: true
+
+cloudbuilder:
+  kafka:
+    enabled: false
+  sso:
+    enabled: false
+  security:
+    jwt-secret: ${JWT_SECRET:?JWT_SECRET obrigatorio}
+    access-token-expiration: 900000
+    refresh-token-expiration: 604800000
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+    h2-console-enabled: false
+    encryption-key: ${CLOUDBUILDER_ENCRYPTION_KEY:?}
+    rate-limit:
+      auth-max-requests: 10
+      auth-window-seconds: 60
+      global-max-requests: 200
+      global-window-seconds: 60
+  ai:
+    llm:
+      provider: rule-based
+  opa:
+    url: ${OPA_URL:}

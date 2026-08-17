@@ -55,9 +55,13 @@ USER cloudbuilder
 
 EXPOSE 8080
 
+# JVM tuning for Render Free Tier (512MB RAM limit)
+# Use -Xmx256m to leave room for OS overhead (512MB total)
+ENV JAVA_OPTS="-Xmx256m -Xms128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
 # Healthcheck (liveness + readiness via Spring Boot Actuator)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 # Use Spring Boot's JarLauncher for extracted layers
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]
