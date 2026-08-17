@@ -33,6 +33,7 @@ import {
   Wrench,
   FileJson,
   PanelRightOpen,
+  Cloud,
 } from "lucide-react";
 
 import { ReactFlowProvider } from "@xyflow/react";
@@ -48,6 +49,8 @@ import { CanvasEventsPanel } from "./components/CanvasEventsPanel";
 import { CanvasConsolePanel } from "./components/CanvasConsolePanel";
 import { CollaborationPanel } from "./components/CollaborationPanel";
 import { ObservabilityPanel } from "./components/ObservabilityPanel";
+import { ProvisionPanel } from "./components/ProvisionPanel";
+import { ProvisionWizard } from "./components/ProvisionWizard";
 import { EmptyCanvasState } from "./components/EmptyCanvasState";
 import { StateFileImportDialog } from "./components/StateFileImportDialog";
 import { MultiFileImportDialog } from "./components/MultiFileImportDialog";
@@ -141,7 +144,16 @@ export function DesignModule() {
   const [showRepoBrowser, setShowRepoBrowser] = useState(false);
   const [showObservability, setShowObservability] = useState(false);
   const [showCostEstimation, setShowCostEstimation] = useState(false);
+  const [showProvision, setShowProvision] = useState(false);
   const [showMetrics, setShowMetrics] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+
+  // Auto-show wizard on first visit (when canvas is empty)
+  useEffect(() => {
+    if (nodes.length === 0 && !localStorage.getItem("cloudbuilder-wizard-seen")) {
+      setShowWizard(true);
+    }
+  }, [nodes.length]);
 
   // ── Shift-left cost: live total from canvas nodes ──────────
   const totalEstimatedCost = useMemo(() => {
@@ -189,6 +201,37 @@ export function DesignModule() {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     };
   }, [nodes, edges]);
+
+  // ── Debounced backend auto-save: persist to server 3s after last change ──
+  const backendAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastBackendSaveRef = useRef<string>("");
+  useEffect(() => {
+    if (nodes.length === 0 && edges.length === 0) return;
+    const tenantId = authUser?.tenantId;
+    const userId = authUser?.id;
+    if (!tenantId || !userId) return;
+    if (backendAutosaveTimerRef.current) clearTimeout(backendAutosaveTimerRef.current);
+    backendAutosaveTimerRef.current = setTimeout(() => {
+      const state = useCanvasStore.getState();
+      // Skip if nothing changed since last save
+      const fingerprint = JSON.stringify({ n: state.nodes.length, e: state.edges.length, v: state.canvasVersion });
+      if (fingerprint === lastBackendSaveRef.current) return;
+      lastBackendSaveRef.current = fingerprint;
+      saveToBackend(tenantId, userId)
+        .then((id) => {
+          if (id && !state.canvasId) {
+            // First save — update canvasId
+            useCanvasStore.getState().setCanvas({ id });
+          }
+        })
+        .catch(() => {
+          /* silent — local save already happened */
+        });
+    }, 3000);
+    return () => {
+      if (backendAutosaveTimerRef.current) clearTimeout(backendAutosaveTimerRef.current);
+    };
+  }, [nodes, edges, authUser?.tenantId, authUser?.id, saveToBackend]);
 
   const selectedCommentNodeId = useCollaborationStore(
     (s) => s.selectedCommentNodeId,
@@ -474,6 +517,8 @@ export function DesignModule() {
     <ObservabilityPanel onClose={() => setShowObservability(false)} />
   ) : showCostEstimation ? (
     <CostEstimationBar onClose={() => setShowCostEstimation(false)} />
+  ) : showProvision ? (
+    <ProvisionPanel onClose={() => setShowProvision(false)} />
   ) : showProperties ? (
     <PropertiesPanel
       node={selectedNode}
@@ -485,8 +530,25 @@ export function DesignModule() {
     "w-[30px] h-[30px] flex items-center justify-center rounded-full text-slate-400 hover:bg-ice-blue hover:text-brand-navy transition-all";
   const tbDivider = "w-px h-[14px] bg-slate-200 mx-1";
 
+  const handleWizardComplete = useCallback(() => {
+    setShowWizard(false);
+    localStorage.setItem("cloudbuilder-wizard-seen", "true");
+  }, []);
+
+  const handleWizardSkip = useCallback(() => {
+    setShowWizard(false);
+    localStorage.setItem("cloudbuilder-wizard-seen", "true");
+  }, []);
+
   return (
     <div className="flex flex-col h-full bg-slate-50 relative">
+      {/* Onboarding Wizard */}
+      {showWizard && (
+        <ProvisionWizard
+          onComplete={handleWizardComplete}
+          onSkip={handleWizardSkip}
+        />
+      )}
       <input
         ref={fileInputRef}
         type="file"
@@ -897,6 +959,7 @@ export function DesignModule() {
                         setShowAIChat(false);
                         setShowCollaboration(false);
                         setShowObservability(false);
+                        setShowProvision(false);
                         if (showCostEstimation) setShowProperties(true);
                       }}
                     >
@@ -905,6 +968,29 @@ export function DesignModule() {
                       {showCostEstimation && (
                         <span className="ml-auto w-2 h-2 rounded-full bg-brand-lime" />
                       )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setShowProvision(!showProvision);
+                        setShowAIChat(false);
+                        setShowCollaboration(false);
+                        setShowObservability(false);
+                        setShowCostEstimation(false);
+                      }}
+                    >
+                      <Cloud className="w-4 h-4 text-brand-navy" />
+                      <span className="font-medium text-brand-navy">Provisionar</span>
+                      {showProvision && (
+                        <span className="ml-auto w-2 h-2 rounded-full bg-brand-lime" />
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => setShowWizard(true)}
+                    >
+                      <Sparkles className="w-4 h-4 text-slate-500" />
+                      <span>Setup Wizard</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

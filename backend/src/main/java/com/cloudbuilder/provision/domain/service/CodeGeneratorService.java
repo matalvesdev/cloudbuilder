@@ -573,7 +573,7 @@ resource "google_compute_instance" "{{id}}" {
   project      = var.gcp_project_id
   boot_disk {
     initialize_params {
-      image = "projects/${var.gcp_project_id}/global/images/family/{{imageProject}}/{{imageFamily}}"
+      image = "{{bootDiskImage}}"
     }
   }
   network_interface {

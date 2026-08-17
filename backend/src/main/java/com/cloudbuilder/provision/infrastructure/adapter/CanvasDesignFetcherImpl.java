@@ -87,7 +87,22 @@ public class CanvasDesignFetcherImpl implements CanvasDesignFetcher {
             return Collections.emptyMap();
         }
         try {
-            return objectMapper.readValue(propertiesJson, new TypeReference<Map<String, String>>() {});
+            // Frontend stores nested JSON: {"label":"...","provider":"...","resourceType":"...","properties":{...}}
+            // We need to extract the inner "properties" object for template rendering
+            Map<String, Object> outer = objectMapper.readValue(propertiesJson, new TypeReference<>() {});
+            Object innerProps = outer.get("properties");
+            if (innerProps instanceof Map<?, ?> innerMap) {
+                // Convert nested properties to flat Map<String, String>
+                Map<String, String> result = new java.util.LinkedHashMap<>();
+                for (Map.Entry<?, ?> entry : innerMap.entrySet()) {
+                    if (entry.getValue() != null) {
+                        result.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+                    }
+                }
+                return result;
+            }
+            // Fallback: try to parse as flat map (legacy format)
+            return objectMapper.readValue(propertiesJson, new TypeReference<>() {});
         } catch (Exception e) {
             return Collections.emptyMap();
         }
