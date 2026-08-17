@@ -134,6 +134,11 @@ output "sql_connection_name" {
 		t.Error("expected positive durationMs")
 	}
 
+	// DeploymentID must always be present and non-empty
+	if resp.DeploymentID == "" {
+		t.Error("DeploymentID must be non-empty")
+	}
+
 	// If terraform is installed and execution succeeded
 	if rec.Code == http.StatusOK {
 		if resp.Status != "PLANNED" && resp.Status != "APPLIED" {

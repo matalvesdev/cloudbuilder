@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cloudbuilder/provision-engine/internal/domain/shared"
 	"github.com/cloudbuilder/provision-engine/internal/executor"
 	"github.com/rs/zerolog/log"
 )
@@ -132,9 +133,10 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 	if planErr != nil {
 		// Plan failed — do NOT attempt apply
 		resp := ProvisionResponse{
-			Status:     "FAILED",
-			Error:      fmt.Sprintf("plan failed: %s", planErr.Error()),
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "FAILED",
+			Error:        fmt.Sprintf("plan failed: %s", planErr.Error()),
+			DurationMs:   time.Since(start).Milliseconds(),
 		}
 		writeJSON(w, http.StatusInternalServerError, resp)
 		return
@@ -150,18 +152,20 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 		applyErr := dm.Apply(context.Background(), applyStatusChan)
 		if applyErr != nil {
 			resp := ProvisionResponse{
-				Status:     "FAILED",
-				Error:      fmt.Sprintf("apply failed: %s", applyErr.Error()),
-				DurationMs: time.Since(start).Milliseconds(),
+				DeploymentID: shared.GenerateID(),
+				Status:       "FAILED",
+				Error:        fmt.Sprintf("apply failed: %s", applyErr.Error()),
+				DurationMs:   time.Since(start).Milliseconds(),
 			}
 			writeJSON(w, http.StatusInternalServerError, resp)
 			return
 		}
 
 		resp := ProvisionResponse{
-			Status:     "APPLIED",
-			Message:    "Terraform applied successfully (auto-approve)",
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "APPLIED",
+			Message:      "Terraform applied successfully (auto-approve)",
+			DurationMs:   time.Since(start).Milliseconds(),
 		}
 		writeJSON(w, http.StatusOK, resp)
 		return
@@ -169,10 +173,11 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 
 	// Plan-only: return plan result
 	resp := ProvisionResponse{
-		Status:     "PLANNED",
-		Message:    "Terraform plan completed. Use /apply to execute.",
-		PlanOutput: planOutput,
-		DurationMs: time.Since(start).Milliseconds(),
+		DeploymentID: shared.GenerateID(),
+		Status:       "PLANNED",
+		Message:      "Terraform plan completed. Use /apply to execute.",
+		PlanOutput:   planOutput,
+		DurationMs:   time.Since(start).Milliseconds(),
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -224,9 +229,10 @@ func (h *ProvisionHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	initResult, err := exec.Init(ctx)
 	if err != nil {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
-			Status:     "INVALID",
-			Error:      fmt.Sprintf("init failed: %s\n%s", err.Error(), initResult.Stderr),
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "INVALID",
+			Error:        fmt.Sprintf("init failed: %s\n%s", err.Error(), initResult.Stderr),
+			DurationMs:   time.Since(start).Milliseconds(),
 		})
 		return
 	}
@@ -235,18 +241,20 @@ func (h *ProvisionHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	validateResult, err := exec.Validate(ctx)
 	if err != nil {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
-			Status:     "INVALID",
-			Error:      fmt.Sprintf("validation failed: %s\n%s", err.Error(), validateResult.Stderr),
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "INVALID",
+			Error:        fmt.Sprintf("validation failed: %s\n%s", err.Error(), validateResult.Stderr),
+			DurationMs:   time.Since(start).Milliseconds(),
 		})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, ProvisionResponse{
-		Status:     "VALID",
-		Message:    "Terraform configuration is valid",
-		PlanOutput: validateResult.Stdout,
-		DurationMs: time.Since(start).Milliseconds(),
+		DeploymentID: shared.GenerateID(),
+		Status:       "VALID",
+		Message:      "Terraform configuration is valid",
+		PlanOutput:   validateResult.Stdout,
+		DurationMs:   time.Since(start).Milliseconds(),
 	})
 }
 
@@ -291,9 +299,10 @@ func (h *ProvisionHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 	// Init first
 	if _, err := exec.Init(ctx); err != nil {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
-			Status:     "FAILED",
-			Error:      "init failed: " + err.Error(),
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "FAILED",
+			Error:        "init failed: " + err.Error(),
+			DurationMs:   time.Since(start).Milliseconds(),
 		})
 		return
 	}
@@ -313,10 +322,11 @@ func (h *ProvisionHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 	destroyResult, _ := exec.Output(ctx)
 
 	writeJSON(w, http.StatusOK, ProvisionResponse{
-		Status:     "DESTROYED",
-		Message:    fmt.Sprintf("Destroy completed: %s", lastStatus.String()),
-		ApplyOutput: destroyResult.Stdout,
-		DurationMs: time.Since(start).Milliseconds(),
+		DeploymentID: shared.GenerateID(),
+		Status:       "DESTROYED",
+		Message:      fmt.Sprintf("Destroy completed: %s", lastStatus.String()),
+		ApplyOutput:  destroyResult.Stdout,
+		DurationMs:   time.Since(start).Milliseconds(),
 	})
 }
 
@@ -375,9 +385,10 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 
 	if err := <-errChan; err != nil {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
-			Status:     "PLAN_FAILED",
-			Error:      err.Error(),
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "PLAN_FAILED",
+			Error:        err.Error(),
+			DurationMs:   time.Since(start).Milliseconds(),
 		})
 		return
 	}
@@ -388,10 +399,11 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 
 	if !apply {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
-			Status:     "PLANNED",
-			Message:    "Plan completed",
-			PlanOutput: planOutput,
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "PLANNED",
+			Message:      "Plan completed",
+			PlanOutput:   planOutput,
+			DurationMs:   time.Since(start).Milliseconds(),
 		})
 		return
 	}
@@ -401,9 +413,10 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 	applyErr := dm.Apply(ctx, applyStatusChan)
 	if applyErr != nil {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
-			Status:     "APPLY_FAILED",
-			Error:      applyErr.Error(),
-			DurationMs: time.Since(start).Milliseconds(),
+			DeploymentID: shared.GenerateID(),
+			Status:       "APPLY_FAILED",
+			Error:        applyErr.Error(),
+			DurationMs:   time.Since(start).Milliseconds(),
 		})
 		return
 	}
@@ -411,10 +424,11 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 	outputResult, _ := exec.Output(ctx)
 
 	writeJSON(w, http.StatusOK, ProvisionResponse{
-		Status:      "APPLIED",
-		Message:     "Apply completed",
-		ApplyOutput: outputResult.Stdout,
-		DurationMs:  time.Since(start).Milliseconds(),
+		DeploymentID: shared.GenerateID(),
+		Status:       "APPLIED",
+		Message:      "Apply completed",
+		ApplyOutput:  outputResult.Stdout,
+		DurationMs:   time.Since(start).Milliseconds(),
 	})
 }
 
