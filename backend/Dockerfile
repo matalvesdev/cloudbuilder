@@ -15,7 +15,7 @@ RUN mvn dependency:go-offline -B || true
 
 # Copy sources and build fat JAR
 COPY src ./src
-RUN mvn package -DskipTests -B -Dmaven.test.skip=true
+RUN mvn clean package -DskipTests -B -Dmaven.test.skip=true
 
 # Verify JAR was created
 RUN ls -la /app/target/*.jar
