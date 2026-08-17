@@ -9,6 +9,7 @@ spring:
     name: cloudbuilder
   main:
     allow-bean-definition-overriding: true
+    lazy-initialization: true
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:?DATABASE_URL obrigatorio}
