@@ -82,8 +82,8 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 		engineType = executor.OpenTofu
 	}
 
-	// Create working directory for this deployment
-	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-%s-*", req.TenantID[:8]))
+	// Create working directory for this deployment (truncate tenantId for dir name)
+	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-%s-*", tenantPrefix(req.TenantID)))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create work directory: "+err.Error())
 		return
@@ -118,87 +118,63 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		errChan <- dm.Execute(context.Background(), statusChan)
+		close(statusChan) // Signal that no more status updates will come
 	}()
 
-	// Collect status updates
-	var planOutput string
-	var lastStatus executor.DeploymentStatus
-	for {
-		select {
-		case status := <-statusChan:
-			lastStatus = status
-			log.Info().Str("status", status.String()).Msg("provision status update")
-		case err := <-errChan:
-			if err != nil {
-				applyErr := dm.Apply(context.Background(), statusChan)
-				if applyErr != nil {
-					resp := ProvisionResponse{
-						Status:     "FAILED",
-						Error:      applyErr.Error(),
-						DurationMs: time.Since(start).Milliseconds(),
-					}
-					writeJSON(w, http.StatusInternalServerError, resp)
-					return
-				}
+	// Drain plan-phase status updates from the closed channel
+	var planStatuses []executor.DeploymentStatus
+	for status := range statusChan {
+		planStatuses = append(planStatuses, status)
+		log.Info().Str("status", status.String()).Msg("provision status update")
+	}
+	planErr := <-errChan
 
-				// Collect remaining status updates
-				for s := range statusChan {
-					lastStatus = s
-				}
+	if planErr != nil {
+		// Plan failed — do NOT attempt apply
+		resp := ProvisionResponse{
+			Status:     "FAILED",
+			Error:      fmt.Sprintf("plan failed: %s", planErr.Error()),
+			DurationMs: time.Since(start).Milliseconds(),
+		}
+		writeJSON(w, http.StatusInternalServerError, resp)
+		return
+	}
 
-				resp := ProvisionResponse{
-					Status:     "APPLIED",
-					Message:    "Terraform applied successfully",
-					DurationMs: time.Since(start).Milliseconds(),
-				}
-				writeJSON(w, http.StatusOK, resp)
-				return
-			}
+	// Capture plan output before apply
+	planOutput := "Plan completed successfully"
+	_ = planStatuses
 
-			// Plan succeeded - collect remaining status
-			for s := range statusChan {
-				lastStatus = s
-			}
-			_ = lastStatus
-			_ = planOutput
-
-			// Auto-approve: proceed to apply
-			if req.AutoApprove {
-				applyErr := dm.Apply(context.Background(), statusChan)
-				if applyErr != nil {
-					resp := ProvisionResponse{
-						Status:     "FAILED",
-						Error:      applyErr.Error(),
-						DurationMs: time.Since(start).Milliseconds(),
-					}
-					writeJSON(w, http.StatusInternalServerError, resp)
-					return
-				}
-
-				for s := range statusChan {
-					lastStatus = s
-				}
-
-				resp := ProvisionResponse{
-					Status:     "APPLIED",
-					Message:    "Terraform applied successfully (auto-approve)",
-					DurationMs: time.Since(start).Milliseconds(),
-				}
-				writeJSON(w, http.StatusOK, resp)
-				return
-			}
-
-			// Plan-only: return plan result
+	// Auto-approve: proceed to apply
+	if req.AutoApprove {
+		applyStatusChan := make(chan executor.DeploymentStatus, 10)
+		applyErr := dm.Apply(context.Background(), applyStatusChan)
+		if applyErr != nil {
 			resp := ProvisionResponse{
-				Status:     "PLANNED",
-				Message:    "Terraform plan completed. Use /apply to execute.",
-				PlanOutput: planOutput,
+				Status:     "FAILED",
+				Error:      fmt.Sprintf("apply failed: %s", applyErr.Error()),
 				DurationMs: time.Since(start).Milliseconds(),
 			}
-			writeJSON(w, http.StatusOK, resp)
+			writeJSON(w, http.StatusInternalServerError, resp)
 			return
 		}
+
+		resp := ProvisionResponse{
+			Status:     "APPLIED",
+			Message:    "Terraform applied successfully (auto-approve)",
+			DurationMs: time.Since(start).Milliseconds(),
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
 	}
+
+	// Plan-only: return plan result
+	resp := ProvisionResponse{
+		Status:     "PLANNED",
+		Message:    "Terraform plan completed. Use /apply to execute.",
+		PlanOutput: planOutput,
+		DurationMs: time.Since(start).Milliseconds(),
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // Plan runs terraform init + plan only (no apply).
@@ -226,7 +202,7 @@ func (h *ProvisionHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		engineType = executor.OpenTofu
 	}
 
-	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-validate-%s-*", req.TenantID[:8]))
+	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-validate-%s-*", tenantPrefix(req.TenantID)))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create work directory: "+err.Error())
 		return
@@ -294,7 +270,7 @@ func (h *ProvisionHandler) Destroy(w http.ResponseWriter, r *http.Request) {
 		engineType = executor.OpenTofu
 	}
 
-	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-destroy-%s-*", req.TenantID[:8]))
+	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-destroy-%s-*", tenantPrefix(req.TenantID)))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create work directory: "+err.Error())
 		return
@@ -364,7 +340,7 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 		engineType = executor.OpenTofu
 	}
 
-	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-plan-%s-*", req.TenantID[:8]))
+	workDir, err := os.MkdirTemp(h.WorkDir, fmt.Sprintf("cb-plan-%s-*", tenantPrefix(req.TenantID)))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create work directory: "+err.Error())
 		return
@@ -388,8 +364,10 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 
 	go func() {
 		errChan <- dm.Execute(ctx, statusChan)
+		close(statusChan)
 	}()
 
+	// Drain all status updates, then wait for error
 	var planOutput string
 	for s := range statusChan {
 		_ = s
@@ -418,8 +396,9 @@ func (h *ProvisionHandler) provisionStep(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Apply
-	applyErr := dm.Apply(ctx, statusChan)
+	// Apply with a fresh channel (statusChan was closed by goroutine)
+	applyStatusChan := make(chan executor.DeploymentStatus, 10)
+	applyErr := dm.Apply(ctx, applyStatusChan)
 	if applyErr != nil {
 		writeJSON(w, http.StatusOK, ProvisionResponse{
 			Status:     "APPLY_FAILED",
@@ -458,6 +437,14 @@ func validateProvisionRequest(req *ProvisionRequest) error {
 		return fmt.Errorf("main.tf is required in files")
 	}
 	return nil
+}
+
+// tenantPrefix returns the first 8 characters of tenantId, or the full string if shorter.
+func tenantPrefix(tenantId string) string {
+	if len(tenantId) > 8 {
+		return tenantId[:8]
+	}
+	return tenantId
 }
 
 // buildEnvVars constructs environment variables from the credential map.

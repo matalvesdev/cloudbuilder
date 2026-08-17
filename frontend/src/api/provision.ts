@@ -79,12 +79,15 @@ export async function executeProvision(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
-        canvas_id: payload.canvasId,
+        canvasId: payload.canvasId,
+        tenantId: "",
+        provider: payload.provider,
         files: payload.files,
-        env_vars: payload.envVars,
+        resourceCount: payload.resourceCount,
+        envVars: payload.envVars,
         engine: payload.engine,
-        auto_approve: payload.autoApprove,
-        dry_run: false,
+        autoApprove: payload.autoApprove,
+        credentialId: payload.credentialId,
       }),
     });
 

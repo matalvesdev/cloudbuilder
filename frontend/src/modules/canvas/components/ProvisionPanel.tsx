@@ -97,12 +97,10 @@ export function ProvisionPanel({ onClose }: ProvisionPanelProps) {
       const execResult = await provisionApi.executeProvision(prepared);
       setResult(execResult);
 
-      if (execResult.status === "APPLIED" || execResult.status === "PLANNED") {
-        // Clear canvas: first save empty state to backend, then clear local
-        const store = useCanvasStore.getState();
+      if (execResult.status === "APPLIED") {
+        // Clear canvas ONLY after successful apply (not on PLANNED)
         const tenantId = authUser?.tenantId;
         const userId = authUser?.id;
-        // Set nodes/edges to empty while keeping canvasId for save
         useCanvasStore.setState({ nodes: [], edges: [], undoStack: [], redoStack: [] });
         if (tenantId && userId) {
           await useCanvasStore.getState().saveToBackend(tenantId, userId).catch(() => {});
@@ -110,6 +108,8 @@ export function ProvisionPanel({ onClose }: ProvisionPanelProps) {
         useCanvasStore.getState().clearCanvas();
         localStorage.removeItem("cloudbuilder-canvas");
         showSuccess("Infraestrutura provisionada! Canvas limpo para nova arquitetura.");
+      } else if (execResult.status === "PLANNED") {
+        showInfo("Terraform plan concluído — revisão necessária antes de aplicar.");
       } else {
         showInfo("Provisionamento concluído — verifique o resultado.");
       }
