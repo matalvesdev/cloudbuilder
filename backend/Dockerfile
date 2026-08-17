@@ -1,67 +1,46 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# CloudBuilder Backend — Dockerfile (Multi-Stage)
-# ═══════════════════════════════════════════════════════════════════════════
-# Stage 1: Build      — maven:3.9-eclipse-temurin-21-alpine
-# Stage 2: JAR Layers — eclipse-temurin:21-jre-alpine (layered extraction)
-# Stage 3: Runtime    — eclipse-temurin:21-jre-alpine (non-root, JRE only)
+# CloudBuilder Backend — Dockerfile (Simplified for Render Free Tier)
 # ═══════════════════════════════════════════════════════════════════════════
 
-# ─── Stage 1: Build with Maven ───────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+# ─── Stage 1: Build ──────────────────────────────────────────────────────
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy dependency descriptors first (layer caching)
-COPY pom.xml ./
-COPY .mvn .mvn
+# Increase Maven memory for constrained build environments
+ENV MAVEN_OPTS="-Xmx512m -Xms256m"
 
-# Download dependencies offline (docker layer cache)
-RUN \
-    mvn dependency:go-offline -q
+# Copy POM first for dependency caching
+COPY pom.xml .
+RUN mvn dependency:go-offline -B -q 2>/dev/null || mvn dependency:resolve -B -q
 
 # Copy sources and build
-COPY src src
-RUN \
-    mvn package -DskipTests -Dmaven.test.skip=true -q
+COPY src ./src
+RUN mvn package -DskipTests -B -q
 
-# ─── Stage 2: Extract Layered JAR ────────────────────────────────────────
-# Spring Boot fat-jar → extracted layers for efficient Docker caching.
-# Dependencies change less often than application code.
-FROM eclipse-temurin:21-jre-alpine AS layers
+# ─── Stage 2: Runtime ────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd -r cloudbuilder && useradd -r -g cloudbuilder cloudbuilder
+
 WORKDIR /app
+
+# Copy the fat JAR
 COPY --from=build /app/target/*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
 
-# ─── Stage 3: Runtime ────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine
-
-# Create non-root user
-RUN addgroup -S cloudbuilder && \
-    adduser -S cloudbuilder -G cloudbuilder -u 1000 && \
-    apk add --no-cache curl
-
-WORKDIR /app
-
-# Create logs directory for Logback file appender (owned by cloudbuilder user)
+# Create logs directory
 RUN mkdir -p /app/logs && chown cloudbuilder:cloudbuilder /app/logs
 
-# Copy extracted layers in dependency order (maximises layer caching)
-COPY --from=layers /app/dependencies/ ./
-COPY --from=layers /app/spring-boot-loader/ ./
-COPY --from=layers /app/snapshot-dependencies/ ./
-COPY --from=layers /app/application/ ./
-
-# Switch to non-root user
+# Switch to non-root
 USER cloudbuilder
 
-# Port controlled by SERVER_PORT env var (default 8080)
+# Port is controlled by PORT env var (Render default: 10000)
 EXPOSE 8080
 
 # JVM tuning for Render Free Tier (512MB RAM limit)
-# Use -Xmx300m to leave room for OS overhead (512MB total)
 ENV JAVA_OPTS="-Xmx300m -Xms200m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:+UseStringDeduplication"
 
-# Healthcheck disabled — Render provides its own health checks
-# HEALTHCHECK is configured via Render dashboard/API
-
-# Use Spring Boot's JarLauncher for extracted layers
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]
+# Run the fat JAR directly (simpler than layered extraction)
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
