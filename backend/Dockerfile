@@ -53,15 +53,15 @@ COPY --from=layers /app/application/ ./
 # Switch to non-root user
 USER cloudbuilder
 
+# Port controlled by SERVER_PORT env var (default 8080)
 EXPOSE 8080
 
 # JVM tuning for Render Free Tier (512MB RAM limit)
-# Use -Xmx256m to leave room for OS overhead (512MB total)
-ENV JAVA_OPTS="-Xmx256m -Xms128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+# Use -Xmx300m to leave room for OS overhead (512MB total)
+ENV JAVA_OPTS="-Xmx300m -Xms200m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:+UseStringDeduplication"
 
-# Healthcheck (liveness + readiness via Spring Boot Actuator)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8080/actuator/health || exit 1
+# Healthcheck disabled — Render provides its own health checks
+# HEALTHCHECK is configured via Render dashboard/API
 
 # Use Spring Boot's JarLauncher for extracted layers
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]

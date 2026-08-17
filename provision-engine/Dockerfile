@@ -40,26 +40,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-s -w" \
     -o /app/collab ./cmd/provision-engine/
 
-# ─── Stage 2: API Runtime ────────────────────────────────────────────────
-FROM alpine:3.21 AS api-runtime
-
-RUN apk add --no-cache ca-certificates tzdata curl && \
-    addgroup -S pe && adduser -S pe -G pe -u 1000
-
-WORKDIR /app
-COPY --from=build /app/api /app/api
-COPY configs/config.yaml /app/configs/config.yaml
-
-USER pe
-EXPOSE 8080 9090
-
-HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
-    CMD curl -fs http://localhost:8080/healthz || exit 1
-
-ENTRYPOINT ["/app/api"]
-CMD ["api", "--config", "/app/configs/config.yaml"]
-
-# ─── Stage 3: Worker Runtime ─────────────────────────────────────────────
+# ─── Stage 2: Worker Runtime ─────────────────────────────────────────────
 FROM alpine:3.21 AS worker-runtime
 
 RUN apk add --no-cache ca-certificates tzdata curl && \
@@ -77,7 +58,7 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
 ENTRYPOINT ["/app/worker"]
 CMD ["--config", "/app/configs/config.yaml"]
 
-# ─── Stage 4: Scheduler Runtime ──────────────────────────────────────────
+# ─── Stage 3: Scheduler Runtime ──────────────────────────────────────────
 FROM alpine:3.21 AS scheduler-runtime
 
 RUN apk add --no-cache ca-certificates tzdata curl && \
@@ -95,7 +76,7 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
 ENTRYPOINT ["/app/scheduler"]
 CMD ["--config", "/app/configs/config.yaml"]
 
-# ─── Stage 5: Collaboration Runtime ────────────────────────────────────
+# ─── Stage 4: Collaboration Runtime ────────────────────────────────────
 FROM alpine:3.21 AS collab-runtime
 
 RUN apk add --no-cache ca-certificates tzdata curl && \
@@ -112,3 +93,23 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
 
 ENTRYPOINT ["/app/collab"]
 CMD ["collab-server"]
+
+# ─── Stage 5: API Runtime (DEFAULT — last stage = Docker build target) ──
+# This stage MUST be last so Docker builds it by default on Render.
+FROM alpine:3.21 AS api-runtime
+
+RUN apk add --no-cache ca-certificates tzdata curl && \
+    addgroup -S pe && adduser -S pe -G pe -u 1000
+
+WORKDIR /app
+COPY --from=build /app/api /app/api
+COPY configs/config.yaml /app/configs/config.yaml
+
+USER pe
+EXPOSE 8080 9090
+
+HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
+    CMD curl -fs http://localhost:8080/healthz || exit 1
+
+ENTRYPOINT ["/app/api"]
+CMD ["api", "--config", "/app/configs/config.yaml"]
