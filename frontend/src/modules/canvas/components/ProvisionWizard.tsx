@@ -161,14 +161,18 @@ export function ProvisionWizard({ onComplete, onSkip }: ProvisionWizardProps) {
     
     setLoading(true);
     try {
-      // For demo, we'll show the prepared payload
-      // In production, this would call the Go engine
-      setProvisionResult({
-        status: "PREPARED",
-        message: "Código Terraform gerado com sucesso! Pronto para provisioning.",
+      // Call the Go engine to run terraform init → plan → apply
+      const result = await provisionApi.executeProvision({
+        canvasId,
+        provider: preview.provider,
+        engine: preview.engine,
         files: preview.files,
         resourceCount: preview.resourceCount,
+        envVars: {},
+        credentialId: "",
+        autoApprove: false,
       });
+      setProvisionResult(result);
       goNext();
     } catch (err: any) {
       showError(err.message || "Falha no provisioning");

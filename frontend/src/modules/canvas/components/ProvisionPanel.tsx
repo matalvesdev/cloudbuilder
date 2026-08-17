@@ -62,7 +62,10 @@ export function ProvisionPanel({ onClose }: ProvisionPanelProps) {
 
   // Generate preview
   const handlePreview = useCallback(async () => {
-    if (!canvasId) return;
+    if (!canvasId) {
+      setError("Canvas não salvo. Salve o canvas antes de gerar o preview.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {

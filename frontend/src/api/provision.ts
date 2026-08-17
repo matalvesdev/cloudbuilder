@@ -80,7 +80,7 @@ export async function executeProvision(
       },
       body: JSON.stringify({
         canvasId: payload.canvasId,
-        tenantId: "",
+        tenantId: localStorage.getItem("cloudbuilder-active-tenant-id") || "",
         provider: payload.provider,
         files: payload.files,
         resourceCount: payload.resourceCount,
@@ -104,14 +104,21 @@ export async function executeProvision(
       };
     }
 
+    // Go engine returns camelCase JSON: { deploymentId, status, planOutput, applyOutput }
+    const status = (data.status || "APPLIED").toUpperCase();
     return {
-      deploymentId: data.deployment_id || `dep-${Date.now()}`,
-      status: data.status === "applied" ? "APPLIED" : data.status === "planned" ? "PLANNED" : "APPLIED",
-      message: data.status === "applied"
+      deploymentId: data.deploymentId || data.deployment_id || `dep-${Date.now()}`,
+      status: status,
+      message: status === "APPLIED"
         ? "Infraestrutura provisionada com sucesso!"
-        : "Terraform plan concluído — aguardando aprovação",
-      planOutput: data.plan_output || "",
-      applyOutput: data.apply_output || data.output || "",
+        : status === "PLANNED"
+          ? "Terraform plan concluído — aguardando aprovação"
+          : status === "FAILED"
+            ? (data.error || "Falha no provisionamento")
+            : "Provisionamento concluído",
+      planOutput: data.planOutput || data.plan_output || "",
+      applyOutput: data.applyOutput || data.apply_output || data.output || "",
+      error: data.error || undefined,
       durationMs,
     };
   } catch (err: any) {
