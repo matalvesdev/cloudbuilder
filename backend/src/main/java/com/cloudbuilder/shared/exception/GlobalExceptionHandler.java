@@ -67,6 +67,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiError> handleRuntime(RuntimeException ex, HttpServletRequest request) {
+        String msg = ex.getMessage();
+        // Business logic exceptions (e.g. "Credenciais inválidas") → 400 with message
+        // System errors (e.g. NPE) → 500 generic
+        if (msg != null && !msg.isBlank() && !msg.contains("NullPointer") && !msg.contains("IndexOutOfBounds")) {
+            log.warn("Business error at {}: {}", request.getRequestURI(), msg);
+            var error = new ApiError(HttpStatus.BAD_REQUEST, msg, request.getRequestURI());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+        log.error("Unhandled RuntimeException at {}: {}", request.getRequestURI(), msg, ex);
+        var error = new ApiError(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno do servidor", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception at {}: {}", request.getRequestURI(), ex.getMessage(), ex);

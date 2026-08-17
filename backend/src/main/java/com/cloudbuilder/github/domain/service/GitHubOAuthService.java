@@ -56,9 +56,14 @@ public class GitHubOAuthService {
             return "gho_dev_" + UUID.randomUUID().toString().replace("-", "");
         }
         // In production, this would call GitHub's POST https://github.com/login/oauth/access_token
-        throw new UnsupportedOperationException(
-            "GitHub OAuth requires configured github.client.id and github.client.secret. " +
-            "Use dev mode (no config) for testing without real OAuth."
+        if (clientId.isBlank() || clientSecret.isBlank()) {
+            throw new IllegalStateException(
+                "GitHub OAuth requires configured github.client.id and github.client.secret. " +
+                "Set these properties or use dev mode (no config) for testing without real OAuth."
+            );
+        }
+        throw new IllegalStateException(
+            "GitHub OAuth token exchange not implemented. Configure GitHub OAuth credentials."
         );
     }
 

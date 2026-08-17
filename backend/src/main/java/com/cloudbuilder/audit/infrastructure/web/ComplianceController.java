@@ -31,7 +31,7 @@ public class ComplianceController {
      * Evaluate all active compliance rules for a tenant.
      */
     @GetMapping("/evaluate/{tenantId}")
-    @PreAuthorize("hasRole('admin') or hasRole('editor')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     public ResponseEntity<List<ComplianceEvaluation>> evaluateAll(@PathVariable String tenantId) {
         List<ComplianceEvaluation> evaluations = complianceService.evaluateAll(tenantId);
         return ResponseEntity.ok(evaluations);
@@ -41,7 +41,7 @@ public class ComplianceController {
      * Evaluate a specific compliance rule for a tenant.
      */
     @GetMapping("/evaluate/{tenantId}/rule/{ruleId}")
-    @PreAuthorize("hasRole('admin') or hasRole('editor')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
     public ResponseEntity<ComplianceEvaluation> evaluateRule(
             @PathVariable String tenantId,
             @PathVariable String ruleId) {
@@ -77,7 +77,7 @@ public class ComplianceController {
      * Create a new compliance rule.
      */
     @PostMapping("/rules/{tenantId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ComplianceRule> createRule(
             @PathVariable String tenantId,
             @RequestBody CreateRuleRequest request) {
@@ -92,7 +92,7 @@ public class ComplianceController {
      * Update an existing compliance rule.
      */
     @PutMapping("/rules/{ruleId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ComplianceRule> updateRule(
             @PathVariable String ruleId,
             @RequestBody CreateRuleRequest request) {
@@ -108,7 +108,7 @@ public class ComplianceController {
      * Delete a compliance rule.
      */
     @DeleteMapping("/rules/{ruleId}")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRule(@PathVariable String ruleId) {
         complianceService.deleteRule(ruleId);
         return ResponseEntity.noContent().build();
@@ -118,7 +118,7 @@ public class ComplianceController {
      * Check if OPA sidecar is reachable.
      */
     @GetMapping("/opa/status")
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> opaStatus() {
         boolean reachable = complianceService.isOpaReachable();
         return ResponseEntity.ok(Map.of(

@@ -123,6 +123,11 @@ public class FeatureFlagController {
             Object tenantId = details.get("tenantId");
             if (tenantId instanceof String s) return s;
         }
-        return null;
+        // Fallback: try to get tenantId from principal name (JWT sub claim)
+        if (auth != null) {
+            String name = auth.getName();
+            if (name != null && !name.isBlank()) return name;
+        }
+        throw new IllegalStateException("No tenant context in session");
     }
 }

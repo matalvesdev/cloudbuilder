@@ -65,10 +65,13 @@ public class IntegrationController {
     }
 
     private String resolveUserId(Authentication auth) {
-        if (auth == null) return null;
-        Object principal = auth.getPrincipal();
-        if (principal instanceof String s) return s;
-        return null;
+        if (auth != null) {
+            Object principal = auth.getPrincipal();
+            if (principal instanceof String s) return s;
+            String name = auth.getName();
+            if (name != null && !name.isBlank()) return name;
+        }
+        return "anonymous";
     }
 
     @PostMapping("/{id}/connect")

@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MarketplaceTemplateRepository extends JpaRepository<MarketplaceTemplate, String> {
@@ -30,4 +31,6 @@ public interface MarketplaceTemplateRepository extends JpaRepository<Marketplace
     Page<MarketplaceTemplate> search(@Param("query") String query, Pageable pageable);
 
     List<MarketplaceTemplate> findByAuthorAndTenantId(String author, String tenantId);
+
+    Optional<MarketplaceTemplate> findByIdAndPublishedTrue(String id);
 }

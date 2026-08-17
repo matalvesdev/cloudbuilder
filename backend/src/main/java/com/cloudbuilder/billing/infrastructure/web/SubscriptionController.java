@@ -4,6 +4,7 @@ import com.cloudbuilder.billing.application.dto.BillingPlanDTO;
 import com.cloudbuilder.billing.domain.model.Subscription;
 import com.cloudbuilder.billing.domain.service.BillingService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/billing/v2")
+@PreAuthorize("isAuthenticated()")
 public class SubscriptionController {
 
     private final BillingService billingService;

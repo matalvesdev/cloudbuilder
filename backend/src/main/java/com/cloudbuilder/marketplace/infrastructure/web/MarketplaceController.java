@@ -6,12 +6,14 @@ import com.cloudbuilder.marketplace.domain.service.MarketplaceCatalogService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/marketplace")
+@PreAuthorize("isAuthenticated()")
 public class MarketplaceController {
 
     private final MarketplaceCatalogService marketplaceService;
@@ -43,13 +45,12 @@ public class MarketplaceController {
 
     @GetMapping("/templates/{id}")
     public ResponseEntity<MarketplaceTemplateDTO> getTemplate(@PathVariable String id) {
-        return ResponseEntity.ok(MarketplaceTemplateDTO.from(
-            marketplaceService.listPublished(PageRequest.of(0, 1000))
-                .getContent().stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Template not found"))
-        ));
+        var template = marketplaceService.listPublished(PageRequest.of(0, 1000))
+            .getContent().stream()
+            .filter(t -> t.getId().equals(id))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Template not found: " + id));
+        return ResponseEntity.ok(MarketplaceTemplateDTO.from(template));
     }
 
     @PostMapping("/templates/{id}/rate")

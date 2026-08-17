@@ -29,13 +29,13 @@ class GitHubOAuthServiceTest {
 
     @Test
     void exchangeCode_NullCode_ShouldThrow() {
-        assertThrows(UnsupportedOperationException.class,
+        assertThrows(IllegalStateException.class,
                 () -> oauthService.exchangeCode(null));
     }
 
     @Test
     void exchangeCode_NonDevCode_ShouldThrow() {
-        assertThrows(UnsupportedOperationException.class,
+        assertThrows(IllegalStateException.class,
                 () -> oauthService.exchangeCode("real-code-123"));
     }
 
