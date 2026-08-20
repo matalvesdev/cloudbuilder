@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudBuilder — Test Metrics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy: #0a1128;
+      --lime: #ccff00;
+      --ice: #E3E2FD;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --green-50: #f0fdf4;
+      --green-100: #dcfce7;
+      --green-400: #4ade80;
+      --green-500: #22c55e;
+      --green-600: #16a34a;
+      --green-700: #15803d;
+      --red-50: #fef2f2;
+      --red-500: #ef4444;
+      --amber-50: #fffbeb;
+      --amber-500: #f59e0b;
+      --blue-500: #3b82f6;
+      --purple-500: #a855f7;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(180deg, var(--slate-50) 0%, #fff 100%);
+      color: var(--navy);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: #fff;
+      border-bottom: 1px solid var(--slate-200);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .header-left h1 { font-size: 18px; font-weight: 700; }
+    .header-left p { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-badge.passing { background: var(--green-50); color: var(--green-700); border: 1px solid var(--green-100); }
+    .status-badge.failing { background: var(--red-50); color: #dc2626; border: 1px solid #fecaca; }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    .status-dot.green { background: var(--green-500); }
+    .status-dot.red { background: var(--red-500); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .timestamp { font-size: 11px; color: var(--slate-400); }
+    .refresh-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--slate-200);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--slate-600);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover { background: var(--slate-50); border-color: var(--slate-300); }
+
+    /* Main */
+    .main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid var(--slate-100);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: box-shadow 0.2s;
+    }
+    .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--slate-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--navy);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-sub { font-size: 12px; color: var(--slate-400); margin-top: 4px; }
+    .stat-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      float: right;
+      margin-top: -4px;
+    }
+    .stat-icon.navy { background: rgba(10,17,40,0.05); color: var(--navy); }
+    .stat-icon.green { background: var(--green-50); color: var(--green-600); }
+    .stat-icon.blue { background: #eff6ff; color: var(--blue-500); }
+    .stat-icon.purple { background: #faf5ff; color: var(--purple-500); }
+
+    /* Two Column Layout */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border: 1px solid var(--slate-100);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .card-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 0 3px rgba(204,255,0,0.2);
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--slate-400);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Layer Status */
+    .layer-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--slate-100);
+      margin-bottom: 8px;
+      transition: border-color 0.15s;
+    }
+    .layer-row:hover { border-color: var(--slate-200); }
+    .layer-row:last-child { margin-bottom: 0; }
+    .layer-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .layer-icon.java { background: #fef3c7; color: #d97706; }
+    .layer-icon.react { background: #dbeafe; color: #2563eb; }
+    .layer-icon.go { background: #d1fae5; color: #059669; }
+    .layer-icon.ts { background: #ede9fe; color: #7c3aed; }
+    .layer-info { flex: 1; min-width: 0; }
+    .layer-name { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .layer-detail { font-size: 11px; color: var(--slate-400); margin-top: 2px; }
+    .layer-status {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .layer-status.pass { background: var(--green-50); color: var(--green-700); }
+    .layer-status.warn { background: var(--amber-50); color: #d97706; }
+    .layer-status.fail { background: var(--red-50); color: #dc2626; }
+
+    /* Bar chart inside card */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .bar-row:last-child { margin-bottom: 0; }
+    .bar-label { font-size: 12px; font-weight: 500; color: var(--slate-600); width: 100px; flex-shrink: 0; }
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: var(--slate-100);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+    .bar-fill.green { background: var(--green-500); }
+    .bar-fill.blue { background: var(--blue-500); }
+    .bar-fill.purple { background: var(--purple-500); }
+    .bar-fill.amber { background: var(--amber-500); }
+    .bar-count { font-size: 12px; font-weight: 600; color: var(--navy); width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Chart container */
+    .chart-wrap { position: relative; height: 220px; }
+    .chart-wrap-sm { position: relative; height: 180px; }
+
+    /* Test file list */
+    .file-list { max-height: 280px; overflow-y: auto; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--slate-50);
+      font-size: 12px;
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .file-dot.pass { background: var(--green-500); }
+    .file-dot.skip { background: var(--amber-500); }
+    .file-name { flex: 1; color: var(--slate-600); font-family: 'SF Mono', Monaco, monospace; font-size: 11px; }
+    .file-count { color: var(--slate-400); font-variant-numeric: tabular-nums; }
+
+    /* Trend indicator */
+    .trend { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; }
+    .trend.up { color: var(--green-600); }
+    .trend.down { color: var(--red-500); }
+    .trend.flat { color: var(--slate-400); }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 11px;
+      color: var(--slate-400);
+    }
+
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div>
+          <h1>📊 Test Metrics Dashboard</h1>
+          <p>CloudBuilder — Health do Suite de Testes</p>
+        </div>
+        <div class="status-badge passing" id="globalStatus">
+          <span class="status-dot green"></span>
+          Todos Passando
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="timestamp" id="lastUpdated"></span>
+        <button class="refresh-btn" onclick="location.reload()">↻ Atualizar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon navy">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div class="stat-label">Total de Testes</div>
+        <div class="stat-value">1,262</div>
+        <div class="stat-sub">
+          Backend + Frontend + Go Engine
+          <span class="trend up">↑ 94 novos</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="stat-label">Taxa de Sucesso</div>
+        <div class="stat-value">100%</div>
+        <div class="stat-sub">0 falhas em todas as camadas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="stat-label">Camadas</div>
+        <div class="stat-value">4</div>
+        <div class="stat-sub">Java, React, Go, TypeScript</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <div class="stat-label">Skipped</div>
+        <div class="stat-value">32</div>
+        <div class="stat-sub">Apenas no backend (testes de integração)</div>
+      </div>
+    </div>
+
+    <!-- Layer Status + Coverage -->
+    <div class="grid-2">
+      <!-- Layer Status -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Status por Camada</span>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon java">☕</div>
+          <div class="layer-info">
+            <div class="layer-name">Backend (Spring Boot)</div>
+            <div class="layer-detail">938 testes · 32 skipped · 0 falhas</div>
+          </div>
+          <div class="layer-status pass">✓ Passando</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon react">⚛</div>
+          <div class="layer-info">
+            <div class="layer-name">Frontend (React + TS)</div>
+            <div class="layer-detail">313 testes · 30 arquivos · 0 falhas</div>
+          </div>
+          <div class="layer-status pass">✓ Passando</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon go">Go</div>
+          <div class="layer-info">
+            <div class="layer-name">Go Engine (Provision)</div>
+            <div class="layer-detail">15 pacotes · 0 falhas</div>
+          </div>
+          <div class="layer-status pass">✓ Passando</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon ts">TS</div>
+          <div class="layer-info">
+            <div class="layer-name">TypeScript Check</div>
+            <div class="layer-detail">0 erros de tipo</div>
+          </div>
+          <div class="layer-status pass">✓ Limpo</div>
+        </div>
+      </div>
+
+      <!-- Test Distribution -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Distribuição de Testes</span>
+        </div>
+        <div class="chart-wrap-sm">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backend Breakdown + Go Packages -->
+    <div class="grid-2">
+      <!-- Backend Test Modules -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Backend — Testes por Módulo</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Provision</span>
+          <div class="bar-track"><div class="bar-fill green" style="width:35%"></div></div>
+          <span class="bar-count">328</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Security</span>
+          <div class="bar-track"><div class="bar-fill blue" style="width:25%"></div></div>
+          <span class="bar-count">234</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">IAM/Auth</span>
+          <div class="bar-track"><div class="bar-fill purple" style="width:18%"></div></div>
+          <span class="bar-count">168</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Design</span>
+          <div class="bar-track"><div class="bar-fill green" style="width:12%"></div></div>
+          <span class="bar-count">112</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Observability</span>
+          <div class="bar-track"><div class="bar-fill amber" style="width:6%"></div></div>
+          <span class="bar-count">56</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Other</span>
+          <div class="bar-track"><div class="bar-fill blue" style="width:4%"></div></div>
+          <span class="bar-count">40</span>
+        </div>
+      </div>
+
+      <!-- Go Engine Packages -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Go Engine — Pacotes</span>
+        </div>
+        <div class="file-list">
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/api/grpc</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/api/rest</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/application/executor</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/application/planner</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/application/scheduler</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/config</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/domain/deployment</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/domain/state</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/domain/workflow</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/drift</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/executor</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/generator/terraform</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/messaging</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/parser</span><span class="file-count">✓</span></div>
+          <div class="file-item"><span class="file-dot pass"></span><span class="file-name">internal/provider/templates</span><span class="file-count">✓</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trend + Coverage -->
+    <div class="grid-2">
+      <!-- Trend Chart -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Tendência — Testes por Sessão</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Coverage Radar -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Cobertura por Área</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Test Runs -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <div class="card-dot"></div>
+        <span class="card-title">Últimas Sessões de Teste</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--slate-100);">
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Data</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Backend</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Frontend</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Go Engine</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Status</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Notas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--slate-50);">
+              <td style="padding: 10px 12px; font-weight: 500;">2026-08-20</td>
+              <td style="padding: 10px 12px;">938 / 0 / 32</td>
+              <td style="padding: 10px 12px;">313 / 0</td>
+              <td style="padding: 10px 12px;">15 packages ✓</td>
+              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
+              <td style="padding: 10px 12px; color: var(--slate-400);">Security + Resilience + Provisioning</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--slate-50); background: var(--slate-50);">
+              <td style="padding: 10px 12px; font-weight: 500;">2026-08-19</td>
+              <td style="padding: 10px 12px;">867 / 0 / 32</td>
+              <td style="padding: 10px 12px;">313 / 0</td>
+              <td style="padding: 10px 12px;">15 packages ✓</td>
+              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
+              <td style="padding: 10px 12px; color: var(--slate-400);">Resilience patterns applied</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--slate-50);">
+              <td style="padding: 10px 12px; font-weight: 500;">2026-08-18</td>
+              <td style="padding: 10px 12px;">867 / 0 / 32</td>
+              <td style="padding: 10px 12px;">307 / 0</td>
+              <td style="padding: 10px 12px;">15 packages ✓</td>
+              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
+              <td style="padding: 10px 12px; color: var(--slate-400);">Security hardening complete</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--slate-50); background: var(--slate-50);">
+              <td style="padding: 10px 12px; font-weight: 500;">2026-08-14</td>
+              <td style="padding: 10px 12px;">720 / 0 / 0</td>
+              <td style="padding: 10px 12px;">307 / 0</td>
+              <td style="padding: 10px 12px;">—</td>
+              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
+              <td style="padding: 10px 12px; color: var(--slate-400);">Initial full-stack test</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    CloudBuilder Test Dashboard · Atualizado em <span id="footerDate"></span> · Gerado automaticamente
+  </div>
+
+  <script>
+    // Update timestamps
+    const now = new Date();
+    document.getElementById('lastUpdated').textContent = 'Atualizado: ' + now.toLocaleString('pt-BR');
+    document.getElementById('footerDate').textContent = now.toLocaleDateString('pt-BR');
+
+    // Distribution Chart (Doughnut)
+    new Chart(document.getElementById('distributionChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Backend (938)', 'Frontend (313)', 'Go Engine (15 pkg)'],
+        datasets: [{
+          data: [938, 313, 15],
+          backgroundColor: ['#d97706', '#2563eb', '#059669'],
+          borderWidth: 0,
+          hoverOffset: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
+          }
+        }
+      }
+    });
+
+    // Trend Chart (Line)
+    new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+        labels: ['Aug 14', 'Aug 15', 'Aug 16', 'Aug 17', 'Aug 18', 'Aug 19', 'Aug 20'],
+        datasets: [
+          {
+            label: 'Backend',
+            data: [720, 720, 720, 867, 867, 867, 938],
+            borderColor: '#d97706',
+            backgroundColor: 'rgba(217,119,6,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            borderWidth: 2,
+          },
+          {
+            label: 'Frontend',
+            data: [307, 307, 307, 307, 307, 313, 313],
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37,99,235,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            borderWidth: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: false }
+        }
+      }
+    });
+
+    // Radar Chart (Coverage)
+    new Chart(document.getElementById('radarChart'), {
+      type: 'radar',
+      data: {
+        labels: ['Security', 'Provisioning', 'Auth/IAM', 'Design', 'Observability', 'Go Engine'],
+        datasets: [
+          {
+            label: 'Cobertura Atual',
+            data: [95, 92, 88, 85, 70, 90],
+            backgroundColor: 'rgba(204,255,0,0.15)',
+            borderColor: '#ccff00',
+            borderWidth: 2,
+            pointBackgroundColor: '#ccff00',
+            pointRadius: 3,
+          },
+          {
+            label: 'Meta',
+            data: [95, 95, 95, 90, 85, 95],
+            backgroundColor: 'rgba(10,17,40,0.05)',
+            borderColor: '#94a3b8',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            pointBackgroundColor: '#94a3b8',
+            pointRadius: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
+          }
+        },
+        scales: {
+          r: {
+            beginAtZero: false,
+            min: 50,
+            max: 100,
+            ticks: { font: { size: 10 }, stepSize: 10, backdropColor: 'transparent' },
+            grid: { color: '#e2e8f0' },
+            pointLabels: { font: { size: 11, weight: '500' } }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
