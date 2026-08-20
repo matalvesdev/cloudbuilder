@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudBuilder — Feedback MVP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a1128; color: white; min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: #ccff00; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; }
+        input, textarea, select { width: 100%; padding: 12px; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; color: white; font-size: 16px; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #ccff00; }
+        textarea { min-height: 100px; resize: vertical; }
+        .rating { display: flex; gap: 10px; margin-top: 10px; }
+        .rating input { display: none; }
+        .rating label { font-size: 32px; cursor: pointer; color: #333; transition: color 0.2s; }
+        .rating input:checked ~ label, .rating label:hover, .rating label:hover ~ label { color: #ccff00; }
+        .rating { direction: rtl; }
+        button { width: 100%; padding: 16px; background: #ccff00; color: #0a1128; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #b3e600; }
+        .success { display: none; text-align: center; padding: 40px; }
+        .success h2 { color: #ccff00; margin-bottom: 20px; }
+        .emoji { font-size: 64px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="form">
+            <h1>CloudBuilder MVP</h1>
+            <p class="subtitle">Nos ajude a melhorar! Seu feedback é muito importante.</p>
+            
+            <form id="feedbackForm">
+                <div class="form-group">
+                    <label>Seu nome</label>
+                    <input type="text" name="name" required placeholder="Nome do tester">
+                </div>
+                
+                <div class="form-group">
+                    <label>Módulo avaliado</label>
+                    <select name="module" required>
+                        <option value="">Selecione...</option>
+                        <option value="canvas">Canvas (Design Visual)</option>
+                        <option value="provisioning">Provisioning (Deploy)</option>
+                        <option value="auth">Autenticação (Login)</option>
+                        <option value="finops">FinOps (Custos)</option>
+                        <option value="observability">Observability (Métricas)</option>
+                        <option value="geral">Geral</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nota (1-5)</label>
+                    <div class="rating">
+                        <input type="radio" name="rating" value="5" id="star5"><label for="star5">⭐</label>
+                        <input type="radio" name="rating" value="4" id="star4"><label for="star4">⭐</label>
+                        <input type="radio" name="rating" value="3" id="star3"><label for="star3">⭐</label>
+                        <input type="radio" name="rating" value="2" id="star2"><label for="star2">⭐</label>
+                        <input type="radio" name="rating" value="1" id="star1"><label for="star1">⭐</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>O que mais gostou?</label>
+                    <textarea name="liked" placeholder="O que funcionou bem para você?"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>O que precisa melhorar?</label>
+                    <textarea name="improve" placeholder="O que causou dificuldade ou confusão?"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Sugestões</label>
+                    <textarea name="suggestions" placeholder="Alguma ideia nova que gostaria de ver?"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Bugs encontrados (opcional)</label>
+                    <textarea name="bugs" placeholder="Descreva qualquer erro encontrado..."></textarea>
+                </div>
+                
+                <button type="submit">Enviar Feedback</button>
+            </form>
+        </div>
+        
+        <div class="success" id="success">
+            <div class="emoji">🎉</div>
+            <h2>Obrigado pelo feedback!</h2>
+            <p>Seu feedback nos ajuda a construir um produto melhor.</p>
+            <p style="margin-top: 20px; color: #666;">Você pode fechar esta janela.</p>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            // Format for Discord webhook
+            const discordMessage = `**📝 Novo Feedback MVP**
+            
+**Tester:** ${data.name}
+**Módulo:** ${data.module}
+**Nota:** ${'⭐'.repeat(data.rating)} (${data.rating}/5)
+
+**✅ O que gostou:**
+${data.liked || 'Não informado'}
+
+**🔧 Melhorias:**
+${data.improve || 'Não informado'}
+
+**💡 Sugestões:**
+${data.suggestions || 'Não informado'}
+
+**🐛 Bugs:**
+${data.bugs || 'Nenhum'}`;
+            
+            console.log('Feedback:', discordMessage);
+            
+            // Show success
+            document.getElementById('form').style.display = 'none';
+            document.getElementById('success').style.display = 'block';
+            
+            // In production, send to Discord webhook:
+            // fetch('YOUR_DISCORD_WEBHOOK_URL', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ content: discordMessage })
+            // });
+        });
+    </script>
+</body>
+</html>
