@@ -1,0 +1,48 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Provision Engine — Render.com Dockerfile
+# ═══════════════════════════════════════════════════════════════════════════
+# Builds only the API binary (not worker/scheduler/collab)
+
+# ─── Build ──────────────────────────────────────────────────────────────
+FROM golang:1.24-alpine AS build
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+COPY . .
+
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -trimpath \
+    -ldflags="-s -w \
+      -X main.version=${VERSION} \
+      -X main.gitCommit=${GIT_COMMIT} \
+      -X main.buildDate=${BUILD_DATE}" \
+    -o /app/api ./cmd/api/
+
+# ─── Runtime ────────────────────────────────────────────────────────────
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata curl && \
+    addgroup -S pe && adduser -S pe -G pe -u 1000
+
+WORKDIR /app
+COPY --from=build /app/api /app/api
+COPY configs/config.yaml /app/configs/config.yaml
+
+USER pe
+
+EXPOSE 8080 9090
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fs http://localhost:8080/healthz || exit 1
+
+ENTRYPOINT ["/app/api"]
+CMD ["api", "--config", "/app/configs/config.yaml"]

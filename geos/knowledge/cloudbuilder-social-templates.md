@@ -14,7 +14,7 @@ Uma plataforma de Platform Engineering que permite projetar, provisionar e monit
 ✅ AIOps para incidentes
 ✅ RBAC + Multi-tenant
 
-Comece grátis: cloudbuilder.com
+Comece grátis: cloudbuilder.io
 
 #PlatformEngineering #DevOps #FinOps #Cloud #Terraform
 ```
@@ -100,7 +100,7 @@ Resultado? 40% de redução em custos + compliance automatizado.
 
 4/ Ferramentas como o CloudBuilder tornam isso realidade com canvas visual + Terraform automático.
 
-5/ Quer saber mais? cloudbuilder.com
+5/ Quer saber mais? cloudbuilder.io
 ```
 
 ### Thread 2: FinOps

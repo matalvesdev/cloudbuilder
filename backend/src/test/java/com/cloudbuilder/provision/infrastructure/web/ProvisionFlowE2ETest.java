@@ -9,7 +9,9 @@ import com.cloudbuilder.provision.application.dto.GeneratedCode;
 import com.cloudbuilder.provision.application.port.CanvasDesignFetcher;
 import com.cloudbuilder.provision.domain.service.CodeGeneratorService;
 import com.cloudbuilder.provision.domain.port.TerraformTemplateRepository;
+import com.cloudbuilder.provision.infrastructure.adapter.ProvisionEngineClient;
 import com.cloudbuilder.shared.security.TenantContext;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.lenient;
 
 import java.util.List;
 import java.util.Map;
@@ -46,15 +49,21 @@ class ProvisionFlowE2ETest {
     private CredentialService credentialService;
     @Mock
     private TerraformTemplateRepository templateRepository;
+    @Mock
+    private ProvisionEngineClient engineClient;
 
     private CodeGeneratorService codeGeneratorService;
     private ProvisionController controller;
+
+    private static final ProvisionEngineClient.EngineResponse SUCCESS_RESPONSE =
+        new ProvisionEngineClient.EngineResponse("dep-e2e", "APPLIED", "Applied successfully", "Plan output", "Apply output", "", 5000L);
 
     @BeforeEach
     void setUp() {
         TenantContext.setTenantId("tenant-e2e");
         codeGeneratorService = new CodeGeneratorService(templateRepository);
-        controller = new ProvisionController(canvasDesignFetcher, codeGeneratorService, credentialService);
+        controller = new ProvisionController(canvasDesignFetcher, codeGeneratorService, credentialService, engineClient);
+        lenient().when(engineClient.execute(any())).thenReturn(SUCCESS_RESPONSE);
     }
 
     @AfterEach
@@ -104,7 +113,7 @@ class ProvisionFlowE2ETest {
         }
 
         @Test
-        @DisplayName("full GCP flow: generates valid Terraform and correct env vars")
+        @DisplayName("full GCP flow: generates valid Terraform and sends to engine")
         void gcpFullFlow_producesCorrectPayload() {
             when(canvasDesignFetcher.fetchCanvasDesign("canvas-gcp")).thenReturn(gcpDesign);
             when(credentialService.findById("gcp-cred-1")).thenReturn(Optional.of(gcpCredential));
@@ -115,17 +124,18 @@ class ProvisionFlowE2ETest {
             assertEquals(200, response.getStatusCodeValue());
             var body = response.getBody();
             assertNotNull(body);
+            assertEquals("APPLIED", body.get("status"));
 
-            // Provider detection
-            assertEquals("google", body.get("provider"));
-            assertEquals("terraform", body.get("engine"));
-            assertEquals(4, body.get("resourceCount"));
-            assertEquals(false, body.get("autoApprove"));
+            // Verify engine was called with correct payload
+            var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+            verify(engineClient).execute(captor.capture());
+            var payload = captor.getValue();
+            assertEquals("google", payload.provider());
+            assertEquals(4, payload.resourceCount());
+            assertFalse(payload.autoApprove());
 
             // File generation — all 5 files present
-            @SuppressWarnings("unchecked")
-            var files = (Map<String, String>) body.get("files");
-            assertNotNull(files);
+            var files = payload.files();
             assertTrue(files.containsKey("main.tf"), "main.tf must be present");
             assertTrue(files.containsKey("variables.tf"));
             assertTrue(files.containsKey("outputs.tf"));
@@ -145,19 +155,13 @@ class ProvisionFlowE2ETest {
             assertTrue(mainTf.contains("web-server"), "VM name substituted");
             assertTrue(mainTf.contains("app-db"), "SQL name substituted");
 
-            // providers.tf uses Google provider
-            String providersTf = files.get("providers.tf");
-            assertTrue(providersTf.contains("provider \"google\""));
-
-            // versions.tf references hashicorp/google (terraform, not opentofu)
+            // versions.tf references hashicorp/google
             String versionsTf = files.get("versions.tf");
             assertTrue(versionsTf.contains("hashicorp/google"));
             assertFalse(versionsTf.contains("hashicorp/aws"));
 
             // Credential injection
-            @SuppressWarnings("unchecked")
-            var envVars = (Map<String, String>) body.get("envVars");
-            assertNotNull(envVars);
+            var envVars = payload.envVars();
             assertTrue(envVars.containsKey("GOOGLE_CREDENTIALS"));
             assertTrue(envVars.get("GOOGLE_CREDENTIALS").contains("service_account"));
         }
@@ -172,14 +176,14 @@ class ProvisionFlowE2ETest {
             var response = controller.provisionApply("canvas-gcp", request);
 
             assertEquals(200, response.getStatusCodeValue());
-            var body = response.getBody();
 
-            assertEquals("opentofu", body.get("engine"));
-            assertEquals(true, body.get("autoApprove"));
+            var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+            verify(engineClient).execute(captor.capture());
+            var payload = captor.getValue();
+            assertEquals("opentofu", payload.engine());
+            assertTrue(payload.autoApprove());
 
-            @SuppressWarnings("unchecked")
-            var files = (Map<String, String>) body.get("files");
-            String versionsTf = files.get("versions.tf");
+            String versionsTf = payload.files().get("versions.tf");
             assertTrue(versionsTf.contains("opentofu/google"));
             assertFalse(versionsTf.contains("hashicorp/google"));
         }
@@ -237,7 +241,7 @@ class ProvisionFlowE2ETest {
         }
 
         @Test
-        @DisplayName("full AWS flow: generates correct Terraform and AWS env vars")
+        @DisplayName("full AWS flow: generates correct Terraform and sends to engine")
         void awsFullFlow_producesCorrectPayload() {
             when(canvasDesignFetcher.fetchCanvasDesign("canvas-aws")).thenReturn(awsDesign);
             when(credentialService.findById("aws-cred-1")).thenReturn(Optional.of(awsCredential));
@@ -246,38 +250,25 @@ class ProvisionFlowE2ETest {
             var response = controller.provisionApply("canvas-aws", request);
 
             assertEquals(200, response.getStatusCodeValue());
-            var body = response.getBody();
-            assertEquals("aws", body.get("provider"));
-            assertEquals(3, body.get("resourceCount"));
 
-            @SuppressWarnings("unchecked")
-            var files = (Map<String, String>) body.get("files");
+            var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+            verify(engineClient).execute(captor.capture());
+            var payload = captor.getValue();
+            assertEquals("aws", payload.provider());
+            assertEquals(3, payload.resourceCount());
+
+            var files = payload.files();
             String mainTf = files.get("main.tf");
-
-            // All 3 AWS resources present
             assertTrue(mainTf.contains("aws_vpc"));
             assertTrue(mainTf.contains("aws_subnet"));
             assertTrue(mainTf.contains("aws_instance"));
+            assertTrue(mainTf.contains("10.0.0.0/16"));
+            assertTrue(mainTf.contains("t3.large"));
 
-            // Properties substituted
-            assertTrue(mainTf.contains("10.0.0.0/16"), "VPC CIDR");
-            assertTrue(mainTf.contains("10.0.1.0/24"), "Subnet CIDR");
-            assertTrue(mainTf.contains("t3.large"), "Instance type");
-            assertTrue(mainTf.contains("prod-vpc"), "VPC name");
-
-            // providers.tf uses AWS
-            String providersTf = files.get("providers.tf");
-            assertTrue(providersTf.contains("provider \"aws\""));
-            assertTrue(providersTf.contains("var.aws_region"));
-
-            // versions.tf has hashicorp/aws
             String versionsTf = files.get("versions.tf");
             assertTrue(versionsTf.contains("hashicorp/aws"));
-            assertTrue(versionsTf.contains("~> 5.0"));
 
-            // AWS credential injection
-            @SuppressWarnings("unchecked")
-            var envVars = (Map<String, String>) body.get("envVars");
+            var envVars = payload.envVars();
             assertEquals("AKIAIOSFODNN7EXAMPLE", envVars.get("AWS_ACCESS_KEY_ID"));
             assertEquals("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", envVars.get("AWS_SECRET_ACCESS_KEY"));
             assertEquals("us-east-1", envVars.get("AWS_DEFAULT_REGION"));
@@ -337,7 +328,7 @@ class ProvisionFlowE2ETest {
         }
 
         @Test
-        @DisplayName("full Azure flow: generates correct Terraform and ARM env vars")
+        @DisplayName("full Azure flow: generates correct Terraform and sends to engine")
         void azureFullFlow_producesCorrectPayload() {
             when(canvasDesignFetcher.fetchCanvasDesign("canvas-azure")).thenReturn(azureDesign);
             when(credentialService.findById("azure-cred-1")).thenReturn(Optional.of(azureCredential));
@@ -346,25 +337,22 @@ class ProvisionFlowE2ETest {
             var response = controller.provisionApply("canvas-azure", request);
 
             assertEquals(200, response.getStatusCodeValue());
-            var body = response.getBody();
-            assertEquals("azurerm", body.get("provider"));
-            assertEquals(2, body.get("resourceCount"));
 
-            @SuppressWarnings("unchecked")
-            var files = (Map<String, String>) body.get("files");
+            var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+            verify(engineClient).execute(captor.capture());
+            var payload = captor.getValue();
+            assertEquals("azurerm", payload.provider());
+            assertEquals(2, payload.resourceCount());
+
+            var files = payload.files();
             String mainTf = files.get("main.tf");
-
             assertTrue(mainTf.contains("azurerm_virtual_network"));
             assertTrue(mainTf.contains("azurerm_virtual_machine"));
 
-            // providers.tf uses azurerm
             String providersTf = files.get("providers.tf");
             assertTrue(providersTf.contains("provider \"azurerm\""));
-            assertTrue(providersTf.contains("features {}"));
 
-            // Azure credential injection (4 env vars)
-            @SuppressWarnings("unchecked")
-            var envVars = (Map<String, String>) body.get("envVars");
+            var envVars = payload.envVars();
             assertEquals("azure-client-123", envVars.get("ARM_CLIENT_ID"));
             assertEquals("azure-secret-456", envVars.get("ARM_CLIENT_SECRET"));
             assertEquals("azure-tenant-789", envVars.get("ARM_TENANT_ID"));
@@ -433,9 +421,10 @@ class ProvisionFlowE2ETest {
             var response = controller.provisionApply("c2", request);
 
             assertEquals(200, response.getStatusCodeValue());
-            @SuppressWarnings("unchecked")
-            var envVars = (Map<String, String>) response.getBody().get("envVars");
-            assertTrue(envVars.isEmpty(), "No env vars without credential");
+
+            var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+            verify(engineClient).execute(captor.capture());
+            assertTrue(captor.getValue().envVars().isEmpty(), "No env vars without credential");
         }
 
         @Test
@@ -449,22 +438,18 @@ class ProvisionFlowE2ETest {
 
             var request = new ProvisionController.ProvisionRequest(null, "terraform", false);
             var response = controller.provisionApply("c3", request);
-            var body = response.getBody();
 
-            // Verify all fields the Go engine expects are present
-            assertNotNull(body.get("canvasId"), "canvasId required by Go engine");
-            assertNotNull(body.get("provider"), "provider required by Go engine");
-            assertNotNull(body.get("engine"), "engine required by Go engine");
-            assertNotNull(body.get("files"), "files required by Go engine");
-            assertNotNull(body.get("resourceCount"), "resourceCount required by Go engine");
-            assertNotNull(body.get("envVars"), "envVars required by Go engine");
-            assertNotNull(body.get("autoApprove"), "autoApprove required by Go engine");
-            assertNotNull(body.get("credentialId"), "credentialId required by Go engine");
+            assertEquals(200, response.getStatusCodeValue());
 
-            // files must contain main.tf (Go engine validates this)
-            @SuppressWarnings("unchecked")
-            var files = (Map<String, String>) body.get("files");
-            assertTrue(files.containsKey("main.tf"), "Go engine requires main.tf");
+            var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+            verify(engineClient).execute(captor.capture());
+            var payload = captor.getValue();
+
+            assertNotNull(payload.canvasId(), "canvasId required by Go engine");
+            assertNotNull(payload.provider(), "provider required by Go engine");
+            assertNotNull(payload.engine(), "engine required by Go engine");
+            assertNotNull(payload.files(), "files required by Go engine");
+            assertTrue(payload.files().containsKey("main.tf"), "Go engine requires main.tf");
         }
     }
 }

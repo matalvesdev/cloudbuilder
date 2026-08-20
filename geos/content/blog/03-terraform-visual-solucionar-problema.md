@@ -129,7 +129,7 @@ Terraform não precisa ser complexo. Com uma abordagem visual, você pode projet
 
 O CloudBuilder é a ponte entre a simplicidade visual e o poder do Terraform.
 
-**Quer experimentar?** [Comece grátis](https://cloudbuilder.com/signup) e crie seu primeiro design em 5 minutos.
+**Quer experimentar?** [Comece grátis](https://cloudbuilder.io/signup) e crie seu primeiro design em 5 minutos.
 
 ---
 

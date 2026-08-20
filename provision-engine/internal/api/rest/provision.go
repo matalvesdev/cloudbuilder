@@ -142,9 +142,16 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Capture plan output before apply
-	planOutput := "Plan completed successfully"
-	_ = planStatuses
+	// Capture actual plan output
+	planFile := filepath.Join(workDir, "tfplan")
+	planResult, _ := exec.ShowPlanText(context.Background(), planFile)
+	planOutput := planResult.Stdout
+	if planOutput == "" {
+		planOutput = planResult.Stderr
+	}
+	if planOutput == "" {
+		planOutput = "Plan completed successfully"
+	}
 
 	// Auto-approve: proceed to apply
 	if req.AutoApprove {
@@ -161,10 +168,19 @@ func (h *ProvisionHandler) Apply(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Capture terraform outputs after successful apply
+		outputResult, _ := exec.Output(context.Background())
+		applyOutput := outputResult.Stdout
+		if applyOutput == "" {
+			applyOutput = "Resources applied successfully"
+		}
+
 		resp := ProvisionResponse{
 			DeploymentID: shared.GenerateID(),
 			Status:       "APPLIED",
 			Message:      "Terraform applied successfully (auto-approve)",
+			PlanOutput:   planOutput,
+			ApplyOutput:  applyOutput,
 			DurationMs:   time.Since(start).Milliseconds(),
 		}
 		writeJSON(w, http.StatusOK, resp)

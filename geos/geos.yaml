@@ -5,7 +5,7 @@
 company:
   name: CloudBuilder
   tagline: "Projete, provisione e monitore sua infraestrutura — tudo em um lugar."
-  website: https://cloudbuilder.com
+  website: https://cloudbuilder.io
   industry: Platform Engineering / FinOps / DevOps
   target_audience:
     - "Arquitetos de Solução"

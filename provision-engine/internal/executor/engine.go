@@ -60,6 +60,11 @@ func (e *Executor) ShowPlan(ctx context.Context, planFile string) (*ExecutionRes
 	return e.run(ctx, "show", "-json", planFile)
 }
 
+// ShowPlanText returns human-readable plan output (no JSON).
+func (e *Executor) ShowPlanText(ctx context.Context, planFile string) (*ExecutionResult, error) {
+	return e.run(ctx, "show", "-no-color", planFile)
+}
+
 func (e *Executor) Show(ctx context.Context) (*ExecutionResult, error) {
 	return e.run(ctx, "show", "-json")
 }

@@ -93,7 +93,7 @@ Comandos disponíveis:
 #### !docs
 ```
 📖 Documentação do CloudBuilder:
-https://cloudbuilder.dev/docs
+https://cloudbuilder.io/docs
 
 Precisa de ajuda? Pergunte em #ajuda
 ```
@@ -101,7 +101,7 @@ Precisa de ajuda? Pergunte em #ajuda
 #### !blog
 ```
 📝 Blog do CloudBuilder:
-https://cloudbuilder.dev/blog
+https://cloudbuilder.io/blog
 
 Novos artigos toda semana sobre Platform Engineering e FinOps!
 ```
@@ -109,7 +109,7 @@ Novos artigos toda semana sobre Platform Engineering e FinOps!
 #### !newsletter
 ```
 📧 Inscreva-se na newsletter:
-https://cloudbuilder.dev/newsletter
+https://cloudbuilder.io/newsletter
 
 Receba dicas semanais no seu email!
 ```
@@ -118,7 +118,7 @@ Receba dicas semanais no seu email!
 ```
 🟢 CloudBuilder está operacional!
 
-Status: https://status.cloudbuilder.dev
+Status: https://status.cloudbuilder.io
 Dúvidas? Fale em #ajuda
 ```
 
@@ -226,7 +226,7 @@ Carl-bot complementa o Mee6 com:
     },
     {
       "name": "🔗 Links úteis",
-      "value": "[Blog](https://cloudbuilder.dev/blog) | [Docs](https://cloudbuilder.dev/docs) | [GitHub](https://github.com/cloudbuilder)"
+      "value": "[Blog](https://cloudbuilder.io/blog) | [Docs](https://cloudbuilder.io/docs) | [GitHub](https://github.com/cloudbuilder)"
     }
   ],
   "footer": {

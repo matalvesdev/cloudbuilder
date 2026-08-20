@@ -127,7 +127,7 @@ Meça o impacto da plataforma:
 
 ### Recursos
 
-- **Documentação**: docs.cloudbuilder.com
-- **Blog**: blog.cloudbuilder.com
-- **Comunidade**: community.cloudbuilder.com
-- **Suporte**: support@cloudbuilder.com
+- **Documentação**: docs.cloudbuilder.io
+- **Blog**: blog.cloudbuilder.io
+- **Comunidade**: community.cloudbuilder.io
+- **Suporte**: support@cloudbuilder.io

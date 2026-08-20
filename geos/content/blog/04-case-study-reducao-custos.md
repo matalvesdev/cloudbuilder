@@ -141,7 +141,7 @@ A fintech reduziu custos em 40%, incidentes em 75% e aumentou a satisfação dos
 
 O segredo? Visibilidade, governança e automação.
 
-**Quer resultados similares?** [Agende uma conversa](https://cloudbuilder.com/demo) ou [comece grátis](https://cloudbuilder.com/signup).
+**Quer resultados similares?** [Agende uma conversa](https://cloudbuilder.io/demo) ou [comece grátis](https://cloudbuilder.io/signup).
 
 ---
 

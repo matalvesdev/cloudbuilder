@@ -84,20 +84,18 @@ export function ProvisionPanel({ onClose }: ProvisionPanelProps) {
     setView("credentials");
   }, []);
 
-  // Execute provisioning — calls Go engine to run terraform init → plan → apply
+  // Execute provisioning — backend proxies Go engine with resilience
   const handleProvision = useCallback(async () => {
     if (!canvasId || !selectedCredId) return;
     setLoading(true);
     setError("");
     setView("provisioning");
     try {
-      const prepared = await provisionApi.prepareProvision(canvasId, {
+      const execResult = await provisionApi.executeProvision(canvasId, {
         credentialId: selectedCredId,
         engine,
         autoApprove,
       });
-      // Execute via Go provision engine (runs terraform init → plan → apply)
-      const execResult = await provisionApi.executeProvision(prepared);
       setResult(execResult);
 
       if (execResult.status === "APPLIED") {

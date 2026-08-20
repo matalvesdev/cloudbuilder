@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# CloudBuilder Backend — Render.com Dockerfile
+# ═══════════════════════════════════════════════════════════════════════════
+# Simplified single-stage build for Render free tier (512MB RAM)
+
+# ─── Build ──────────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jdk-alpine AS build
+
+RUN apk add --no-cache maven
+
+WORKDIR /app
+
+COPY pom.xml ./
+COPY .mvn .mvn
+
+# Download dependencies
+RUN mvn dependency:go-offline -q 2>/dev/null || true
+
+COPY src src
+RUN mvn package -DskipTests -Dmaven.test.skip=true -q
+
+# ─── Runtime ────────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine
+
+RUN addgroup -S cloudbuilder && \
+    adduser -S cloudbuilder -G cloudbuilder -u 1000 && \
+    apk add --no-cache curl
+
+WORKDIR /app
+
+# Copy the fat JAR directly (simpler than layered extraction)
+COPY --from=build /app/target/*.jar app.jar
+
+# Logs directory
+RUN mkdir -p /app/logs && chown cloudbuilder:cloudbuilder /app/logs
+
+# Switch to non-root
+USER cloudbuilder
+
+EXPOSE 8080
+
+# Minimal JVM flags for 512MB Render free tier
+ENV JAVA_OPTS="-Xmx256m -Xms128m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+# Simple entrypoint — java -jar with env vars
+ENTRYPOINT ["sh", "-c", "echo 'Starting CloudBuilder...' && java $JAVA_OPTS -jar /app/app.jar"]

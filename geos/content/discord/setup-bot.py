@@ -182,7 +182,7 @@ async def blog_cmd(ctx):
     embed = discord.Embed(
         title="📝 Blog CloudBuilder",
         description="Leia nossos artigos sobre Platform Engineering, FinOps e Cloud",
-        url="https://cloudbuilder.dev/blog",
+        url="https://cloudbuilder.io/blog",
         color=discord.Color(0x00D26A),
     )
     await ctx.send(embed=embed)
@@ -194,7 +194,7 @@ async def newsletter_cmd(ctx):
     embed = discord.Embed(
         title="📧 Newsletter CloudBuilder",
         description="Inscreva-se para receber conteúdo exclusivo",
-        url="https://cloudbuilder.dev/newsletter",
+        url="https://cloudbuilder.io/newsletter",
         color=discord.Color(0x0099FF),
     )
     await ctx.send(embed=embed)
@@ -237,7 +237,7 @@ async def docs_cmd(ctx):
     embed = discord.Embed(
         title="📖 Documentação",
         description="Acesse a documentação completa",
-        url="https://cloudbuilder.dev/docs",
+        url="https://cloudbuilder.io/docs",
         color=discord.Color(0xA855F7),
     )
     await ctx.send(embed=embed)

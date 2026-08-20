@@ -6,9 +6,11 @@ import com.cloudbuilder.provision.application.dto.CanvasDesign.DesignNode;
 import com.cloudbuilder.provision.application.dto.GeneratedCode;
 import com.cloudbuilder.provision.application.port.CanvasDesignFetcher;
 import com.cloudbuilder.provision.domain.service.CodeGeneratorService;
+import com.cloudbuilder.provision.infrastructure.adapter.ProvisionEngineClient;
 import com.cloudbuilder.credential.domain.model.Credential;
 import com.cloudbuilder.credential.domain.service.CredentialService;
 import com.cloudbuilder.shared.security.TenantContext;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,8 +36,13 @@ class ProvisionControllerTest {
     private CodeGeneratorService codeGeneratorService;
     @Mock
     private CredentialService credentialService;
+    @Mock
+    private ProvisionEngineClient engineClient;
     @InjectMocks
     private ProvisionController controller;
+
+    private static final ProvisionEngineClient.EngineResponse SUCCESS_RESPONSE =
+        new ProvisionEngineClient.EngineResponse("dep-1", "APPLIED", "Applied successfully", "Plan output", "Apply output", "", 5000L);
 
     private CanvasDesign gcpDesign;
     private GeneratedCode generatedCode;
@@ -79,11 +86,12 @@ class ProvisionControllerTest {
     }
 
     @Test
-    void provisionApply_withValidCanvasAndCredential_returnsProvisionPayload() {
+    void provisionApply_withValidCanvasAndCredential_callsEngine() {
         when(canvasDesignFetcher.fetchCanvasDesign("canvas-1")).thenReturn(gcpDesign);
         when(codeGeneratorService.generateCode(eq(gcpDesign), eq("google"), eq("terraform")))
             .thenReturn(generatedCode);
         when(credentialService.findById("cred-1")).thenReturn(Optional.of(gcpCredential));
+        when(engineClient.execute(any())).thenReturn(SUCCESS_RESPONSE);
 
         var request = new ProvisionController.ProvisionRequest("cred-1", "terraform", false);
 
@@ -92,28 +100,18 @@ class ProvisionControllerTest {
         assertEquals(200, response.getStatusCodeValue());
         var body = response.getBody();
         assertNotNull(body);
-        assertEquals("canvas-1", body.get("canvasId"));
-        assertEquals("google", body.get("provider"));
-        assertEquals("terraform", body.get("engine"));
-        assertEquals(4, body.get("resourceCount"));
+        assertEquals("APPLIED", body.get("status"));
+        assertEquals("dep-1", body.get("deploymentId"));
 
-        @SuppressWarnings("unchecked")
-        var envVars = (Map<String, String>) body.get("envVars");
-        assertNotNull(envVars);
-        assertTrue(envVars.containsKey("GOOGLE_CREDENTIALS"));
-        assertTrue(envVars.get("GOOGLE_CREDENTIALS").contains("service_account"));
-
-        @SuppressWarnings("unchecked")
-        var files = (Map<String, String>) body.get("files");
-        assertNotNull(files);
-        assertTrue(files.containsKey("main.tf"));
-        assertTrue(files.containsKey("versions.tf"));
-
-        // Verify versions.tf only contains google provider (not aws/azurerm)
-        String versionsTf = files.get("versions.tf");
-        assertTrue(versionsTf.contains("hashicorp/google"));
-        assertFalse(versionsTf.contains("hashicorp/aws"));
-        assertFalse(versionsTf.contains("hashicorp/azurerm"));
+        // Verify engine was called with correct payload
+        var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+        verify(engineClient).execute(captor.capture());
+        var payload = captor.getValue();
+        assertEquals("canvas-1", payload.canvasId());
+        assertEquals("google", payload.provider());
+        assertEquals("terraform", payload.engine());
+        assertEquals(4, payload.resourceCount());
+        assertTrue(payload.envVars().containsKey("GOOGLE_CREDENTIALS"));
     }
 
     @Test
@@ -150,13 +148,17 @@ class ProvisionControllerTest {
         when(codeGeneratorService.generateCode(eq(gcpDesign), eq("google"), eq("terraform")))
             .thenReturn(generatedCode);
         when(credentialService.findById("cred-1")).thenReturn(Optional.of(gcpCredential));
+        when(engineClient.execute(any())).thenReturn(SUCCESS_RESPONSE);
 
         var request = new ProvisionController.ProvisionRequest("cred-1", "terraform", true);
 
         var response = controller.provisionApply("canvas-1", request);
 
         assertEquals(200, response.getStatusCodeValue());
-        assertEquals(true, response.getBody().get("autoApprove"));
+
+        var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+        verify(engineClient).execute(captor.capture());
+        assertTrue(captor.getValue().autoApprove());
     }
 
     @Test
@@ -180,14 +182,17 @@ class ProvisionControllerTest {
         when(codeGeneratorService.generateCode(eq(awsDesign), eq("aws"), eq("terraform")))
             .thenReturn(awsCode);
         when(credentialService.findById("aws-cred")).thenReturn(Optional.of(awsCred));
+        when(engineClient.execute(any())).thenReturn(SUCCESS_RESPONSE);
 
         var request = new ProvisionController.ProvisionRequest("aws-cred", "terraform", false);
 
         var response = controller.provisionApply("canvas-aws", request);
 
         assertEquals(200, response.getStatusCodeValue());
-        @SuppressWarnings("unchecked")
-        var envVars = (Map<String, String>) response.getBody().get("envVars");
+
+        var captor = ArgumentCaptor.forClass(ProvisionEngineClient.ProvisionPayload.class);
+        verify(engineClient).execute(captor.capture());
+        var envVars = captor.getValue().envVars();
         assertEquals("AKIA123", envVars.get("AWS_ACCESS_KEY_ID"));
         assertEquals("secret456", envVars.get("AWS_SECRET_ACCESS_KEY"));
         assertEquals("us-east-1", envVars.get("AWS_DEFAULT_REGION"));

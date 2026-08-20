@@ -97,7 +97,7 @@ FinOps não é opcional. É uma habilidade essencial para desenvolvedores modern
 
 Comece com essas 5 dicas. Aplique uma por vez. Meça resultados. Evolua.
 
-**Quer ajuda?** O CloudBuilder inclui FinOps integrado. [Comece grátis](https://cloudbuilder.com/signup).
+**Quer ajuda?** O CloudBuilder inclui FinOps integrado. [Comece grátis](https://cloudbuilder.io/signup).
 
 ---
 

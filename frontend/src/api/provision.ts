@@ -17,6 +17,9 @@ export interface ProvisionResponse {
   autoApprove: boolean;
 }
 
+/**
+ * Response from backend after provisioning (backend proxies Go engine).
+ */
 export interface ProvisionResult {
   deploymentId: string;
   status: string;
@@ -49,77 +52,34 @@ export function previewProvision(
 }
 
 /**
- * Generate Terraform + inject credentials → returns prepared payload.
- */
-export function prepareProvision(
-  canvasId: string,
-  request: ProvisionRequest,
-): Promise<ProvisionResponse> {
-  return api.post(`/canvases/${canvasId}/provision/apply`, request);
-}
-
-/**
- * Send prepared Terraform payload to the Go provision engine for execution.
- * The Go engine runs: terraform init → plan → apply.
+ * Execute provisioning: generates Terraform, injects credentials, and runs via Go engine.
+ * The backend proxies the call to the Go engine with circuit breaker + retry + bulkhead.
  */
 export async function executeProvision(
-  payload: ProvisionResponse,
+  canvasId: string,
+  request: ProvisionRequest,
 ): Promise<ProvisionResult> {
-  const ENGINE_URL =
-    import.meta.env.VITE_PROVISION_ENGINE_URL || "http://localhost:50052";
-  const token = localStorage.getItem("cloudbuilder-auth-token");
-
-  const startTime = Date.now();
-
   try {
-    const response = await fetch(`${ENGINE_URL}/api/v1/provision/apply`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        canvasId: payload.canvasId,
-        tenantId: localStorage.getItem("cloudbuilder-active-tenant-id") || "",
-        provider: payload.provider,
-        files: payload.files,
-        resourceCount: payload.resourceCount,
-        envVars: payload.envVars,
-        engine: payload.engine,
-        autoApprove: payload.autoApprove,
-        credentialId: payload.credentialId,
-      }),
-    });
+    const result: ProvisionResult = await api.post(
+      `/canvases/${canvasId}/provision/apply`,
+      request,
+    );
 
-    const data = await response.json();
-    const durationMs = Date.now() - startTime;
-
-    if (!response.ok) {
-      return {
-        deploymentId: `dep-${Date.now()}`,
-        status: "FAILED",
-        message: data.message || data.error || "Falha no provisionamento",
-        error: data.details || data.message || "Erro desconhecido",
-        durationMs,
-      };
-    }
-
-    // Go engine returns camelCase JSON: { deploymentId, status, planOutput, applyOutput }
-    const status = (data.status || "APPLIED").toUpperCase();
+    const status = (result.status || "APPLIED").toUpperCase();
     return {
-      deploymentId: data.deploymentId || data.deployment_id || `dep-${Date.now()}`,
-      status: status,
+      deploymentId: result.deploymentId || `dep-${Date.now()}`,
+      status,
       message: status === "APPLIED"
         ? "Infraestrutura provisionada com sucesso!"
         : status === "PLANNED"
           ? "Terraform plan concluído — aguardando aprovação"
           : status === "FAILED"
-            ? (data.error || "Falha no provisionamento")
-            : "Provisionamento concluído",
-      planOutput: data.planOutput || data.plan_output || "",
-      applyOutput: data.applyOutput || data.apply_output || data.output || "",
-      error: data.error || undefined,
-      durationMs,
+            ? (result.error || "Falha no provisionamento")
+            : result.message || "Provisionamento concluído",
+      planOutput: result.planOutput || "",
+      applyOutput: result.applyOutput || "",
+      error: result.error,
+      durationMs: result.durationMs || 0,
     };
   } catch (err: any) {
     return {
@@ -127,7 +87,7 @@ export async function executeProvision(
       status: "FAILED",
       message: "Falha ao conectar com o provision engine",
       error: err.message || "Engine indisponível",
-      durationMs: Date.now() - startTime,
+      durationMs: 0,
     };
   }
 }
@@ -178,7 +138,6 @@ export function resolveDrift(
 
 export const provisionApi = {
   previewProvision,
-  prepareProvision,
   executeProvision,
   validateProvision,
   listCredentials,

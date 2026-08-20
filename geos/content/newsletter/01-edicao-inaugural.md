@@ -30,21 +30,21 @@ Em resumo: Platform Engineering é a prática de construir uma plataforma intern
 
 O resultado? De 3 dias para 5 minutos para provisionar um ambiente.
 
-[Leia o artigo completo →](https://cloudbuilder.com/blog/o-que-e-platform-engineering)
+[Leia o artigo completo →](https://cloudbuilder.io/blog/o-que-e-platform-engineering)
 
 ---
 
 ## 🔗 Link Radar
 
-1. **[Guia de FinOps para Desenvolvedores](https://cloudbuilder.com/blog/finops-guia-completo)** — Como controlar custos cloud sem morrer de medo.
+1. **[Guia de FinOps para Desenvolvedores](https://cloudbuilder.io/blog/finops-guia-completo)** — Como controlar custos cloud sem morrer de medo.
 
-2. **[Terraform Visual: O fim da complexidade](https://cloudbuilder.com/blog/terraform-visual)** — Projete infraestrutura visualmente, gere Terraform automaticamente.
+2. **[Terraform Visual: O fim da complexidade](https://cloudbuilder.io/blog/terraform-visual)** — Projete infraestrutura visualmente, gere Terraform automaticamente.
 
-3. **[Case Study: Fintech reduz custos em 40%](https://cloudbuilder.com/blog/case-study-fintech)** — Como uma fintech brasileira otimizou custos com Platform Engineering.
+3. **[Case Study: Fintech reduz custos em 40%](https://cloudbuilder.io/blog/case-study-fintech)** — Como uma fintech brasileira otimizou custos com Platform Engineering.
 
-4. **[5 dicas de FinOps para devs](https://cloudbuilder.com/blog/5-dicas-finops)** — Dicas práticas que você pode aplicar hoje.
+4. **[5 dicas de FinOps para devs](https://cloudbuilder.io/blog/5-dicas-finops)** — Dicas práticas que você pode aplicar hoje.
 
-5. **[Comparativo: CloudBuilder vs Terraform Cloud](https://cloudbuilder.com/blog/cloudbuilder-vs-terraform-cloud)** — Qual escolher para seu caso de uso?
+5. **[Comparativo: CloudBuilder vs Terraform Cloud](https://cloudbuilder.io/blog/cloudbuilder-vs-terraform-cloud)** — Qual escolher para seu caso de uso?
 
 ---
 
@@ -117,9 +117,9 @@ Na próxima semana:
 
 CloudBuilder — Projete, provisione e monitore sua infraestrutura.
 
-[Website](https://cloudbuilder.com) | [Twitter](https://twitter.com/cloudbuilder) | [LinkedIn](https://linkedin.com/company/cloudbuilder) | [Discord](https://discord.gg/cloudbuilder) | [Blog](https://cloudbuilder.com/blog)
+[Website](https://cloudbuilder.io) | [Twitter](https://twitter.com/cloudbuilder) | [LinkedIn](https://linkedin.com/company/cloudbuilder) | [Discord](https://discord.gg/cloudbuilder) | [Blog](https://cloudbuilder.io/blog)
 
 ---
 
 *Você recebeu esta porque se inscreveu no CloudBuilder Weekly.*
-*[Cancelar inscrição](https://cloudbuilder.com/unsubscribe)*
+*[Cancelar inscrição](https://cloudbuilder.io/unsubscribe)*

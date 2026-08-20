@@ -115,7 +115,7 @@ FinOps não é opcional. É uma necessidade para empresas que usam cloud.
 
 O primeiro passo é ter visibilidade. O segundo é automatizar. O terceiro é otimizar continuamente.
 
-**Quer controlar seus custos cloud?** [Comece grátis com o CloudBuilder](https://cloudbuilder.com/signup).
+**Quer controlar seus custos cloud?** [Comece grátis com o CloudBuilder](https://cloudbuilder.io/signup).
 
 ---
 

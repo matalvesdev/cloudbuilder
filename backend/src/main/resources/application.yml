@@ -39,7 +39,11 @@ spring:
           enabled: true
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s
 
 management:
   endpoints:
@@ -106,12 +110,44 @@ resilience4j:
       gitHubClient:
         baseConfig: gitHubClient
 
+  bulkhead:
+    configs:
+      default:
+        maxConcurrentCalls: 25
+        maxWaitDuration: 5s
+    instances:
+      goEngine:
+        baseConfig: default
+        maxConcurrentCalls: 10
+      default:
+        baseConfig: default
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+    instances:
+      goEngine:
+        baseConfig: default
+        maxAttempts: 2
+      default:
+        baseConfig: default
+
   timelimiter:
     configs:
       default:
         timeoutDuration: 10s
       llmClient:
         timeoutDuration: 30s
+      goEngine:
+        timeoutDuration: 300s  # 5 minutes for terraform operations
     instances:
       opaClient:
         baseConfig: default
@@ -119,6 +155,8 @@ resilience4j:
         baseConfig: llmClient
       gitHubClient:
         baseConfig: default
+      goEngine:
+        baseConfig: goEngine
 
 cloudbuilder:
   kafka:
@@ -156,3 +194,7 @@ cloudbuilder:
   opa:
     # OPA sidecar URL — set to empty to disable OPA integration
     url: "${OPA_URL:http://opa:8181}"
+
+  # Go provision engine URL (server-side only, not exposed to frontend)
+  provision-engine:
+    url: "${PROVISION_ENGINE_URL:http://localhost:50052}"

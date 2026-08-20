@@ -232,7 +232,7 @@ Vá em **Moderation → Auto-Mod**
 | Configuração | Valor |
 |--------------|-------|
 | Bloquear links | ✅ Ativado |
-| Exceções | discord.gg, github.com, cloudbuilder.dev |
+| Exceções | discord.gg, github.com, cloudbuilder.io |
 | Ação | Deletar mensagem |
 
 ### 5.4 Configurar Welcome Message
@@ -265,11 +265,11 @@ Vá em **Custom Commands → Add Command**
 | Comando | Resposta |
 |---------|----------|
 | `!help` | 📋 **Comandos CloudBuilder**\n\n!help - Esta mensagem\n!docs - Documentação\n!blog - Blog oficial\n!newsletter - Inscreva-se\n!invite - Link de convite\n!status - Status do sistema |
-| `!blog` | 📝 **Blog CloudBuilder**\n\nLeia nossos artigos: https://cloudbuilder.dev/blog |
-| `!newsletter` | 📧 **Newsletter**\n\nInscreva-se para receber conteúdo: https://cloudbuilder.dev/newsletter |
+| `!blog` | 📝 **Blog CloudBuilder**\n\nLeia nossos artigos: https://cloudbuilder.io/blog |
+| `!newsletter` | 📧 **Newsletter**\n\nInscreva-se para receber conteúdo: https://cloudbuilder.io/newsletter |
 | `!invite` | 🔗 **Convide Amigos**\n\nLink: https://discord.gg/cloudbuilder |
 | `!status` | 🟢 **CloudBuilder está operacional!**\n\nTodos os sistemas funcionando. |
-| `!docs` | 📖 **Documentação**\n\nAcesse: https://cloudbuilder.dev/docs |
+| `!docs` | 📖 **Documentação**\n\nAcesse: https://cloudbuilder.io/docs |
 
 ---
 
@@ -530,5 +530,5 @@ Para o bot ficar online 24/7, deploy em:
 
 Se precisar de ajuda:
 - **Discord**: https://discord.gg/cloudbuilder
-- **Email**: suporte@cloudbuilder.dev
+- **Email**: suporte@cloudbuilder.io
 - **GitHub**: https://github.com/cloudbuilder/cloudbuilder/issues

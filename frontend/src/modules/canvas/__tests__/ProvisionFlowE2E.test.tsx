@@ -5,14 +5,12 @@ import { ProvisionPanel } from "../components/ProvisionPanel";
 // ─── Mocks ──────────────────────────────────────────────────────────
 
 const mockPreview = vi.fn();
-const mockPrepare = vi.fn();
 const mockExecute = vi.fn();
 const mockListCredentials = vi.fn();
 
 vi.mock("@/api/provision", () => ({
   provisionApi: {
     previewProvision: (...args: any[]) => mockPreview(...args),
-    prepareProvision: (...args: any[]) => mockPrepare(...args),
     executeProvision: (...args: any[]) => mockExecute(...args),
     listCredentials: (...args: any[]) => mockListCredentials(...args),
   },
@@ -71,17 +69,6 @@ const MOCK_PREVIEW = {
     "versions.tf": "terraform {}",
   },
   resourceCount: 3,
-};
-
-const MOCK_PREPARE = {
-  canvasId: "e2e-canvas",
-  provider: "google",
-  engine: "terraform",
-  files: MOCK_PREVIEW.files,
-  resourceCount: 3,
-  envVars: { GOOGLE_CREDENTIALS: '{}' },
-  credentialId: "cred-gcp-1",
-  autoApprove: false,
 };
 
 const MOCK_RESULT = {
@@ -228,25 +215,22 @@ describe("ProvisionPanel E2E Flow", () => {
   // ─── Provisioning Execution ────────────────────────────────
 
   describe("Provisioning Execution", () => {
-    it("calls prepare and execute APIs", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
+    it("calls executeProvision with request params", async () => {
       mockExecute.mockResolvedValue(MOCK_RESULT);
 
       render(<ProvisionPanel onClose={onClose} />);
       await selectCredentialAndProvision();
 
       await waitFor(() => {
-        expect(mockPrepare).toHaveBeenCalledWith("e2e-canvas", {
+        expect(mockExecute).toHaveBeenCalledWith("e2e-canvas", {
           credentialId: "cred-gcp-1",
           engine: "terraform",
           autoApprove: false,
         });
-        expect(mockExecute).toHaveBeenCalledWith(MOCK_PREPARE);
       });
     });
 
     it("shows loading state during provisioning", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockImplementation(() => new Promise((r) => setTimeout(() => r(MOCK_RESULT), 200)));
 
       render(<ProvisionPanel onClose={onClose} />);
@@ -267,7 +251,6 @@ describe("ProvisionPanel E2E Flow", () => {
 
   describe("Result View", () => {
     it("shows success after APPLIED", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockResolvedValue(MOCK_RESULT);
 
       render(<ProvisionPanel onClose={onClose} />);
@@ -280,7 +263,6 @@ describe("ProvisionPanel E2E Flow", () => {
     });
 
     it("displays deployment ID", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockResolvedValue(MOCK_RESULT);
 
       render(<ProvisionPanel onClose={onClose} />);
@@ -292,7 +274,6 @@ describe("ProvisionPanel E2E Flow", () => {
     });
 
     it("displays apply output", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockResolvedValue(MOCK_RESULT);
 
       render(<ProvisionPanel onClose={onClose} />);
@@ -304,7 +285,6 @@ describe("ProvisionPanel E2E Flow", () => {
     });
 
     it("shows duration", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockResolvedValue(MOCK_RESULT);
 
       render(<ProvisionPanel onClose={onClose} />);
@@ -316,7 +296,6 @@ describe("ProvisionPanel E2E Flow", () => {
     });
 
     it("has restart button", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockResolvedValue(MOCK_RESULT);
 
       render(<ProvisionPanel onClose={onClose} />);
@@ -342,7 +321,6 @@ describe("ProvisionPanel E2E Flow", () => {
     });
 
     it("shows error when execution fails", async () => {
-      mockPrepare.mockResolvedValue(MOCK_PREPARE);
       mockExecute.mockResolvedValue({
         deploymentId: "dep-fail", status: "FAILED",
         message: "Falha ao conectar com o provision engine",

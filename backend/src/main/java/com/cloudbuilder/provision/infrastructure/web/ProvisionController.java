@@ -6,6 +6,7 @@ import com.cloudbuilder.provision.application.dto.CanvasDesign;
 import com.cloudbuilder.provision.application.dto.GeneratedCode;
 import com.cloudbuilder.provision.application.port.CanvasDesignFetcher;
 import com.cloudbuilder.provision.domain.service.CodeGeneratorService;
+import com.cloudbuilder.provision.infrastructure.adapter.ProvisionEngineClient;
 import com.cloudbuilder.shared.security.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,9 +25,10 @@ import java.util.Map;
  *  2. Resolve provider from node types
  *  3. Generate Terraform code with proper variable resolution
  *  4. Inject cloud credentials as environment variables
- *  5. Send to Go provision engine for terraform init → plan → apply
+ *  5. Send to Go provision engine via {@link ProvisionEngineClient} for terraform init → plan → apply
  *
  * This is the single entry point for the user's provisioning workflow.
+ * The frontend only talks to this controller; the Go engine URL is server-side only.
  */
 @RestController
 @RequestMapping("/api/v1/canvases/{canvasId}/provision")
@@ -38,13 +40,16 @@ public class ProvisionController {
     private final CanvasDesignFetcher canvasDesignFetcher;
     private final CodeGeneratorService codeGeneratorService;
     private final CredentialService credentialService;
+    private final ProvisionEngineClient engineClient;
 
     public ProvisionController(CanvasDesignFetcher canvasDesignFetcher,
                                 CodeGeneratorService codeGeneratorService,
-                                CredentialService credentialService) {
+                                CredentialService credentialService,
+                                ProvisionEngineClient engineClient) {
         this.canvasDesignFetcher = canvasDesignFetcher;
         this.codeGeneratorService = codeGeneratorService;
         this.credentialService = credentialService;
+        this.engineClient = engineClient;
     }
 
     /**
@@ -119,23 +124,46 @@ public class ProvisionController {
         // 5. Inject credentials into environment
         Map<String, String> envVars = buildCredentialEnvVars(provider, credential);
 
-        // 6. Build the provisioning request for the Go engine
-        Map<String, Object> provisionRequest = Map.of(
-            "canvasId", canvasId,
-            "tenantId", tenantId,
-            "provider", provider,
-            "engine", engine,
-            "files", generatedCode.files(),
-            "resourceCount", generatedCode.resourceCount(),
-            "envVars", envVars,
-            "autoApprove", request.autoApprove() != null && request.autoApprove(),
-            "credentialId", request.credentialId() != null ? request.credentialId() : ""
+        // 6. Build the provisioning payload and send to Go engine
+        var payload = new ProvisionEngineClient.ProvisionPayload(
+            canvasId,
+            tenantId,
+            provider,
+            engine,
+            generatedCode.files(),
+            generatedCode.resourceCount(),
+            envVars,
+            request.autoApprove() != null && request.autoApprove(),
+            request.credentialId() != null ? request.credentialId() : ""
         );
 
         log.info("Provision prepared: provider={}, resources={}, files={}",
                 provider, generatedCode.resourceCount(), generatedCode.files().size());
 
-        return ResponseEntity.ok(provisionRequest);
+        // 7. Execute via Go engine (with circuit breaker + retry + bulkhead)
+        ProvisionEngineClient.EngineResponse engineResponse;
+        try {
+            engineResponse = engineClient.execute(payload);
+        } catch (Exception e) {
+            log.error("Go engine call failed for canvas={}: {}", canvasId, e.getMessage());
+            return ResponseEntity.status(502).body(Map.of(
+                "error", "Provision engine unavailable: " + e.getMessage(),
+                "status", "FAILED"
+            ));
+        }
+
+        log.info("Provision result: status={}, durationMs={}",
+                engineResponse.status(), engineResponse.durationMs());
+
+        return ResponseEntity.ok(Map.of(
+            "deploymentId", engineResponse.deploymentId(),
+            "status", engineResponse.status(),
+            "message", engineResponse.message(),
+            "planOutput", engineResponse.planOutput(),
+            "applyOutput", engineResponse.applyOutput(),
+            "error", engineResponse.error(),
+            "durationMs", engineResponse.durationMs()
+        ));
     }
 
     /**

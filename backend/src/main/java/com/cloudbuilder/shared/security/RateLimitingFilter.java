@@ -17,8 +17,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Simple in-memory rate limiter for auth endpoints.
- * Tracks requests per IP within a sliding window to mitigate brute-force attacks.
+ * In-memory rate limiter per IP address (OWASP A04:2021 — Security Misconfiguration).
+ *
+ * Two tiers:
+ * - Auth endpoints: stricter limit (default 10 req/min) to mitigate brute-force
+ * - All other endpoints: global limit (default 500 req/min)
+ *
+ * Response headers:
+ * - X-RateLimit-Limit: configured max for the endpoint tier
+ * - X-RateLimit-Remaining: requests left in the current window
+ * - Retry-After: seconds until the window resets (only on 429)
+ *
  * NOT a replacement for a production-grade rate limiter (use Bucket4j/Redis for that).
  */
 @Component
@@ -58,23 +67,35 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         // Stricter rate limit for auth endpoints
         if (isAuthPath(path)) {
-            if (!allowRequest(clientIp, "auth", authMaxRequests, authWindowSeconds)) {
+            var result = tryAcquire(clientIp, "auth", authMaxRequests, authWindowSeconds);
+            if (!result.allowed) {
                 log.warn("Rate limit exceeded for auth endpoint - IP: {}", clientIp);
                 response.setStatus(429);
+                response.setHeader("Retry-After", String.valueOf(authWindowSeconds));
+                response.setHeader("X-RateLimit-Limit", String.valueOf(authMaxRequests));
+                response.setHeader("X-RateLimit-Remaining", "0");
                 response.setContentType("application/json");
-                response.getWriter().write("{\"error\":\"Muitas requisições. Aguarde antes de tentar novamente.\"}");
+                response.getWriter().write("{\"error\":\"Rate limit exceeded\",\"message\":\"Too many requests. Please retry after " + authWindowSeconds + " seconds.\"}");
                 return;
             }
+            response.setHeader("X-RateLimit-Limit", String.valueOf(authMaxRequests));
+            response.setHeader("X-RateLimit-Remaining", String.valueOf(result.remaining));
         }
 
         // Global rate limit for all other endpoints
-        if (!allowRequest(clientIp, "global", globalMaxRequests, globalWindowSeconds)) {
+        var result = tryAcquire(clientIp, "global", globalMaxRequests, globalWindowSeconds);
+        if (!result.allowed) {
             log.warn("Global rate limit exceeded - IP: {}", clientIp);
             response.setStatus(429);
+            response.setHeader("Retry-After", String.valueOf(globalWindowSeconds));
+            response.setHeader("X-RateLimit-Limit", String.valueOf(globalMaxRequests));
+            response.setHeader("X-RateLimit-Remaining", "0");
             response.setContentType("application/json");
-            response.getWriter().write("{\"error\":\"Muitas requisições. Aguarde antes de tentar novamente.\"}");
+            response.getWriter().write("{\"error\":\"Rate limit exceeded\",\"message\":\"Too many requests. Please retry after " + globalWindowSeconds + " seconds.\"}");
             return;
         }
+        response.setHeader("X-RateLimit-Limit", String.valueOf(globalMaxRequests));
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(result.remaining));
 
         filterChain.doFilter(request, response);
     }
@@ -86,13 +107,17 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return false;
     }
 
-    private boolean allowRequest(String clientIp, String bucketKey, int maxRequests, int windowSeconds) {
+    private RateCheckResult tryAcquire(String clientIp, String bucketKey, int maxRequests, int windowSeconds) {
         var key = clientIp + ":" + bucketKey;
         var now = System.currentTimeMillis();
         var bucket = buckets.computeIfAbsent(key, k -> new RateLimitBucket(now));
         bucket.cleanup(now, windowSeconds);
-        return bucket.tryConsume(now, maxRequests, windowSeconds);
+        boolean allowed = bucket.tryConsume(now, maxRequests, windowSeconds);
+        int remaining = Math.max(0, maxRequests - bucket.getCount());
+        return new RateCheckResult(allowed, remaining);
     }
+
+    private record RateCheckResult(boolean allowed, int remaining) {}
 
     private String getClientIp(HttpServletRequest request) {
         var xForwardedFor = request.getHeader("X-Forwarded-For");
@@ -107,8 +132,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Simple sliding-window rate limit bucket.
-     * Not thread-safe per bucket (caller synchronizes via ConcurrentHashMap compute).
+     * Sliding-window rate limit bucket.
+     * Thread-safe via ConcurrentHashMap compute; bucket itself uses atomic ops.
      */
     private static class RateLimitBucket {
         private final AtomicInteger counter = new AtomicInteger(0);
@@ -126,13 +151,16 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         boolean tryConsume(long now, int maxRequests, int windowSeconds) {
-            // Double-check window reset race
             if (now - windowStart > windowSeconds * 1000L) {
                 windowStart = now;
                 counter.set(0);
             }
             var count = counter.incrementAndGet();
             return count <= maxRequests;
+        }
+
+        int getCount() {
+            return counter.get();
         }
     }
 }

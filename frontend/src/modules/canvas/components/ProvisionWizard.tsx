@@ -154,22 +154,16 @@ export function ProvisionWizard({ onComplete, onSkip }: ProvisionWizardProps) {
     }
   }, [goNext]);
 
-  // Step 5: Provision
+  // Step 5: Provision — backend proxies Go engine with resilience
   const handleProvision = useCallback(async () => {
     const canvasId = useCanvasStore.getState().canvasId;
     if (!canvasId || !preview) return;
     
     setLoading(true);
     try {
-      // Call the Go engine to run terraform init → plan → apply
-      const result = await provisionApi.executeProvision({
-        canvasId,
-        provider: preview.provider,
-        engine: preview.engine,
-        files: preview.files,
-        resourceCount: preview.resourceCount,
-        envVars: {},
+      const result = await provisionApi.executeProvision(canvasId, {
         credentialId: "",
+        engine: preview.engine as "terraform" | "opentofu",
         autoApprove: false,
       });
       setProvisionResult(result);

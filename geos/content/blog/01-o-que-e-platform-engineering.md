@@ -102,7 +102,7 @@ Platform Engineering não é um luxo. É uma necessidade para empresas que quere
 
 O primeiro passo é avaliar onde sua empresa está e definir um caminho para evoluir.
 
-**Quer saber mais?** [Agende uma demonstração gratuita](https://cloudbuilder.com/demo) ou comece com o [plano gratuito](https://cloudbuilder.com/signup).
+**Quer saber mais?** [Agende uma demonstração gratuita](https://cloudbuilder.io/demo) ou comece com o [plano gratuito](https://cloudbuilder.io/signup).
 
 ---
 
