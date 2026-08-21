@@ -57,3 +57,7 @@ deploy/terraform-oci/*.tfvars
 .env.prod
 geos_pkg/__pycache__/
 geos_pkg/__pycache__/**
+
+# Discord/Slack webhooks (contain secrets)
+.env.discord
+.env.slack
