@@ -39,9 +39,9 @@ USER cb
 # Port via env var (Render uses PORT)
 EXPOSE 8080
 
-ENV JAVA_OPTS="-Xmx300m -Xms200m -XX:MaxMetaspaceSize=128m -XX:+UseG1GC -XX:+UseStringDeduplication"
+ENV JAVA_OPTS="-Xmx200m -Xms128m -XX:MaxMetaspaceSize=64m -XX:+UseSerialGC -XX:MaxRAMPercentage=40.0 -XX:+UseStringDeduplication -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify"
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
   CMD curl -f http://localhost:${PORT:-8080}/actuator/health || exit 1
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
