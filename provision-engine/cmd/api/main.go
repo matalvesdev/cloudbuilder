@@ -216,6 +216,9 @@ func loadConfig() *app.Config {
 	cfg := app.DefaultConfig()
 	if v := os.Getenv("PE_SERVER_HTTP_ADDR"); v != "" {
 		cfg.HTTPAddr = v
+	} else if v := os.Getenv("PORT"); v != "" {
+		// PaaS providers such as Render expose the public listener port as PORT.
+		cfg.HTTPAddr = ":" + v
 	} else if v := viper.GetString("server.http.addr"); v != "" {
 		cfg.HTTPAddr = v
 	}
@@ -248,6 +251,9 @@ func loadConfig() *app.Config {
 	}
 	if v := viper.GetString("database.postgres.password"); v != "" {
 		cfg.DatabasePass = v
+	}
+	if v := viper.GetString("database.postgres.sslmode"); v != "" {
+		cfg.DatabaseSSLMode = v
 	}
 	return cfg
 }

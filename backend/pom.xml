@@ -101,6 +101,14 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- Structured JSON logging used by logback-spring.xml in production. -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>8.0</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Cache local (Caffeine substitui Redis) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

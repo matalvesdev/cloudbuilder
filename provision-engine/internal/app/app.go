@@ -28,6 +28,7 @@ type Config struct {
 	DatabaseName string
 	DatabaseUser string
 	DatabasePass string
+	DatabaseSSLMode string
 	JWTSecret    string
 	CORSOrigin   string
 }
@@ -42,6 +43,7 @@ func DefaultConfig() *Config {
 		DatabaseName: "provision_engine",
 		DatabaseUser: "pe",
 		DatabasePass: "pe_secret",
+		DatabaseSSLMode: "disable",
 		CORSOrigin:   "http://localhost:3000",
 	}
 }
@@ -81,6 +83,7 @@ func New(cfg *Config) (*App, error) {
 		Database:     cfg.DatabaseName,
 		Username:     cfg.DatabaseUser,
 		Password:     cfg.DatabasePass,
+		SSLMode:      cfg.DatabaseSSLMode,
 		MaxOpenConns: 25,
 		MaxIdleConns: 10,
 		MaxLifetime:  5 * time.Minute,

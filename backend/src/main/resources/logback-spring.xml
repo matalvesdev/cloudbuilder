@@ -63,10 +63,10 @@
                     <version>[ignore]</version>
                     <levelValue>[ignore]</levelValue>
                 </fieldNames>
-                <mdcKeyFieldName>traceId</mdcKeyFieldName>
-                <mdcKeyFieldName>tenantId</mdcKeyFieldName>
-                <mdcKeyFieldName>userId</mdcKeyFieldName>
-                <mdcKeyFieldName>requestId</mdcKeyFieldName>
+                <mdcKeyFieldName>traceId=traceId</mdcKeyFieldName>
+                <mdcKeyFieldName>tenantId=tenantId</mdcKeyFieldName>
+                <mdcKeyFieldName>userId=userId</mdcKeyFieldName>
+                <mdcKeyFieldName>requestId=requestId</mdcKeyFieldName>
             </encoder>
         </appender>
 
@@ -78,10 +78,12 @@
         </appender>
 
         <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_JSON"/>
             <appender-ref ref="TEXT_FILE"/>
         </root>
         <logger name="com.cloudbuilder" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="ASYNC_JSON"/>
             <appender-ref ref="TEXT_FILE"/>
         </logger>

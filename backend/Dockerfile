@@ -4,7 +4,7 @@
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ─── Stage 1: Build ──────────────────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-21-jdk AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 ENV MAVEN_OPTS="-Xmx384m -Xms192m"
@@ -36,7 +36,7 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
-    groupadd -S cb && useradd -S cb -G cb && \
+    groupadd --system cb && useradd --system --gid cb cb && \
     mkdir -p /app/logs && chown cb:cb /app/logs
 
 # Copy custom JRE from jlink stage
@@ -53,7 +53,7 @@ USER cb
 EXPOSE ${PORT:-8080}
 
 # Ultra-minimal JVM settings — no heap overhead from unused modules
-ENV JAVA_OPTS="-Xmx256m -Xms128m -XX:MaxMetaspaceSize=48m -XX:+UseSerialGC -XX:MaxRAMPercentage=45.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-Xmx256m -Xms128m -XX:+UseSerialGC -XX:MaxRAMPercentage=45.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify -Djava.security.egd=file:/dev/./urandom"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
     CMD curl -f http://localhost:${PORT:-8080}/actuator/health || exit 1

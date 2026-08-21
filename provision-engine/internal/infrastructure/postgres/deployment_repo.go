@@ -19,6 +19,7 @@ type Config struct {
 	Database     string        `mapstructure:"database"`
 	Username     string        `mapstructure:"username"`
 	Password     string        `mapstructure:"password"`
+	SSLMode      string        `mapstructure:"sslmode"`
 	MaxOpenConns int           `mapstructure:"max_open_conns"`
 	MaxIdleConns int           `mapstructure:"max_idle_conns"`
 	MaxLifetime  time.Duration `mapstructure:"max_lifetime"`
@@ -32,8 +33,8 @@ type DB struct {
 // New creates a new PostgreSQL connection.
 func New(cfg Config) (*DB, error) {
 	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.Database,
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.Database, cfg.SSLMode,
 	)
 
 	db, err := sql.Open("postgres", dsn)

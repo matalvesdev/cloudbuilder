@@ -60,15 +60,16 @@
 5. Adicione variáveis de ambiente (Environment Variables):
 
    ```env
-   # Database (cole do Neon)
-   DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/cloudbuilder?sslmode=require
+   # Database (converta a URL do Neon para JDBC)
+   SPRING_DATASOURCE_URL=jdbc:postgresql://ep-xxx.neon.tech/cloudbuilder?sslmode=require
+   SPRING_DATASOURCE_USERNAME=<usuário do Neon>
+   SPRING_DATASOURCE_PASSWORD=<senha do Neon>
 
    # Security (gere com: openssl rand -base64 64)
    JWT_SECRET=<cole-64-bytes-base64>
    CLOUDBUILDER_ENCRYPTION_KEY=<cole-32-bytes-base64>
 
    # Server
-   SERVER_PORT=10000
    SPRING_PROFILES_ACTIVE=prod
 
    # CORS (configure com o domínio do Vercel após deploy)
@@ -221,10 +222,12 @@ docker compose up -d
 
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
-| `DATABASE_URL` | ✅ | Connection string do Neon |
+| `SPRING_DATASOURCE_URL` | ✅ | URL JDBC do Neon (`jdbc:postgresql://...?...`) |
+| `SPRING_DATASOURCE_USERNAME` | ✅ | Usuário do Neon |
+| `SPRING_DATASOURCE_PASSWORD` | ✅ | Senha do Neon |
 | `JWT_SECRET` | ✅ | 64 bytes base64 |
 | `CLOUDBUILDER_ENCRYPTION_KEY` | ✅ | 32 bytes base64 |
-| `SERVER_PORT` | ✅ | `10000` (Render padrão) |
+| `SERVER_PORT` | Opcional | Porta local; Render usa automaticamente `PORT` |
 | `SPRING_PROFILES_ACTIVE` | ✅ | `prod` |
 | `CORS_ALLOWED_ORIGINS` | ✅ | Domínio do Vercel |
 | `JAVA_OPTS` | Opcional | `-Xmx256m -Xms128m` |
