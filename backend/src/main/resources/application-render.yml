@@ -15,9 +15,6 @@ spring:
   threads:
     virtual:
       enabled: false
-  config:
-    activate:
-      on-profile: render
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:?DATABASE_URL obrigatorio}
@@ -44,14 +41,6 @@ spring:
       - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
       - org.springframework.boot.autoconfigure.web.socket.ServletWebSocketServerAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.audit.AuditAutoConfiguration
-      - org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration
-      - io.micrometer.core.instrument.binder.system.ProcessorMetrics
-      - io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics
-      - io.micrometer.core.instrument.binder.jvm.JvmGcMetrics
-      - io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics
-      - io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics
-      - io.micrometer.core.instrument.binder.system.ProcessorMetrics
-      - io.micrometer.prometheus.PrometheusMeterRegistry
 
   jpa:
     hibernate:
@@ -102,8 +91,6 @@ management:
       show-components: never
     info:
       enabled: false
-  metrics:
-    enabled: false
 
 cloudbuilder:
   kafka:
