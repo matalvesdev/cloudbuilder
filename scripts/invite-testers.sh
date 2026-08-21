@@ -49,7 +49,7 @@ echo ""
 # Tester configurations
 declare -a TESTER_NAMES=("Tester Alpha" "Tester Beta" "Tester Gamma")
 declare -a TESTER_EMAILS=("tester-alpha@cloudbuilder.dev" "tester-beta@cloudbuilder.dev" "tester-gamma@cloudbuilder.dev")
-declare -a TESTER_ROLES=("editor" "editor" "viewer")
+declare -a TESTER_ROLES=("EDITOR" "EDITOR" "VIEWER")
 declare -a TESTER_DESCRIPTIONS=("DevOps/SRE — Testes de provisioning" "Developer — Testes de canvas e UX" "Viewer — Testes de navegação e docs")
 
 # ── Step 3: Send invitations ─────────────────────────────────
