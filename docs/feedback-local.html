@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudBuilder — Feedback Local</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #0a1128; color: white; min-height: 100vh; padding: 40px 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: #ccff00; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; }
+        input, textarea, select { width: 100%; padding: 12px; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; color: white; font-size: 16px; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #ccff00; }
+        textarea { min-height: 100px; resize: vertical; }
+        .rating { display: flex; gap: 10px; margin-top: 10px; }
+        .rating input { display: none; }
+        .rating label { font-size: 32px; cursor: pointer; color: #333; transition: color 0.2s; }
+        .rating input:checked ~ label, .rating label:hover, .rating label:hover ~ label { color: #ccff00; }
+        .rating { direction: rtl; }
+        button { width: 100%; padding: 16px; background: #ccff00; color: #0a1128; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #b3e600; }
+        .success { display: none; text-align: center; padding: 40px; }
+        .success h2 { color: #ccff00; margin-bottom: 20px; }
+        .emoji { font-size: 64px; margin-bottom: 20px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; background: #1a1a2e; padding: 5px; border-radius: 8px; }
+        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .tab:hover { background: rgba(204, 255, 0, 0.1); }
+        .tab.active { background: #ccff00; color: #0a1128; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .saved-list { margin-top: 30px; border-top: 1px solid #333; padding-top: 20px; }
+        .saved-item { background: #1a1a2e; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #ccff00; }
+        .saved-item .type { font-size: 12px; color: #ccff00; font-weight: bold; }
+        .saved-item .text { font-size: 14px; margin-top: 5px; color: #ccc; }
+        .saved-item .meta { font-size: 11px; color: #666; margin-top: 8px; }
+        .clear-btn { background: #dc3545; margin-top: 10px; }
+        .clear-btn:hover { background: #c82333; }
+        .export-btn { background: #2563eb; margin-top: 10px; }
+        .export-btn:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="form">
+            <h1>CloudBuilder MVP</h1>
+            <p class="subtitle">Seu feedback é salvo localmente no navegador.</p>
+
+            <!-- Type Tabs -->
+            <div class="tabs">
+                <div class="tab active" data-type="bug" onclick="selectType('bug')">🐛 Bug</div>
+                <div class="tab" data-type="suggestion" onclick="selectType('suggestion')">💡 Ideia</div>
+                <div class="tab" data-type="question" onclick="selectType('question')">❓ Dúvida</div>
+                <div class="tab" data-type="feedback" onclick="selectType('feedback')">⭐ Feedback</div>
+            </div>
+
+            <form id="feedbackForm">
+                <div class="form-group">
+                    <label>Seu nome</label>
+                    <input type="text" name="name" required placeholder="Nome do tester">
+                </div>
+
+                <div class="form-group">
+                    <label>Módulo</label>
+                    <select name="module" required>
+                        <option value="geral">Geral</option>
+                        <option value="canvas">Canvas (Design Visual)</option>
+                        <option value="provisioning">Provisioning (Deploy)</option>
+                        <option value="auth">Autenticação (Login)</option>
+                        <option value="finops">FinOps (Custos)</option>
+                        <option value="observability">Observability (Métricas)</option>
+                        <option value="iam">IAM (Usuários)</option>
+                        <option value="settings">Configurações</option>
+                    </select>
+                </div>
+
+                <!-- Bug Fields -->
+                <div class="tab-content active" id="bugFields">
+                    <div class="form-group">
+                        <label>Severidade</label>
+                        <select name="severity" required>
+                            <option value="critical">🔴 Crítico</option>
+                            <option value="high">🟠 Alto</option>
+                            <option value="medium" selected>🟡 Médio</option>
+                            <option value="low">🟢 Baixo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Título do Bug</label>
+                        <input type="text" name="bugTitle" placeholder="Ex: Canvas não salva">
+                    </div>
+                    <div class="form-group">
+                        <label>Passos para reproduzir</label>
+                        <textarea name="steps" placeholder="1. Acessar...&#10;2. Clicar em..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Comportamento esperado vs atual</label>
+                        <textarea name="description" placeholder="Esperado: ...&#10;Atual: ..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Suggestion Fields -->
+                <div class="tab-content" id="suggestionFields">
+                    <div class="form-group">
+                        <label>O que você gostaria?</label>
+                        <textarea name="suggestionText" placeholder="Descreva sua ideia"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Por que seria útil?</label>
+                        <textarea name="suggestionWhy" placeholder="Qual problema resolveria?"></textarea>
+                    </div>
+                </div>
+
+                <!-- Question Fields -->
+                <div class="tab-content" id="questionFields">
+                    <div class="form-group">
+                        <label>Sua pergunta</label>
+                        <textarea name="questionText" placeholder="O que você quer saber?"></textarea>
+                    </div>
+                </div>
+
+                <!-- Feedback Fields -->
+                <div class="tab-content" id="feedbackFields">
+                    <div class="form-group">
+                        <label>Nota (1-5)</label>
+                        <div class="rating">
+                            <input type="radio" name="rating" value="5" id="star5"><label for="star5">⭐</label>
+                            <input type="radio" name="rating" value="4" id="star4"><label for="star4">⭐</label>
+                            <input type="radio" name="rating" value="3" id="star3" checked><label for="star3">⭐</label>
+                            <input type="radio" name="rating" value="2" id="star2"><label for="star2">⭐</label>
+                            <input type="radio" name="rating" value="1" id="star1"><label for="star1">⭐</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>O que mais gostou?</label>
+                        <textarea name="liked" placeholder="O que funcionou bem?"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>O que precisa melhorar?</label>
+                        <textarea name="improve" placeholder="O que causou dificuldade?"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit">Salvar Feedback</button>
+            </form>
+        </div>
+
+        <div class="success" id="success">
+            <div class="emoji">✅</div>
+            <h2>Feedback salvo!</h2>
+            <p>Seu feedback foi salvo no navegador.</p>
+            <button onclick="resetForm()" style="margin-top: 20px;">Enviar outro</button>
+        </div>
+
+        <!-- Saved Feedback List -->
+        <div class="saved-list" id="savedList">
+            <h3 style="color: #ccff00; margin-bottom: 15px;">📋 Feedbacks Salvos (<span id="count">0</span>)</h3>
+            <div id="savedItems"></div>
+            <button class="export-btn" onclick="exportFeedback()">📥 Exportar JSON</button>
+            <button class="clear-btn" onclick="clearAll()">🗑️ Limpar Tudo</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedType = 'bug';
+        const STORAGE_KEY = 'cloudbuilder-feedback';
+
+        function selectType(type) {
+            selectedType = type;
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.type === type);
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(type + 'Fields').classList.add('active');
+        }
+
+        function getSavedFeedback() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            } catch {
+                return [];
+            }
+        }
+
+        function saveFeedback(data) {
+            const saved = getSavedFeedback();
+            saved.push({
+                ...data,
+                type: selectedType,
+                timestamp: new Date().toISOString(),
+                id: Date.now()
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+            renderSavedList();
+        }
+
+        function renderSavedList() {
+            const saved = getSavedFeedback();
+            const container = document.getElementById('savedItems');
+            const count = document.getElementById('count');
+            count.textContent = saved.length;
+
+            if (saved.length === 0) {
+                container.innerHTML = '<p style="color: #666; font-size: 14px;">Nenhum feedback salvo ainda.</p>';
+                return;
+            }
+
+            const typeEmoji = { bug: '🐛', suggestion: '💡', question: '❓', feedback: '⭐' };
+            const typeLabel = { bug: 'Bug', suggestion: 'Sugestão', question: 'Dúvida', feedback: 'Feedback' };
+
+            container.innerHTML = saved.reverse().map(item => `
+                <div class="saved-item">
+                    <div class="type">${typeEmoji[item.type]} ${typeLabel[item.type]} — ${item.module}</div>
+                    <div class="text">${item.bugTitle || item.suggestionText || item.questionText || item.liked || 'Sem detalhes'}</div>
+                    <div class="meta">${item.name} • ${new Date(item.timestamp).toLocaleString('pt-BR')}</div>
+                </div>
+            `).join('');
+        }
+
+        function exportFeedback() {
+            const saved = getSavedFeedback();
+            if (saved.length === 0) {
+                alert('Nenhum feedback para exportar.');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cloudbuilder-feedback-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearAll() {
+            if (confirm('Tem certeza que deseja limpar todos os feedbacks?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                renderSavedList();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('form').style.display = 'block';
+            document.getElementById('success').style.display = 'none';
+            document.getElementById('feedbackForm').reset();
+            selectType('bug');
+        }
+
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            saveFeedback(data);
+
+            document.getElementById('form').style.display = 'none';
+            document.getElementById('success').style.display = 'block';
+        });
+
+        // Init
+        renderSavedList();
+    </script>
+</body>
+</html>
