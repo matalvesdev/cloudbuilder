@@ -201,14 +201,69 @@ Qualquer dúvida, é só perguntar no #dúvidas!
 
 ---
 
+## 🔗 Webhook Integration
+
+### Discord Webhook (5 min)
+
+1. **Criar webhook:**
+   - Server Settings → Integrations → Webhooks
+   - New Webhook → Selecione o canal `#bugs`
+   - Copie a URL
+
+2. **Configurar no projeto:**
+   ```bash
+   # Adicionar ao .env
+   export DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/...'
+   ```
+
+3. **Testar:**
+   ```bash
+   ./scripts/discord-webhook.sh bug "Teste" "Mensagem de teste" canvas medium
+   ```
+
+4. **Usar no feedback form:**
+   - Abra `docs/feedback-form.html`
+   - Cole a URL do webhook
+   - Envie feedback → aparece no Discord!
+
+### Slack Webhook (5 min)
+
+1. **Criar webhook:**
+   - Apps → Incoming Webhooks → Add New Webhook
+   - Selecione o canal `#bugs`
+   - Copie a URL
+
+2. **Configurar no projeto:**
+   ```bash
+   # Adicionar ao .env
+   export SLACK_WEBHOOK_URL='https://hooks.slack.com/services/...'
+   ```
+
+3. **Testar:**
+   ```bash
+   ./scripts/slack-webhook.sh bug "Teste" "Mensagem de teste" canvas medium
+   ```
+
+### Webhook URLs para cada canal
+
+| Canal | Discord | Slack |
+|-------|---------|-------|
+| Bugs | `DISCORD_BUG_WEBHOOK_URL` | `SLACK_BUG_WEBHOOK_URL` |
+| Feedback | `DISCORD_FEEDBACK_WEBHOOK_URL` | `SLACK_FEEDBACK_WEBHOOK_URL` |
+| Geral | `DISCORD_WEBHOOK_URL` | `SLACK_WEBHOOK_URL` |
+
+---
+
 ## ✅ Checklist de Setup
 
-- [ ] Servidor Discord criado
+- [ ] Servidor Discord/Slack criado
 - [ ] Canais configurados (bugs, sugestões, dúvidas, feedback-rápido)
+- [ ] Webhooks criados para cada canal
+- [ ] Variáveis de ambiente configuradas
 - [ ] Template de feedback fixado em cada canal
 - [ ] Convites enviados para 3 testers
 - [ ] Guia de teste compartilhado
-- [ ] Webhook configurado (opcional)
+- [ ] Feedback form testado
 
 ---
 

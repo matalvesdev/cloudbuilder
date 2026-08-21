@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #0a1128; color: white; min-height: 100vh; padding: 40px 20px; }
         .container { max-width: 600px; margin: 0 auto; }
-        h1 { color: #ccff00; margin-bottom: 10px; }
+        h1 { color: #ccff00; margin-bottom: 10px; font-size: 28px; }
         .subtitle { color: #666; margin-bottom: 30px; }
         .form-group { margin-bottom: 25px; }
         label { display: block; margin-bottom: 8px; font-weight: 500; }
@@ -20,11 +20,26 @@
         .rating label { font-size: 32px; cursor: pointer; color: #333; transition: color 0.2s; }
         .rating input:checked ~ label, .rating label:hover, .rating label:hover ~ label { color: #ccff00; }
         .rating { direction: rtl; }
-        button { width: 100%; padding: 16px; background: #ccff00; color: #0a1128; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button { width: 100%; padding: 16px; background: #ccff00; color: #0a1128; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background: #b3e600; }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; }
         .success { display: none; text-align: center; padding: 40px; }
         .success h2 { color: #ccff00; margin-bottom: 20px; }
         .emoji { font-size: 64px; margin-bottom: 20px; }
+        .channel-select { display: flex; gap: 10px; margin-bottom: 20px; }
+        .channel-btn { flex: 1; padding: 12px; background: #1a1a2e; border: 2px solid #333; border-radius: 8px; color: white; cursor: pointer; text-align: center; transition: all 0.2s; }
+        .channel-btn:hover { border-color: #ccff00; }
+        .channel-btn.active { border-color: #ccff00; background: rgba(204, 255, 0, 0.1); }
+        .channel-btn img { width: 24px; height: 24px; margin-bottom: 4px; }
+        .webhook-input { margin-top: 10px; }
+        .webhook-input input { font-size: 14px; padding: 10px; }
+        .webhook-hint { font-size: 12px; color: #666; margin-top: 5px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; background: #1a1a2e; padding: 5px; border-radius: 8px; }
+        .tab { flex: 1; padding: 10px; text-align: center; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .tab:hover { background: rgba(204, 255, 0, 0.1); }
+        .tab.active { background: #ccff00; color: #0a1128; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body>
@@ -32,108 +47,373 @@
         <div id="form">
             <h1>CloudBuilder MVP</h1>
             <p class="subtitle">Nos ajude a melhorar! Seu feedback é muito importante.</p>
-            
+
+            <!-- Channel Selection -->
+            <div class="channel-select">
+                <div class="channel-btn active" data-channel="discord" onclick="selectChannel('discord')">
+                    <div style="font-size: 24px;">💬</div>
+                    <div>Discord</div>
+                </div>
+                <div class="channel-btn" data-channel="slack" onclick="selectChannel('slack')">
+                    <div style="font-size: 24px;">📢</div>
+                    <div>Slack</div>
+                </div>
+                <div class="channel-btn" data-channel="console" onclick="selectChannel('console')">
+                    <div style="font-size: 24px;">🖥️</div>
+                    <div>Console</div>
+                </div>
+            </div>
+
+            <!-- Webhook URL Input -->
+            <div class="webhook-input" id="webhookInput">
+                <label>Webhook URL</label>
+                <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+                <p class="webhook-hint" id="webhookHint">
+                    Crie um webhook no Discord: Server Settings → Integrations → Webhooks → New Webhook
+                </p>
+            </div>
+
             <form id="feedbackForm">
+                <!-- Type Tabs -->
+                <div class="tabs">
+                    <div class="tab active" data-type="bug" onclick="selectType('bug')">🐛 Bug</div>
+                    <div class="tab" data-type="suggestion" onclick="selectType('suggestion')">💡 Ideia</div>
+                    <div class="tab" data-type="question" onclick="selectType('question')">❓ Dúvida</div>
+                    <div class="tab" data-type="feedback" onclick="selectType('feedback')">⭐ Feedback</div>
+                </div>
+
                 <div class="form-group">
                     <label>Seu nome</label>
                     <input type="text" name="name" required placeholder="Nome do tester">
                 </div>
-                
+
                 <div class="form-group">
-                    <label>Módulo avaliado</label>
+                    <label>Módulo</label>
                     <select name="module" required>
-                        <option value="">Selecione...</option>
+                        <option value="geral">Geral</option>
                         <option value="canvas">Canvas (Design Visual)</option>
                         <option value="provisioning">Provisioning (Deploy)</option>
                         <option value="auth">Autenticação (Login)</option>
                         <option value="finops">FinOps (Custos)</option>
                         <option value="observability">Observability (Métricas)</option>
-                        <option value="geral">Geral</option>
+                        <option value="iam">IAM (Usuários)</option>
+                        <option value="settings">Configurações</option>
                     </select>
                 </div>
-                
-                <div class="form-group">
-                    <label>Nota (1-5)</label>
-                    <div class="rating">
-                        <input type="radio" name="rating" value="5" id="star5"><label for="star5">⭐</label>
-                        <input type="radio" name="rating" value="4" id="star4"><label for="star4">⭐</label>
-                        <input type="radio" name="rating" value="3" id="star3"><label for="star3">⭐</label>
-                        <input type="radio" name="rating" value="2" id="star2"><label for="star2">⭐</label>
-                        <input type="radio" name="rating" value="1" id="star1"><label for="star1">⭐</label>
+
+                <!-- Bug Fields -->
+                <div class="tab-content active" id="bugFields">
+                    <div class="form-group">
+                        <label>Severidade</label>
+                        <select name="severity" required>
+                            <option value="critical">🔴 Crítico — Sistema inutilizável</option>
+                            <option value="high">🟠 Alto — Funcionalidade quebrada</option>
+                            <option value="medium" selected>🟡 Médio — Funciona com problema</option>
+                            <option value="low">🟢 Baixo — Cosmético</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Título do Bug</label>
+                        <input type="text" name="bugTitle" placeholder="Ex: Canvas não salva ao pressionar Ctrl+S">
+                    </div>
+                    <div class="form-group">
+                        <label>Passos para reproduzir</label>
+                        <textarea name="steps" placeholder="1. Acessar o canvas&#10;2. Criar um nó&#10;3. Pressionar Ctrl+S&#10;4. Recarregar a página"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Comportamento esperado</label>
+                        <textarea name="expected" placeholder="O que deveria acontecer"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Comportamento atual</label>
+                        <textarea name="actual" placeholder="O que realmente aconteceu"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Screenshot ou Console (F12)</label>
+                        <textarea name="screenshot" placeholder="Cole o erro do console ou descreva o que vê na tela"></textarea>
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label>O que mais gostou?</label>
-                    <textarea name="liked" placeholder="O que funcionou bem para você?"></textarea>
+
+                <!-- Suggestion Fields -->
+                <div class="tab-content" id="suggestionFields">
+                    <div class="form-group">
+                        <label>O que você gostaria?</label>
+                        <textarea name="suggestionText" placeholder="Descreva sua ideia em detalhes"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Por que seria útil?</label>
+                        <textarea name="suggestionWhy" placeholder="Qual problema isso resolveria?"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Prioridade</label>
+                        <select name="suggestionPriority">
+                            <option value="essential">🔴 Essencial</option>
+                            <option value="important" selected>🟡 Importante</option>
+                            <option value="nice">🟢 Legal ter</option>
+                        </select>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label>O que precisa melhorar?</label>
-                    <textarea name="improve" placeholder="O que causou dificuldade ou confusão?"></textarea>
+
+                <!-- Question Fields -->
+                <div class="tab-content" id="questionFields">
+                    <div class="form-group">
+                        <label>O que você tentou fazer?</label>
+                        <textarea name="questionTried" placeholder="Descreva o que estava tentando fazer"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>O que aconteceu?</label>
+                        <textarea name="questionHappened" placeholder="Descreva o que aconteceu"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Já tentou?</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" name="triedRestart" style="width: auto;"> Reiniciar
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" name="triedCache" style="width: auto;"> Limpar cache
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" name="triedGuide" style="width: auto;"> Consultar TESTING_GUIDE.md
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label>Sugestões</label>
-                    <textarea name="suggestions" placeholder="Alguma ideia nova que gostaria de ver?"></textarea>
+
+                <!-- Feedback Fields -->
+                <div class="tab-content" id="feedbackFields">
+                    <div class="form-group">
+                        <label>Nota (1-5)</label>
+                        <div class="rating">
+                            <input type="radio" name="rating" value="5" id="star5"><label for="star5">⭐</label>
+                            <input type="radio" name="rating" value="4" id="star4"><label for="star4">⭐</label>
+                            <input type="radio" name="rating" value="3" id="star3"><label for="star3">⭐</label>
+                            <input type="radio" name="rating" value="2" id="star2"><label for="star2">⭐</label>
+                            <input type="radio" name="rating" value="1" id="star1" checked><label for="star1">⭐</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>O que mais gostou?</label>
+                        <textarea name="liked" placeholder="O que funcionou bem para você?"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>O que precisa melhorar?</label>
+                        <textarea name="improve" placeholder="O que causou dificuldade ou confusão?"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Sugestões</label>
+                        <textarea name="suggestions" placeholder="Alguma ideia nova que gostaria de ver?"></textarea>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label>Bugs encontrados (opcional)</label>
-                    <textarea name="bugs" placeholder="Descreva qualquer erro encontrado..."></textarea>
-                </div>
-                
-                <button type="submit">Enviar Feedback</button>
+
+                <button type="submit" id="submitBtn">Enviar Feedback</button>
             </form>
         </div>
-        
+
         <div class="success" id="success">
             <div class="emoji">🎉</div>
             <h2>Obrigado pelo feedback!</h2>
             <p>Seu feedback nos ajuda a construir um produto melhor.</p>
             <p style="margin-top: 20px; color: #666;">Você pode fechar esta janela.</p>
+            <button onclick="resetForm()" style="margin-top: 20px; background: #333; color: white;">Enviar outro feedback</button>
         </div>
     </div>
-    
+
     <script>
-        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+        let selectedChannel = 'discord';
+        let selectedType = 'bug';
+
+        function selectChannel(channel) {
+            selectedChannel = channel;
+            document.querySelectorAll('.channel-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.channel === channel);
+            });
+
+            const webhookInput = document.getElementById('webhookInput');
+            const webhookUrl = document.getElementById('webhookUrl');
+            const webhookHint = document.getElementById('webhookHint');
+
+            if (channel === 'console') {
+                webhookInput.style.display = 'none';
+            } else {
+                webhookInput.style.display = 'block';
+                if (channel === 'discord') {
+                    webhookUrl.placeholder = 'https://discord.com/api/webhooks/...';
+                    webhookHint.textContent = 'Crie um webhook no Discord: Server Settings → Integrations → Webhooks → New Webhook';
+                } else {
+                    webhookUrl.placeholder = 'https://hooks.slack.com/services/...';
+                    webhookHint.textContent = 'Crie um webhook no Slack: Apps → Incoming Webhooks → Add New Webhook';
+                }
+            }
+        }
+
+        function selectType(type) {
+            selectedType = type;
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.type === type);
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(type + 'Fields').classList.add('active');
+        }
+
+        function buildDiscordMessage(data) {
+            const typeEmoji = { bug: '🐛', suggestion: '💡', question: '❓', feedback: '⭐' };
+            const typeLabel = { bug: 'Bug', suggestion: 'Sugestão', question: 'Dúvida', feedback: 'Feedback' };
+            const severityEmoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢' };
+            const colorMap = { bug: 15548997, suggestion: 16776960, question: 3447003, feedback: 3066993 };
+
+            let fields = [
+                { name: "📋 Tipo", value: typeLabel[selectedType], inline: true },
+                { name: "📦 Módulo", value: data.module, inline: true }
+            ];
+
+            if (selectedType === 'bug') {
+                fields.push({ name: "⚡ Severidade", value: `${severityEmoji[data.severity] || '⚪'} ${data.severity}`, inline: true });
+                if (data.steps) fields.push({ name: "📝 Passos", value: data.steps.substring(0, 1024), inline: false });
+                if (data.expected) fields.push({ name: "✅ Esperado", value: data.expected.substring(0, 1024), inline: false });
+                if (data.actual) fields.push({ name: "❌ Atual", value: data.actual.substring(0, 1024), inline: false });
+            } else if (selectedType === 'suggestion') {
+                if (data.suggestionText) fields.push({ name: "💡 Ideia", value: data.suggestionText.substring(0, 1024), inline: false });
+                if (data.suggestionWhy) fields.push({ name: "🎯 Por que", value: data.suggestionWhy.substring(0, 1024), inline: false });
+                fields.push({ name: "📊 Prioridade", value: data.suggestionPriority, inline: true });
+            } else if (selectedType === 'question') {
+                if (data.questionTried) fields.push({ name: "🔍 Tentou fazer", value: data.questionTried.substring(0, 1024), inline: false });
+                if (data.questionHappened) fields.push({ name: "📋 Aconteceu", value: data.questionHappened.substring(0, 1024), inline: false });
+            } else if (selectedType === 'feedback') {
+                fields.push({ name: "⭐ Nota", value: `${'⭐'.repeat(parseInt(data.rating) || 1)} (${data.rating}/5)`, inline: true });
+                if (data.liked) fields.push({ name: "✅ Gostou", value: data.liked.substring(0, 1024), inline: false });
+                if (data.improve) fields.push({ name: "🔧 Melhorias", value: data.improve.substring(0, 1024), inline: false });
+            }
+
+            return {
+                embeds: [{
+                    title: `${typeEmoji[selectedType]} ${data.bugTitle || data.suggestionText || 'Feedback do Tester'}`,
+                    description: data.name ? `**De:** ${data.name}` : '',
+                    color: colorMap[selectedType] || 3066993,
+                    fields: fields,
+                    timestamp: new Date().toISOString(),
+                    footer: { text: "CloudBuilder MVP Feedback" }
+                }]
+            };
+        }
+
+        function buildSlackMessage(data) {
+            const typeEmoji = { bug: ':bug:', suggestion: ':bulb:', question: ':question:', feedback: ':star:' };
+            const typeLabel = { bug: 'Bug', suggestion: 'Sugestão', question: 'Dúvida', feedback: 'Feedback' };
+            const colorMap = { bug: '#dc3545', suggestion: '#ffc107', question: '#007bff', feedback: '#28a745' };
+
+            let text = `*${typeEmoji[selectedType]} ${typeLabel[selectedType]}*\n`;
+            text += `*De:* ${data.name}\n`;
+            text += `*Módulo:* ${data.module}\n`;
+
+            if (selectedType === 'bug') {
+                text += `*Severidade:* ${data.severity}\n`;
+                if (data.steps) text += `\n*Passos:*\n${data.steps}`;
+                if (data.expected) text += `\n*Esperado:* ${data.expected}`;
+                if (data.actual) text += `\n*Atual:* ${data.actual}`;
+            } else if (selectedType === 'suggestion') {
+                if (data.suggestionText) text += `\n*Ideia:* ${data.suggestionText}`;
+                if (data.suggestionWhy) text += `\n*Por que:* ${data.suggestionWhy}`;
+            } else if (selectedType === 'feedback') {
+                text += `*Nota:* ${'⭐'.repeat(parseInt(data.rating) || 1)} (${data.rating}/5)\n`;
+                if (data.liked) text += `\n*Gostou:* ${data.liked}`;
+                if (data.improve) text += `\n*Melhorias:* ${data.improve}`;
+            }
+
+            return {
+                attachments: [{
+                    color: colorMap[selectedType],
+                    text: text,
+                    footer: "CloudBuilder MVP Feedback",
+                    ts: Math.floor(Date.now() / 1000)
+                }]
+            };
+        }
+
+        async function sendToDiscord(data) {
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            if (!webhookUrl) {
+                alert('Por favor, insira a URL do webhook do Discord');
+                return false;
+            }
+            const payload = buildDiscordMessage(data);
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return response.ok;
+        }
+
+        async function sendToSlack(data) {
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            if (!webhookUrl) {
+                alert('Por favor, insira a URL do webhook do Slack');
+                return false;
+            }
+            const payload = buildSlackMessage(data);
+            const response = await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return response.ok;
+        }
+
+        function sendToConsole(data) {
+            console.log('=== CloudBuilder Feedback ===');
+            console.log('Tipo:', selectedType);
+            console.log('Dados:', data);
+            return true;
+        }
+
+        document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
-            
-            // Format for Discord webhook
-            const discordMessage = `**📝 Novo Feedback MVP**
-            
-**Tester:** ${data.name}
-**Módulo:** ${data.module}
-**Nota:** ${'⭐'.repeat(data.rating)} (${data.rating}/5)
+            const submitBtn = document.getElementById('submitBtn');
 
-**✅ O que gostou:**
-${data.liked || 'Não informado'}
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando...';
 
-**🔧 Melhorias:**
-${data.improve || 'Não informado'}
+            try {
+                let success = false;
 
-**💡 Sugestões:**
-${data.suggestions || 'Não informado'}
+                if (selectedChannel === 'discord') {
+                    success = await sendToDiscord(data);
+                } else if (selectedChannel === 'slack') {
+                    success = await sendToSlack(data);
+                } else {
+                    success = sendToConsole(data);
+                }
 
-**🐛 Bugs:**
-${data.bugs || 'Nenhum'}`;
-            
-            console.log('Feedback:', discordMessage);
-            
-            // Show success
-            document.getElementById('form').style.display = 'none';
-            document.getElementById('success').style.display = 'block';
-            
-            // In production, send to Discord webhook:
-            // fetch('YOUR_DISCORD_WEBHOOK_URL', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ content: discordMessage })
-            // });
+                if (success) {
+                    document.getElementById('form').style.display = 'none';
+                    document.getElementById('success').style.display = 'block';
+                } else {
+                    alert('Erro ao enviar feedback. Tente novamente.');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                alert('Erro ao enviar feedback: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar Feedback';
+            }
         });
+
+        function resetForm() {
+            document.getElementById('form').style.display = 'block';
+            document.getElementById('success').style.display = 'none';
+            document.getElementById('feedbackForm').reset();
+            selectType('bug');
+        }
+
+        // Initialize
+        selectChannel('discord');
     </script>
 </body>
 </html>
