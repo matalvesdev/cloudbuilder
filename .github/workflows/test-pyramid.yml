@@ -96,6 +96,182 @@ jobs:
           path: provision-engine/coverage.out
 
   # ═══════════════════════════════════════════════════════════════
+  # Test Metrics Collection
+  # ═══════════════════════════════════════════════════════════════
+  test-metrics:
+    name: Collect Test Metrics
+    runs-on: ubuntu-latest
+    needs: [backend-unit, frontend-unit, go-unit]
+    if: always()
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: provision-engine/go.sum
+
+      - name: Collect Backend Metrics
+        id: backend
+        run: |
+          cd backend
+          OUTPUT=$(mvn test 2>&1 || true)
+          TESTS=$(echo "$OUTPUT" | grep -oP 'Tests run: \K[0-9]+' | tail -1 || echo "0")
+          FAILURES=$(echo "$OUTPUT" | grep -oP 'Failures: \K[0-9]+' | tail -1 || echo "0")
+          ERRORS=$(echo "$OUTPUT" | grep -oP 'Errors: \K[0-9]+' | tail -1 || echo "0")
+          SKIPPED=$(echo "$OUTPUT" | grep -oP 'Skipped: \K[0-9]+' | tail -1 || echo "0")
+          echo "tests=$TESTS" >> $GITHUB_OUTPUT
+          echo "failures=$FAILURES" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "skipped=$SKIPPED" >> $GITHUB_OUTPUT
+          echo "Backend: $TESTS tests, $FAILURES failures, $ERRORS errors, $SKIPPED skipped"
+
+      - name: Collect Frontend Metrics
+        id: frontend
+        run: |
+          cd frontend
+          npm ci
+          OUTPUT=$(npx vitest run --reporter=verbose 2>&1 || true)
+          TESTS=$(echo "$OUTPUT" | grep -oP 'Tests  \K[0-9]+(?= passed)' | head -1 || echo "0")
+          echo "tests=$TESTS" >> $GITHUB_OUTPUT
+          echo "Frontend: $TESTS tests"
+
+      - name: Collect Go Engine Metrics
+        id: goengine
+        run: |
+          cd provision-engine
+          OUTPUT=$(go test ./... -count=1 2>&1 || true)
+          OK=$(echo "$OUTPUT" | grep -c "^ok" || echo "0")
+          FAIL=$(echo "$OUTPUT" | grep -c "^FAIL" || echo "0")
+          echo "packages_ok=$OK" >> $GITHUB_OUTPUT
+          echo "packages_fail=$FAIL" >> $GITHUB_OUTPUT
+          echo "Go Engine: $OK packages OK, $FAIL packages FAIL"
+
+      - name: Generate Metrics JSON
+        run: |
+          DATE=$(date -u +"%Y-%m-%d")
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          BACKEND_TESTS=${{ steps.backend.outputs.tests }}
+          BACKEND_FAILURES=${{ steps.backend.outputs.failures }}
+          BACKEND_ERRORS=${{ steps.backend.outputs.errors }}
+          BACKEND_SKIPPED=${{ steps.backend.outputs.skipped }}
+          FRONTEND_TESTS=${{ steps.frontend.outputs.tests }}
+          GO_OK=${{ steps.goengine.outputs.packages_ok }}
+          GO_FAIL=${{ steps.goengine.outputs.packages_fail }}
+          TOTAL=$(( BACKEND_TESTS + FRONTEND_TESTS + GO_OK ))
+          FAILURES=$(( BACKEND_FAILURES + BACKEND_ERRORS + GO_FAIL ))
+
+          cat > metrics.json <<EOF
+          {
+            "timestamp": "$TIMESTAMP",
+            "date": "$DATE",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "overall": {
+              "totalTests": $TOTAL,
+              "failures": $FAILURES,
+              "allPassing": $([ $FAILURES -eq 0 ] && echo true || echo false)
+            },
+            "backend": {
+              "tests": $BACKEND_TESTS,
+              "failures": $BACKEND_FAILURES,
+              "errors": $BACKEND_ERRORS,
+              "skipped": $BACKEND_SKIPPED
+            },
+            "frontend": {
+              "tests": $FRONTEND_TESTS
+            },
+            "goEngine": {
+              "packagesOk": $GO_OK,
+              "packagesFail": $GO_FAIL
+            }
+          }
+          EOF
+          echo "📊 Metrics: $TOTAL tests, $FAILURES failures"
+
+      - name: Upload Metrics Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-metrics-${{ github.run_number }}
+          path: metrics.json
+          retention-days: 90
+
+      - name: Comment PR with Metrics
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const metrics = JSON.parse(fs.readFileSync('metrics.json', 'utf8'));
+            const status = metrics.overall.allPassing ? '✅' : '❌';
+            const total = metrics.overall.totalTests;
+            const failures = metrics.overall.failures;
+
+            const body = `## ${status} Test Metrics — Run #${context.runNumber}
+
+            | Layer | Tests | Status |
+            |-------|-------|--------|
+            | ☕ Backend | ${metrics.backend.tests} (skipped: ${metrics.backend.skipped}) | ${metrics.backend.failures === 0 && metrics.backend.errors === 0 ? '✅' : '❌'} |
+            | ⚛ Frontend | ${metrics.frontend.tests} | ✅ |
+            | 🐹 Go Engine | ${metrics.goEngine.packagesOk} packages | ${metrics.goEngine.packagesFail === 0 ? '✅' : '❌'} |
+            | **Total** | **${total}** | **${status}** |
+
+            <details>
+            <summary>📊 Metrics JSON</summary>
+
+            \`\`\`json
+            ${JSON.stringify(metrics, null, 2)}
+            \`\`\`
+            </details>
+
+            [View Dashboard](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/${context.sha}/docs/test-results/dashboard.html) · [View Run](${metrics.run_url})
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes('Test Metrics — Run'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  # ═══════════════════════════════════════════════════════════════
   # Layer 5: Mutation Testing (Frontend)
   # ═══════════════════════════════════════════════════════════════
   mutation-testing:
