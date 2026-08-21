@@ -68,7 +68,7 @@ esac
 # Get timestamp
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Build Discord embed
+# Build Discord embed (avoid special chars in values for Windows compat)
 PAYLOAD=$(cat <<EOF
 {
   "embeds": [{
@@ -77,17 +77,17 @@ PAYLOAD=$(cat <<EOF
     "color": ${COLOR},
     "fields": [
       {
-        "name": "📋 Tipo",
+        "name": "Tipo",
         "value": "${TYPE}",
         "inline": true
       },
       {
-        "name": "📦 Módulo",
+        "name": "Modulo",
         "value": "${MODULE}",
         "inline": true
       },
       {
-        "name": "⚡ Severidade",
+        "name": "Severidade",
         "value": "${SEV_EMOJI} ${SEVERITY}",
         "inline": true
       }
