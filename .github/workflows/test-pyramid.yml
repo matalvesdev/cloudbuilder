@@ -383,6 +383,160 @@ jobs:
           fail_action: false
 
   # ═══════════════════════════════════════════════════════════════
+  # Nightly Metrics + Trend Report
+  # ═══════════════════════════════════════════════════════════════
+  nightly-metrics:
+    name: Nightly Metrics Collection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: provision-engine/go.sum
+
+      - name: Collect All Metrics
+        id: metrics
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          DATE=$(date -u +"%Y-%m-%d")
+          COMMIT=$(git rev-parse --short HEAD)
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+          # Backend
+          cd backend
+          B_OUTPUT=$(mvn test 2>&1 || true)
+          B_TESTS=$(echo "$B_OUTPUT" | grep -oP 'Tests run: \K[0-9]+' | tail -1 || echo "0")
+          B_FAIL=$(echo "$B_OUTPUT" | grep -oP 'Failures: \K[0-9]+' | tail -1 || echo "0")
+          B_ERR=$(echo "$B_OUTPUT" | grep -oP 'Errors: \K[0-9]+' | tail -1 || echo "0")
+          B_SKIP=$(echo "$B_OUTPUT" | grep -oP 'Skipped: \K[0-9]+' | tail -1 || echo "0")
+          cd ..
+
+          # Frontend
+          cd frontend
+          npm ci --silent
+          F_OUTPUT=$(npx vitest run --reporter=verbose 2>&1 || true)
+          F_TESTS=$(echo "$F_OUTPUT" | grep -oP 'Tests  \K[0-9]+(?= passed)' | head -1 || echo "0")
+          F_FILES=$(echo "$F_OUTPUT" | grep -oP 'Test Files  \K[0-9]+' | head -1 || echo "0")
+          cd ..
+
+          # TypeScript
+          cd frontend
+          TSC_OUT=$(npx tsc --noEmit 2>&1 || true)
+          TSC_ERR=$(echo "$TSC_OUT" | grep -c "error TS" || echo "0")
+          cd ..
+
+          # Go Engine
+          cd provision-engine
+          G_OUTPUT=$(go test ./... -count=1 2>&1 || true)
+          G_OK=$(echo "$G_OUTPUT" | grep -c "^ok" || echo "0")
+          G_FAIL=$(echo "$G_OUTPUT" | grep -c "^FAIL" || echo "0")
+          cd ..
+
+          TOTAL=$(( B_TESTS + F_TESTS + G_OK ))
+          FAILURES=$(( B_FAIL + B_ERR + G_FAIL ))
+
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "b_tests=$B_TESTS" >> $GITHUB_OUTPUT
+          echo "b_fail=$B_FAIL" >> $GITHUB_OUTPUT
+          echo "b_err=$B_ERR" >> $GITHUB_OUTPUT
+          echo "b_skip=$B_SKIP" >> $GITHUB_OUTPUT
+          echo "f_tests=$F_TESTS" >> $GITHUB_OUTPUT
+          echo "f_files=$F_FILES" >> $GITHUB_OUTPUT
+          echo "tsc_err=$TSC_ERR" >> $GITHUB_OUTPUT
+          echo "g_ok=$G_OK" >> $GITHUB_OUTPUT
+          echo "g_fail=$G_FAIL" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "failures=$FAILURES" >> $GITHUB_OUTPUT
+
+          echo "📊 Nightly: $TOTAL tests, $FAILURES failures"
+
+      - name: Append to History
+        run: |
+          cat > /tmp/entry.json <<EOF
+          {
+            "timestamp": "${{ steps.metrics.outputs.timestamp }}",
+            "commit": "${{ steps.metrics.outputs.commit }}",
+            "branch": "${{ steps.metrics.outputs.branch }}",
+            "backend": {
+              "tests": ${{ steps.metrics.outputs.b_tests }},
+              "failures": ${{ steps.metrics.outputs.b_fail }},
+              "errors": ${{ steps.metrics.outputs.b_err }},
+              "skipped": ${{ steps.metrics.outputs.b_skip }}
+            },
+            "frontend": {
+              "tests": ${{ steps.metrics.outputs.f_tests }},
+              "files": ${{ steps.metrics.outputs.f_files }}
+            },
+            "goEngine": {
+              "packagesOk": ${{ steps.metrics.outputs.g_ok }},
+              "packagesFail": ${{ steps.metrics.outputs.g_fail }}
+            },
+            "typescript": {
+              "errors": ${{ steps.metrics.outputs.tsc_err }}
+            },
+            "notes": "nightly scheduled run"
+          }
+          EOF
+          python3 scripts/append-history.py /tmp/entry.json docs/test-results/history.json
+
+      - name: Generate Trend Report
+        run: python3 scripts/generate-trend-report.py docs/test-results/history.json /tmp/trend-report.md
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-trend-report-${{ steps.metrics.outputs.date }}
+          path: /tmp/trend-report.md
+          retention-days: 90
+
+      - name: Commit History Update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/test-results/history.json
+          git diff --cached --quiet || git commit -m "chore: nightly metrics — ${{ steps.metrics.outputs.date }} [skip ci]"
+          git push
+
+      - name: Create Issue with Report
+        if: steps.metrics.outputs.failures != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/trend-report.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Nightly Test Failures — ${{ steps.metrics.outputs.date }}`,
+              body: report + '\n\n---\n*Auto-created by nightly metrics workflow*',
+              labels: ['bug', 'tests', 'automated']
+            });
+
+  # ═══════════════════════════════════════════════════════════════
   # Layer 10: Chaos Tests — nightly only
   # ═══════════════════════════════════════════════════════════════
   chaos-tests:
