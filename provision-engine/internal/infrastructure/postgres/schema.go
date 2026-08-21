@@ -11,6 +11,9 @@ import (
 // manually prepared schema.
 func migrate(ctx context.Context, db *sql.DB) error {
 	statements := []string{
+		// Keep all bootstrap DDL out of public even if a pooled connection's
+		// session settings are changed by the hosting environment.
+		`SET LOCAL search_path TO cloudbuilder_engine`,
 		`CREATE TABLE IF NOT EXISTS pe_schema_migrations (
 			version INTEGER PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

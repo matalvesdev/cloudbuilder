@@ -33,7 +33,7 @@ type DB struct {
 // New creates a new PostgreSQL connection.
 func New(cfg Config) (*DB, error) {
 	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s search_path=provision_engine",
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s search_path=cloudbuilder_engine",
 		cfg.Host, cfg.Port, cfg.Username, cfg.Password, cfg.Database, cfg.SSLMode,
 	)
 
@@ -56,9 +56,9 @@ func New(cfg Config) (*DB, error) {
 	// tables with overlapping names (for example, deployments). Isolating the
 	// engine in its own schema prevents its idempotent bootstrap from applying
 	// indexes to backend-owned tables.
-	if _, err := db.ExecContext(ctx, "CREATE SCHEMA IF NOT EXISTS provision_engine"); err != nil {
+	if _, err := db.ExecContext(ctx, "CREATE SCHEMA IF NOT EXISTS cloudbuilder_engine"); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("create provision_engine schema: %w", err)
+		return nil, fmt.Errorf("create cloudbuilder_engine schema: %w", err)
 	}
 	if err := migrate(ctx, db); err != nil {
 		_ = db.Close()
