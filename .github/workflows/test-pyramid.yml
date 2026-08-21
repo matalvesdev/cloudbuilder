@@ -522,6 +522,7 @@ jobs:
           git push
 
       - name: Check Thresholds & Alert
+        id: check-thresholds
         run: |
           TOTAL=${{ steps.metrics.outputs.total }}
           BACKEND=${{ steps.metrics.outputs.b_tests }}
