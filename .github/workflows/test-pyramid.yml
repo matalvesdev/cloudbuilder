@@ -521,19 +521,71 @@ jobs:
           git diff --cached --quiet || git commit -m "chore: nightly metrics — ${{ steps.metrics.outputs.date }} [skip ci]"
           git push
 
+      - name: Check Thresholds & Alert
+        run: |
+          TOTAL=${{ steps.metrics.outputs.total }}
+          BACKEND=${{ steps.metrics.outputs.b_tests }}
+          FRONTEND=${{ steps.metrics.outputs.f_tests }}
+          GO=${{ steps.metrics.outputs.g_ok }}
+          FAILURES=${{ steps.metrics.outputs.failures }}
+
+          MIN_TOTAL=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['total'])")
+          MIN_BACKEND=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['backend'])")
+          MIN_FRONTEND=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['frontend'])")
+          MIN_GO=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['go_packages'])")
+
+          ALERTS=0
+          REASONS=""
+
+          if [ "$FAILURES" -gt 0 ]; then
+            ALERTS=1
+            REASONS="$REASONS\n- $FAILURES test(s) FAILED"
+          fi
+          if [ "$TOTAL" -lt "$MIN_TOTAL" ]; then
+            ALERTS=1
+            REASONS="$REASONS\n- Total tests ($TOTAL) below minimum ($MIN_TOTAL)"
+          fi
+          if [ "$BACKEND" -lt "$MIN_BACKEND" ]; then
+            ALERTS=1
+            REASONS="$REASONS\n- Backend tests ($BACKEND) below minimum ($MIN_BACKEND)"
+          fi
+          if [ "$FRONTEND" -lt "$MIN_FRONTEND" ]; then
+            ALERTS=1
+            REASONS="$REASONS\n- Frontend tests ($FRONTEND) below minimum ($MIN_FRONTEND)"
+          fi
+          if [ "$GO" -lt "$MIN_GO" ]; then
+            ALERTS=1
+            REASONS="$REASONS\n- Go packages ($GO) below minimum ($MIN_GO)"
+          fi
+
+          echo "alert_needed=$ALERTS" >> $GITHUB_OUTPUT
+          echo "alert_reasons=$REASONS" >> $GITHUB_OUTPUT
+
+          if [ "$ALERTS" -eq 1 ]; then
+            echo "🚨 Threshold alert triggered:"
+            echo -e "$REASONS"
+          else
+            echo "✅ All metrics above thresholds"
+          fi
+
       - name: Create Issue with Report
-        if: steps.metrics.outputs.failures != '0'
+        if: steps.check-thresholds.outputs.alert_needed == '1'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const report = fs.readFileSync('/tmp/trend-report.md', 'utf8');
+            const reasons = `${{ steps.check-thresholds.outputs.alert_reasons }}`;
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🚨 Nightly Test Failures — ${{ steps.metrics.outputs.date }}`,
-              body: report + '\n\n---\n*Auto-created by nightly metrics workflow*',
-              labels: ['bug', 'tests', 'automated']
+              title: `🚨 Test Threshold Alert — ${{ steps.metrics.outputs.date }}`,
+              body: `## Test Threshold Alert\n\n**Date:** ${{ steps.metrics.outputs.date }}\n**Commit:** ${{ steps.metrics.outputs.commit }}` +
+                '\n\n### Reasons' +
+                '\n' + reasons.replace(/\n/g, '\n- ') +
+                '\n\n### Trend Report\n\n' + report +
+                '\n\n---\n*Auto-created by nightly metrics workflow — thresholds defined in .github/test-thresholds.json*',
+              labels: ['bug', 'tests', 'automated', 'alert']
             });
 
   # ═══════════════════════════════════════════════════════════════

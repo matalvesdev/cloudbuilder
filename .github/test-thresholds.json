@@ -1,0 +1,18 @@
+{
+  "minimum": {
+    "total": 1200,
+    "backend": 900,
+    "frontend": 300,
+    "go_packages": 15
+  },
+  "warning": {
+    "total_drop_percent": 5,
+    "backend_drop_percent": 5,
+    "frontend_drop_percent": 5
+  },
+  "alerts": {
+    "create_issue_on_failure": true,
+    "label": ["bug", "tests", "automated"],
+    "assignees": []
+  }
+}

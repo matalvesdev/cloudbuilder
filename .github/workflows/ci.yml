@@ -213,6 +213,46 @@ jobs:
           sed -i "s/| \*\*Total\*\* | \*\*[0-9]*\*\*/| **Total** | **${TOTAL}**/" README.md
 
           echo "Updated badges: Total=$TOTAL, Backend=$BACKEND, Frontend=$FRONTEND, Go=$GO"
+      - name: Check Test Thresholds
+        run: |
+          TOTAL=${{ steps.counts.outputs.total }}
+          BACKEND=${{ steps.counts.outputs.backend }}
+          FRONTEND=${{ steps.counts.outputs.frontend }}
+          GO=${{ steps.counts.outputs.go }}
+
+          # Load thresholds
+          MIN_TOTAL=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['total'])")
+          MIN_BACKEND=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['backend'])")
+          MIN_FRONTEND=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['frontend'])")
+          MIN_GO=$(python3 -c "import json; print(json.load(open('.github/test-thresholds.json'))['minimum']['go_packages'])")
+
+          echo "Thresholds: total=$MIN_TOTAL backend=$MIN_BACKEND frontend=$MIN_FRONTEND go=$MIN_GO"
+          echo "Actual:     total=$TOTAL backend=$BACKEND frontend=$FRONTEND go=$GO"
+
+          FAILED=0
+          if [ "$TOTAL" -lt "$MIN_TOTAL" ]; then
+            echo "::error::Total tests ($TOTAL) below minimum ($MIN_TOTAL)"
+            FAILED=1
+          fi
+          if [ "$BACKEND" -lt "$MIN_BACKEND" ]; then
+            echo "::error::Backend tests ($BACKEND) below minimum ($MIN_BACKEND)"
+            FAILED=1
+          fi
+          if [ "$FRONTEND" -lt "$MIN_FRONTEND" ]; then
+            echo "::error::Frontend tests ($FRONTEND) below minimum ($MIN_FRONTEND)"
+            FAILED=1
+          fi
+          if [ "$GO" -lt "$MIN_GO" ]; then
+            echo "::error::Go packages ($GO) below minimum ($MIN_GO)"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "::error::Test count below threshold — possible test deletion or regression"
+            exit 1
+          fi
+          echo "✅ All test counts above thresholds"
+
       - name: Commit badge update
         run: |
           git config user.name "github-actions[bot]"
