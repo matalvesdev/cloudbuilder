@@ -10,6 +10,11 @@ spring:
   main:
     allow-bean-definition-overriding: true
     lazy-initialization: true
+    allow-circular-references: false
+    log-startup-info: false
+  threads:
+    virtual:
+      enabled: false
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:?DATABASE_URL obrigatorio}
@@ -28,6 +33,11 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
     validate-on-migrate: false
+    out-of-order: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.actuate.autoconfigure.metrics.export.prometheus.PrometheusMetricsExportAutoConfiguration
+      - org.springframework.kafka.autoconfigure.KafkaAutoConfiguration
 
   jpa:
     hibernate:
@@ -69,13 +79,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
+    enabled-by-default: false
   endpoint:
     health:
-      show-details: when-authorized
-      show-components: when-authorized
-    info:
       enabled: true
+      show-details: never
+      show-components: never
 
 cloudbuilder:
   kafka:
