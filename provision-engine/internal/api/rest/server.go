@@ -188,6 +188,9 @@ func (s *Server) buildHandler() http.Handler {
 
 // registerSystemRoutes adds health, readiness, and info endpoints.
 func (s *Server) registerSystemRoutes() {
+	// Keep /health as a compatibility alias for the existing Render service.
+	// /healthz remains the canonical Kubernetes-style liveness endpoint.
+	s.mux.HandleFunc("GET /health", s.handleHealthz)
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 	s.mux.HandleFunc("GET /readyz", s.handleReadyz)
 	s.mux.HandleFunc("GET /info", s.handleInfo)
