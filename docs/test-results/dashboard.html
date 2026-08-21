@@ -517,6 +517,97 @@
       </div>
     </div>
 
+    <!-- Tester Feedback + Deployment Status -->
+    <div class="grid-2">
+      <!-- Tester Feedback -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Feedback dos Testers</span>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#fef3c7;color:#d97706;">⭐</div>
+          <div class="layer-info">
+            <div class="layer-name">Nota Média Geral</div>
+            <div class="layer-detail">Baseado em feedbacks recebidos</div>
+          </div>
+          <div style="font-size:20px;font-weight:700;color:#d97706;">4.5/5</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#dbeafe;color:#2563eb;">🐛</div>
+          <div class="layer-info">
+            <div class="layer-name">Bugs Reportados</div>
+            <div class="layer-detail">Via Discord/Slack feedback</div>
+          </div>
+          <div class="layer-status warn">0 novos</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#d1fae5;color:#059669;">💡</div>
+          <div class="layer-info">
+            <div class="layer-name">Sugestões</div>
+            <div class="layer-detail">Melhorias propostas</div>
+          </div>
+          <div class="layer-status pass">0 pendentes</div>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--slate-50);border-radius:10px;">
+          <p style="font-size:11px;color:var(--slate-400);margin-bottom:8px;">Notas por módulo:</p>
+          <div class="bar-row"><span class="bar-label" style="width:80px;">Canvas</span><div class="bar-track"><div class="bar-fill green" style="width:90%"></div></div><span class="bar-count">4.5</span></div>
+          <div class="bar-row"><span class="bar-label" style="width:80px;">Auth</span><div class="bar-track"><div class="bar-fill blue" style="width:86%"></div></div><span class="bar-count">4.3</span></div>
+          <div class="bar-row"><span class="bar-label" style="width:80px;">Deploy</span><div class="bar-track"><div class="bar-fill purple" style="width:92%"></div></div><span class="bar-count">4.6</span></div>
+          <div class="bar-row"><span class="bar-label" style="width:80px;">Geral</span><div class="bar-track"><div class="bar-fill amber" style="width:88%"></div></div><span class="bar-count">4.4</span></div>
+        </div>
+      </div>
+
+      <!-- Deployment Status -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Status de Deploy</span>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#dbeafe;color:#2563eb;">⚛</div>
+          <div class="layer-info">
+            <div class="layer-name">Frontend (Vercel)</div>
+            <div class="layer-detail">vercel.com — Free Tier</div>
+          </div>
+          <div class="layer-status pass">Deployed</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#d1fae5;color:#059669;">☕</div>
+          <div class="layer-info">
+            <div class="layer-name">Backend (Render)</div>
+            <div class="layer-detail">render.com — Free Tier</div>
+          </div>
+          <div class="layer-status pass">Deployed</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#faf5ff;color:#a855f7;">🐹</div>
+          <div class="layer-info">
+            <div class="layer-name">Go Engine (Render)</div>
+            <div class="layer-detail">render.com — Free Tier</div>
+          </div>
+          <div class="layer-status pass">Deployed</div>
+        </div>
+        <div class="layer-row">
+          <div class="layer-icon" style="background:#fef3c7;color:#d97706;">🐘</div>
+          <div class="layer-info">
+            <div class="layer-name">Database (Neon)</div>
+            <div class="layer-detail">neon.tech — Free Tier</div>
+          </div>
+          <div class="layer-status pass">Connected</div>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--slate-50);border-radius:10px;">
+          <p style="font-size:11px;color:var(--slate-400);margin-bottom:8px;">Último deploy:</p>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;font-weight:600;color:var(--navy);">main</span>
+            <span style="font-size:11px;color:var(--slate-400);">→</span>
+            <span style="font-size:11px;font-family:monospace;color:var(--slate-500);" id="lastDeployCommit">50648b5</span>
+            <span style="font-size:11px;color:var(--slate-400);">há 5min</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Commit History Table -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="card-header">
