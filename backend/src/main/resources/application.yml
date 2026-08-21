@@ -164,6 +164,10 @@ resilience4j:
         baseConfig: goEngine
 
 cloudbuilder:
+  mail:
+    enabled: ${MAIL_ENABLED:false}
+    from-address: ${MAIL_FROM:noreply@cloudbuilder.dev}
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
   kafka:
     enabled: false  # Kafka desabilitado por padrão (ADR-035) — ativar em produção se necessário
   sso:

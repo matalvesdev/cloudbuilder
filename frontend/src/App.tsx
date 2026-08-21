@@ -41,6 +41,7 @@ import { useRepoStore } from "@/store/repoStore";
 import { setToken } from "@/api/client";
 import { LoginPage } from "@/shared/auth/LoginPage";
 import { RegisterPage } from "@/shared/auth/RegisterPage";
+import { InvitePage } from "@/shared/auth/InvitePage";
 import { ForgotPasswordPage } from "@/shared/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/shared/auth/ResetPasswordPage";
 import { OnboardingWelcome } from "@/app/onboarding/OnboardingWelcome";
@@ -361,9 +362,10 @@ function App() {
   ).length;
   const totalConfigItems = 3;
   const [authMode, setAuthMode] = useState<
-    "login" | "register" | "forgot-password" | "reset-password"
+    "login" | "register" | "invite" | "forgot-password" | "reset-password"
   >("login");
   const [resetToken, setResetToken] = useState<string | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   // Onboarding routing: only applies when authenticated and not yet completed
   type OnboardingView = "welcome" | "tour" | "gateway" | "done";
@@ -387,11 +389,15 @@ function App() {
     const token = params.get("token");
     const refreshToken = params.get("refreshToken");
 
-    if (mode === "reset-password" && token) {
+    if (mode === "invite" && token) {
+      setInviteToken(token);
+      setAuthMode("invite");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (mode === "reset-password" && token) {
       setResetToken(token);
       setAuthMode("reset-password");
       window.history.replaceState({}, "", window.location.pathname);
-    } else if (token && mode !== "reset-password") {
+    } else if (token && mode !== "reset-password" && mode !== "invite") {
       // SSO callback: store token and let checkAuth() load user data
       setToken(token, refreshToken || undefined);
       window.history.replaceState({}, "", window.location.pathname);
@@ -435,6 +441,14 @@ function App() {
   }
 
   if (!isAuthenticated) {
+    if (authMode === "invite" && inviteToken) {
+      return (
+        <InvitePage
+          token={inviteToken}
+          onSwitchToLogin={() => setAuthMode("login")}
+        />
+      );
+    }
     if (authMode === "register") {
       return <RegisterPage onSwitchToLogin={() => setAuthMode("login")} />;
     }
