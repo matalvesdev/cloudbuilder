@@ -1,5 +1,8 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# CloudBuilder Backend — Dockerfile (Render Free Tier Optimized)
+# CloudBuilder Backend — Dockerfile (Render Free Tier: 512MB)
+# ═══════════════════════════════════════════════════════════════════════════
+# Default build excludes Kafka, Resilience4j, Modulith, Prometheus
+# Use 'full' profile for local dev: mvn package -Pfull
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ─── Stage 1: Build ──────────────────────────────────────────────────────
@@ -8,15 +11,15 @@ WORKDIR /app
 
 ENV MAVEN_OPTS="-Xmx384m -Xms192m"
 
-# Copy POM first for dependency caching
+# Cache dependencies
 COPY pom.xml .
 RUN mvn dependency:resolve -B -DskipTests || true
 
-# Copy sources and build with lean profile
+# Build lean JAR (default profile, no heavy deps)
 COPY src ./src
-RUN mvn clean package -DskipTests -B -Plean -Dmaven.test.skip=true
+RUN mvn clean package -DskipTests -B -Dmaven.test.skip=true
 
-# Verify JAR was created
+# Verify
 RUN ls -la /app/target/*.jar
 
 # ─── Stage 2: Runtime ────────────────────────────────────────────────────
@@ -33,7 +36,6 @@ USER cb
 
 EXPOSE ${PORT:-8080}
 
-# Minimal JVM settings for 512MB container
 ENV JAVA_OPTS="-Xmx256m -Xms128m -XX:MaxMetaspaceSize=64m -XX:+UseSerialGC -XX:MaxRAMPercentage=40.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \

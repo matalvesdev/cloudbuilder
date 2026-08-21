@@ -59,19 +59,7 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- Spring Modulith -->
-        <dependency>
-            <groupId>org.springframework.modulith</groupId>
-            <artifactId>spring-modulith-starter-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.modulith</groupId>
-            <artifactId>spring-modulith-starter-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.modulith</groupId>
-            <artifactId>spring-modulith-events-api</artifactId>
-        </dependency>
+        <!-- Spring Modulith (heavy — moved to 'full' profile) -->
         <!-- Database -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -95,11 +83,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Prometheus — Actuator metrics export -->
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
+        <!-- Prometheus (heavy — moved to 'full' profile) -->
 
         <!-- Cache local (Caffeine substitui Redis) -->
         <dependency>
@@ -113,17 +97,7 @@
 
         <!-- JWT — native implementation in shared/security/JwtTokenProvider.java -->
 
-        <!-- Resilience4j — Circuit Breaker para external clients (GitHub, OPA) -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
-        </dependency>
-
-        <!-- Kafka — Event Bus (ADR-035 Production EDA) -->
-        <dependency>
-            <groupId>org.springframework.kafka</groupId>
-            <artifactId>spring-kafka</artifactId>
-        </dependency>
+        <!-- Resilience4j + Kafka (heavy — moved to 'full' profile) -->
 
         <!-- Testing -->
         <dependency>
@@ -190,37 +164,35 @@
     </dependencyManagement>
 
     <profiles>
-        <!-- Lean profile: excludes heavy deps for Render free tier (512MB) -->
+        <!-- Full profile: all dependencies including Kafka, Resilience4j, Modulith, etc. -->
         <profile>
-            <id>lean</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <excludes>
-                                <exclude>
-                                    <groupId>org.springframework.kafka</groupId>
-                                    <artifactId>*</artifactId>
-                                </exclude>
-                                <exclude>
-                                    <groupId>org.springframework.cloud</groupId>
-                                    <artifactId>*</artifactId>
-                                </exclude>
-                                <exclude>
-                                    <groupId>io.micrometer</groupId>
-                                    <artifactId>micrometer-registry-prometheus</artifactId>
-                                </exclude>
-                                <exclude>
-                                    <groupId>com.h2database</groupId>
-                                    <artifactId>h2</artifactId>
-                                </exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
+            <id>full</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.modulith</groupId>
+                    <artifactId>spring-modulith-starter-core</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.modulith</groupId>
+                    <artifactId>spring-modulith-starter-jpa</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.modulith</groupId>
+                    <artifactId>spring-modulith-events-api</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.micrometer</groupId>
+                    <artifactId>micrometer-registry-prometheus</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.kafka</groupId>
+                    <artifactId>spring-kafka</artifactId>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 
