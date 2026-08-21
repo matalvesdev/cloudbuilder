@@ -156,6 +156,71 @@ jobs:
               });
             }
 
+  update-badges:
+    name: Update Test Badges
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, provision-engine]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Setup Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: provision-engine/go.sum
+      - name: Count Tests
+        id: counts
+        run: |
+          BACKEND=$(cd backend && mvn test 2>&1 | grep -oP 'Tests run: \K[0-9]+' | tail -1 || echo "0")
+          FRONTEND=$(cd frontend && npm test -- --run 2>&1 | grep -oP 'Tests  \K[0-9]+(?= passed)' | head -1 || echo "0")
+          GO=$(cd provision-engine && go test ./... -count=1 2>&1 | grep -c "^ok" || echo "0")
+          TOTAL=$(( BACKEND + FRONTEND + GO ))
+          echo "backend=$BACKEND" >> $GITHUB_OUTPUT
+          echo "frontend=$FRONTEND" >> $GITHUB_OUTPUT
+          echo "go=$GO" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "Backend: $BACKEND, Frontend: $FRONTEND, Go: $GO, Total: $TOTAL"
+      - name: Update README Badges
+        run: |
+          TOTAL=${{ steps.counts.outputs.total }}
+          BACKEND=${{ steps.counts.outputs.backend }}
+          FRONTEND=${{ steps.counts.outputs.frontend }}
+          GO=${{ steps.counts.outputs.go }}
+
+          sed -i "s|tests-[0-9]*%20✓|tests-${TOTAL}%20✓|g" README.md
+          sed -i "s|backend-[0-9]*%20tests|backend-${BACKEND}%20tests|g" README.md
+          sed -i "s|frontend-[0-9]*%20tests|frontend-${FRONTEND}%20tests|g" README.md
+          sed -i "s|go%20engine-[0-9]*%20packages|go%20engine-${GO}%20packages|g" README.md
+
+          # Update test counts in table too
+          sed -i "s/| ☕ Backend (Spring Boot) | [0-9]*/| ☕ Backend (Spring Boot) | ${BACKEND}/" README.md
+          sed -i "s/| ⚛ Frontend (React \+ TS) | [0-9]*/| ⚛ Frontend (React + TS) | ${FRONTEND}/" README.md
+          sed -i "s/| 🐹 Go Engine | [0-9]*/| 🐹 Go Engine | ${GO} packages/" README.md
+          sed -i "s/| \*\*Total\*\* | \*\*[0-9]*\*\*/| **Total** | **${TOTAL}**/" README.md
+
+          echo "Updated badges: Total=$TOTAL, Backend=$BACKEND, Frontend=$FRONTEND, Go=$GO"
+      - name: Commit badge update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet || git commit -m "chore: update test badge counts [skip ci]"
+          git push
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
