@@ -189,6 +189,51 @@
         </dependencies>
     </dependencyManagement>
 
+    <profiles>
+        <!-- Lean profile: excludes heavy deps for Render free tier (512MB) -->
+        <profile>
+            <id>lean</id>
+            <dependencies>
+                <!-- Exclude Kafka -->
+                <dependency>
+                    <groupId>org.springframework.kafka</groupId>
+                    <artifactId>spring-kafka</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <!-- Exclude Resilience4j -->
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <!-- Exclude WebSocket -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-websocket</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <!-- Exclude Mail -->
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-mail</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <!-- Exclude Prometheus -->
+                <dependency>
+                    <groupId>io.micrometer</groupId>
+                    <artifactId>micrometer-registry-prometheus</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <!-- Exclude H2 (not needed in prod) -->
+                <dependency>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>
