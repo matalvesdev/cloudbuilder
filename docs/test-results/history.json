@@ -1,0 +1,52 @@
+[
+  {
+    "timestamp": "2026-08-14T12:00:00Z",
+    "commit": "initial",
+    "branch": "main",
+    "backend": { "tests": 720, "failures": 0, "errors": 0, "skipped": 0 },
+    "frontend": { "tests": 307, "files": 28 },
+    "goEngine": { "packagesOk": 0, "packagesFail": 0 },
+    "typescript": { "errors": 0 },
+    "notes": "Initial full-stack test"
+  },
+  {
+    "timestamp": "2026-08-15T14:00:00Z",
+    "commit": "security-hardening",
+    "branch": "feature/security",
+    "backend": { "tests": 720, "failures": 0, "errors": 0, "skipped": 0 },
+    "frontend": { "tests": 307, "files": 28 },
+    "goEngine": { "packagesOk": 15, "packagesFail": 0 },
+    "typescript": { "errors": 0 },
+    "notes": "Security hardening complete"
+  },
+  {
+    "timestamp": "2026-08-18T16:00:00Z",
+    "commit": "security-hardening-complete",
+    "branch": "feature/security",
+    "backend": { "tests": 867, "failures": 0, "errors": 0, "skipped": 32 },
+    "frontend": { "tests": 307, "files": 30 },
+    "goEngine": { "packagesOk": 15, "packagesFail": 0 },
+    "typescript": { "errors": 0 },
+    "notes": "Security hardening + idempotency + rate limit"
+  },
+  {
+    "timestamp": "2026-08-19T18:00:00Z",
+    "commit": "resilience-patterns",
+    "branch": "feature/resilience",
+    "backend": { "tests": 867, "failures": 0, "errors": 0, "skipped": 32 },
+    "frontend": { "tests": 313, "files": 30 },
+    "goEngine": { "packagesOk": 15, "packagesFail": 0 },
+    "typescript": { "errors": 0 },
+    "notes": "Resilience patterns applied"
+  },
+  {
+    "timestamp": "2026-08-20T18:19:00Z",
+    "commit": "2a488d3",
+    "branch": "main",
+    "backend": { "tests": 938, "failures": 0, "errors": 0, "skipped": 32 },
+    "frontend": { "tests": 313, "files": 30 },
+    "goEngine": { "packagesOk": 15, "packagesFail": 0 },
+    "typescript": { "errors": 0 },
+    "notes": "Security + Resilience + Provisioning proxy"
+  }
+]

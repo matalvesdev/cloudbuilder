@@ -118,7 +118,6 @@ FAILURES=$(( ${BACKEND_FAILURES:-0} + ${BACKEND_ERRORS:-0} + ${FRONTEND_FAILED:-
 echo "  Total:       $TOTAL tests"
 echo "  Failures:    $FAILURES"
 echo ""
-
 if [ "$FAILURES" -eq 0 ]; then
   echo "  ✅ ALL TESTS PASSING"
 else
@@ -129,3 +128,56 @@ echo ""
 echo "═══════════════════════════════════════════════"
 echo "  📁 Output: $OUT"
 echo "═══════════════════════════════════════════════"
+
+# ─── Append to History ────────────────────────────────────────
+echo ""
+echo "📝 Appending to history.json..."
+
+HISTORY="$RESULTS_DIR/history.json"
+COMMIT=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BRANCH=$(git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+
+# Create history array entry
+python3 -c "
+import json, sys
+
+entry = {
+    'timestamp': '$TIMESTAMP',
+    'commit': '$COMMIT',
+    'branch': '$BRANCH',
+    'backend': {
+        'tests': ${BACKEND_TESTS:-0},
+        'failures': ${BACKEND_FAILURES:-0},
+        'errors': ${BACKEND_ERRORS:-0},
+        'skipped': ${BACKEND_SKIPPED:-0}
+    },
+    'frontend': {
+        'tests': ${FRONTEND_PASSED:-0},
+        'files': ${FRONTEND_FILES:-0}
+    },
+    'goEngine': {
+        'packagesOk': ${GO_OK:-0},
+        'packagesFail': ${GO_FAIL:-0}
+    },
+    'typescript': {
+        'errors': ${TSC_ERRORS:-0}
+    },
+    'notes': ''
+}
+
+try:
+    with open('$HISTORY', 'r') as f:
+        data = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    data = []
+
+# Avoid duplicate entries for same commit on same day
+data = [d for d in data if not (d.get('commit') == entry['commit'] and d.get('timestamp', '').startswith(entry['timestamp'][:10]))]
+
+data.append(entry)
+
+with open('$HISTORY', 'w') as f:
+    json.dump(data, f, indent=2)
+
+print(f'  History now has {len(data)} entries')
+" 2>/dev/null || echo "  (skipped history append — python3 not available)"

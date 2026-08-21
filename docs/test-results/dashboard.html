@@ -492,57 +492,54 @@
       </div>
     </div>
 
-    <!-- Recent Test Runs -->
+    <!-- Commit Comparison + Delta -->
+    <div class="grid-2">
+      <!-- Commit Comparison -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Comparação por Commit</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="commitChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Delta (Incremental Growth) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot"></div>
+          <span class="card-title">Crescimento Incremental (Δ)</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="deltaChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commit History Table -->
     <div class="card" style="margin-bottom: 24px;">
       <div class="card-header">
         <div class="card-dot"></div>
-        <span class="card-title">Últimas Sessões de Teste</span>
+        <span class="card-title">Histórico de Commits</span>
       </div>
       <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <thead>
             <tr style="border-bottom: 2px solid var(--slate-100);">
               <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Data</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Commit</th>
               <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Backend</th>
               <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Frontend</th>
-              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Go Engine</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Go</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Total</th>
+              <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Δ</th>
               <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Status</th>
               <th style="text-align: left; padding: 8px 12px; color: var(--slate-400); font-weight: 600; font-size: 11px; text-transform: uppercase;">Notas</th>
             </tr>
           </thead>
-          <tbody>
-            <tr style="border-bottom: 1px solid var(--slate-50);">
-              <td style="padding: 10px 12px; font-weight: 500;">2026-08-20</td>
-              <td style="padding: 10px 12px;">938 / 0 / 32</td>
-              <td style="padding: 10px 12px;">313 / 0</td>
-              <td style="padding: 10px 12px;">15 packages ✓</td>
-              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
-              <td style="padding: 10px 12px; color: var(--slate-400);">Security + Resilience + Provisioning</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--slate-50); background: var(--slate-50);">
-              <td style="padding: 10px 12px; font-weight: 500;">2026-08-19</td>
-              <td style="padding: 10px 12px;">867 / 0 / 32</td>
-              <td style="padding: 10px 12px;">313 / 0</td>
-              <td style="padding: 10px 12px;">15 packages ✓</td>
-              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
-              <td style="padding: 10px 12px; color: var(--slate-400);">Resilience patterns applied</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--slate-50);">
-              <td style="padding: 10px 12px; font-weight: 500;">2026-08-18</td>
-              <td style="padding: 10px 12px;">867 / 0 / 32</td>
-              <td style="padding: 10px 12px;">307 / 0</td>
-              <td style="padding: 10px 12px;">15 packages ✓</td>
-              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
-              <td style="padding: 10px 12px; color: var(--slate-400);">Security hardening complete</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--slate-50); background: var(--slate-50);">
-              <td style="padding: 10px 12px; font-weight: 500;">2026-08-14</td>
-              <td style="padding: 10px 12px;">720 / 0 / 0</td>
-              <td style="padding: 10px 12px;">307 / 0</td>
-              <td style="padding: 10px 12px;">—</td>
-              <td style="padding: 10px 12px;"><span class="layer-status pass" style="font-size:10px;">ALL PASS</span></td>
-              <td style="padding: 10px 12px; color: var(--slate-400);">Initial full-stack test</td>
-            </tr>
+          <tbody id="commitTableBody">
+            <!-- Populated by JavaScript from history.json -->
           </tbody>
         </table>
       </div>
@@ -555,128 +552,325 @@
   </div>
 
   <script>
-    // Update timestamps
+    // ── Timestamps ──────────────────────────────
     const now = new Date();
     document.getElementById('lastUpdated').textContent = 'Atualizado: ' + now.toLocaleString('pt-BR');
     document.getElementById('footerDate').textContent = now.toLocaleDateString('pt-BR');
 
-    // Distribution Chart (Doughnut)
-    new Chart(document.getElementById('distributionChart'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Backend (938)', 'Frontend (313)', 'Go Engine (15 pkg)'],
-        datasets: [{
-          data: [938, 313, 15],
-          backgroundColor: ['#d97706', '#2563eb', '#059669'],
-          borderWidth: 0,
-          hoverOffset: 6,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '65%',
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
-          }
-        }
-      }
-    });
+    // ── Load Historical Data ────────────────────
+    let historyData = [];
 
-    // Trend Chart (Line)
-    new Chart(document.getElementById('trendChart'), {
-      type: 'line',
-      data: {
-        labels: ['Aug 14', 'Aug 15', 'Aug 16', 'Aug 17', 'Aug 18', 'Aug 19', 'Aug 20'],
-        datasets: [
-          {
-            label: 'Backend',
-            data: [720, 720, 720, 867, 867, 867, 938],
-            borderColor: '#d97706',
-            backgroundColor: 'rgba(217,119,6,0.1)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 3,
-            borderWidth: 2,
-          },
-          {
-            label: 'Frontend',
-            data: [307, 307, 307, 307, 307, 313, 313],
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37,99,235,0.1)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 3,
-            borderWidth: 2,
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
-          }
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: false }
-        }
+    async function loadHistory() {
+      try {
+        const resp = await fetch('history.json');
+        if (resp.ok) historyData = await resp.json();
+      } catch (e) {
+        console.warn('Could not load history.json, using embedded data');
       }
-    });
+      renderAllCharts();
+      renderCommitTable();
+    }
 
-    // Radar Chart (Coverage)
-    new Chart(document.getElementById('radarChart'), {
-      type: 'radar',
-      data: {
-        labels: ['Security', 'Provisioning', 'Auth/IAM', 'Design', 'Observability', 'Go Engine'],
-        datasets: [
-          {
-            label: 'Cobertura Atual',
-            data: [95, 92, 88, 85, 70, 90],
-            backgroundColor: 'rgba(204,255,0,0.15)',
-            borderColor: '#ccff00',
-            borderWidth: 2,
-            pointBackgroundColor: '#ccff00',
-            pointRadius: 3,
-          },
-          {
-            label: 'Meta',
-            data: [95, 95, 95, 90, 85, 95],
-            backgroundColor: 'rgba(10,17,40,0.05)',
-            borderColor: '#94a3b8',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            pointBackgroundColor: '#94a3b8',
-            pointRadius: 2,
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 }
-          }
+    // ── Embedded fallback data ──────────────────
+    const FALLBACK_HISTORY = [
+      { date: 'Aug 14', backend: 720, frontend: 307, go: 0, total: 1027, failures: 0, notes: 'Initial full-stack test' },
+      { date: 'Aug 15', backend: 720, frontend: 307, go: 15, total: 1042, failures: 0, notes: 'Go engine packages added' },
+      { date: 'Aug 18', backend: 867, frontend: 307, go: 15, total: 1189, failures: 0, notes: 'Security + idempotency tests' },
+      { date: 'Aug 19', backend: 867, frontend: 313, go: 15, total: 1195, failures: 0, notes: 'Resilience patterns' },
+      { date: 'Aug 20', backend: 938, frontend: 313, go: 15, total: 1266, failures: 0, notes: 'Provisioning proxy + engine tests' },
+    ];
+
+    function getHistory() {
+      if (historyData.length > 0) {
+        return historyData.map(h => {
+          const d = new Date(h.timestamp);
+          return {
+            date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+            commit: h.commit ? h.commit.substring(0, 7) : '?',
+            branch: h.branch || '',
+            backend: h.backend?.tests || 0,
+            frontend: h.frontend?.tests || 0,
+            go: h.goEngine?.packagesOk || 0,
+            total: (h.backend?.tests || 0) + (h.frontend?.tests || 0) + (h.goEngine?.packagesOk || 0),
+            failures: (h.backend?.failures || 0) + (h.backend?.errors || 0) + (h.goEngine?.packagesFail || 0),
+            skipped: h.backend?.skipped || 0,
+            notes: h.notes || '',
+          };
+        });
+      }
+      return FALLBACK_HISTORY;
+    }
+
+    // ── Chart defaults ──────────────────────────
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyleWidth: 8 } }
+      }
+    };
+
+    let trendChartInstance = null;
+    let commitChartInstance = null;
+    let deltaChartInstance = null;
+
+    // ── Distribution Chart (Doughnut) ──────────
+    function renderDistribution() {
+      new Chart(document.getElementById('distributionChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Backend (938)', 'Frontend (313)', 'Go Engine (15 pkg)'],
+          datasets: [{
+            data: [938, 313, 15],
+            backgroundColor: ['#d97706', '#2563eb', '#059669'],
+            borderWidth: 0,
+            hoverOffset: 6,
+          }]
         },
-        scales: {
-          r: {
-            beginAtZero: false,
-            min: 50,
-            max: 100,
-            ticks: { font: { size: 10 }, stepSize: 10, backdropColor: 'transparent' },
-            grid: { color: '#e2e8f0' },
-            pointLabels: { font: { size: 11, weight: '500' } }
+        options: { ...chartDefaults, cutout: '65%' }
+      });
+    }
+
+    // ── Trend Chart (Line — dynamic) ───────────
+    function renderTrend(history) {
+      if (trendChartInstance) trendChartInstance.destroy();
+      const labels = history.map(h => h.date);
+      trendChartInstance = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Backend',
+              data: history.map(h => h.backend),
+              borderColor: '#d97706',
+              backgroundColor: 'rgba(217,119,6,0.1)',
+              fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2,
+              pointHoverRadius: 6,
+            },
+            {
+              label: 'Frontend',
+              data: history.map(h => h.frontend),
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37,99,235,0.1)',
+              fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2,
+              pointHoverRadius: 6,
+            },
+            {
+              label: 'Total',
+              data: history.map(h => h.total),
+              borderColor: '#0a1128',
+              backgroundColor: 'rgba(10,17,40,0.05)',
+              fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2,
+              borderDash: [5, 3],
+              pointHoverRadius: 5,
+            }
+          ]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            ...chartDefaults.plugins,
+            tooltip: {
+              callbacks: {
+                afterBody: function(ctx) {
+                  const idx = ctx[0].dataIndex;
+                  return history[idx].notes ? '\n' + history[idx].notes : '';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: false }
           }
         }
+      });
+    }
+
+    // ── Commit Comparison Chart (Bar) ──────────
+    function renderCommitComparison(history) {
+      if (commitChartInstance) commitChartInstance.destroy();
+      const labels = history.map(h => h.commit || h.date);
+      commitChartInstance = new Chart(document.getElementById('commitChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Backend',
+              data: history.map(h => h.backend),
+              backgroundColor: '#d97706',
+              borderRadius: 4,
+              barPercentage: 0.7,
+            },
+            {
+              label: 'Frontend',
+              data: history.map(h => h.frontend),
+              backgroundColor: '#2563eb',
+              borderRadius: 4,
+              barPercentage: 0.7,
+            },
+            {
+              label: 'Go (pkgs)',
+              data: history.map(h => h.go),
+              backgroundColor: '#059669',
+              borderRadius: 4,
+              barPercentage: 0.7,
+            }
+          ]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            ...chartDefaults.plugins,
+            tooltip: {
+              callbacks: {
+                afterBody: function(ctx) {
+                  const idx = ctx[0].dataIndex;
+                  const h = history[idx];
+                  return 'Total: ' + h.total + (h.failures > 0 ? ' (' + h.failures + ' FAIL)' : '') + (h.notes ? '\n' + h.notes : '');
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // ── Delta Chart (incremental growth) ───────
+    function renderDelta(history) {
+      if (deltaChartInstance) deltaChartInstance.destroy();
+      const labels = history.slice(1).map(h => h.date);
+      const deltas = history.slice(1).map((h, i) => h.total - history[i].total);
+      const backendDeltas = history.slice(1).map((h, i) => h.backend - history[i].backend);
+      const frontendDeltas = history.slice(1).map((h, i) => h.frontend - history[i].frontend);
+
+      deltaChartInstance = new Chart(document.getElementById('deltaChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Backend Δ',
+              data: backendDeltas,
+              backgroundColor: backendDeltas.map(d => d > 0 ? 'rgba(217,119,6,0.7)' : d < 0 ? 'rgba(239,68,68,0.7)' : 'rgba(148,163,184,0.3)'),
+              borderRadius: 4,
+            },
+            {
+              label: 'Frontend Δ',
+              data: frontendDeltas,
+              backgroundColor: frontendDeltas.map(d => d > 0 ? 'rgba(37,99,235,0.7)' : d < 0 ? 'rgba(239,68,68,0.7)' : 'rgba(148,163,184,0.3)'),
+              borderRadius: 4,
+            }
+          ]
+        },
+        options: {
+          ...chartDefaults,
+          plugins: {
+            ...chartDefaults.plugins,
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const v = ctx.raw;
+                  return ctx.dataset.label + ': ' + (v > 0 ? '+' : '') + v;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } }, stacked: true },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, callback: v => (v > 0 ? '+' : '') + v }, stacked: true }
+          }
+        }
+      });
+    }
+
+    // ── Radar Chart (Coverage) ─────────────────
+    function renderRadar() {
+      new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+          labels: ['Security', 'Provisioning', 'Auth/IAM', 'Design', 'Observability', 'Go Engine'],
+          datasets: [
+            {
+              label: 'Cobertura Atual',
+              data: [95, 92, 88, 85, 70, 90],
+              backgroundColor: 'rgba(204,255,0,0.15)',
+              borderColor: '#ccff00', borderWidth: 2,
+              pointBackgroundColor: '#ccff00', pointRadius: 3,
+            },
+            {
+              label: 'Meta',
+              data: [95, 95, 95, 90, 85, 95],
+              backgroundColor: 'rgba(10,17,40,0.05)',
+              borderColor: '#94a3b8', borderWidth: 1,
+              borderDash: [4, 4], pointBackgroundColor: '#94a3b8', pointRadius: 2,
+            }
+          ]
+        },
+        options: {
+          ...chartDefaults,
+          scales: {
+            r: {
+              beginAtZero: false, min: 50, max: 100,
+              ticks: { font: { size: 10 }, stepSize: 10, backdropColor: 'transparent' },
+              grid: { color: '#e2e8f0' },
+              pointLabels: { font: { size: 11, weight: '500' } }
+            }
+          }
+        }
+      });
+    }
+
+    // ── Commit History Table ────────────────────
+    function renderCommitTable() {
+      const history = getHistory();
+      const tbody = document.getElementById('commitTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      for (let i = history.length - 1; i >= 0; i--) {
+        const h = history[i];
+        const prev = i > 0 ? history[i - 1] : null;
+        const delta = prev ? h.total - prev.total : 0;
+        const deltaStr = delta > 0 ? '+' + delta : delta < 0 ? String(delta) : '—';
+        const deltaClass = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f1f5f9';
+        if (i % 2 === 0) tr.style.background = '#f8fafc';
+        tr.innerHTML = `
+          <td style="padding:10px 12px;font-weight:500;">${h.date}</td>
+          <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#64748b;">${h.commit || '—'}</td>
+          <td style="padding:10px 12px;">${h.backend}</td>
+          <td style="padding:10px 12px;">${h.frontend}</td>
+          <td style="padding:10px 12px;">${h.go || '—'}</td>
+          <td style="padding:10px 12px;font-weight:600;">${h.total}</td>
+          <td style="padding:10px 12px;"><span class="trend ${deltaClass}">${deltaStr}</span></td>
+          <td style="padding:10px 12px;"><span class="layer-status ${h.failures === 0 ? 'pass' : 'fail'}" style="font-size:10px;">${h.failures === 0 ? 'ALL PASS' : h.failures + ' FAIL'}</span></td>
+          <td style="padding:10px 12px;color:#94a3b8;font-size:11px;">${h.notes || ''}</td>
+        `;
+        tbody.appendChild(tr);
       }
-    });
+    }
+
+    // ── Render All ─────────────────────────────
+    function renderAllCharts() {
+      const history = getHistory();
+      renderDistribution();
+      renderTrend(history);
+      renderCommitComparison(history);
+      renderDelta(history);
+      renderRadar();
+    }
+
+    // ── Init ───────────────────────────────────
+    loadHistory();
   </script>
 </body>
 </html>
