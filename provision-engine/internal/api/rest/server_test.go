@@ -63,6 +63,20 @@ func TestServer_Healthz(t *testing.T) {
 	}
 }
 
+func TestServer_HealthAliasBypassesAuthentication(t *testing.T) {
+	cfg := DefaultServerConfig()
+	cfg.JWTSecret = "test-secret"
+	s := NewServer(cfg)
+
+	req := httptest.NewRequest("GET", "/health", nil)
+	w := httptest.NewRecorder()
+	s.HTTPServer().Handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+}
+
 func TestServer_Readyz_AllHealthy(t *testing.T) {
 	s := NewServer(DefaultServerConfig())
 	s.Health().Register("db", func(ctx context.Context) error { return nil })

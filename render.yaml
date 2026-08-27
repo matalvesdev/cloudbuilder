@@ -3,7 +3,9 @@ services:
   - type: web
     name: cloudbuilder-api
     runtime: docker
+    plan: free
     dockerfilePath: backend/Dockerfile
+    dockerContext: backend
     envVars:
       # Neon exposes a PostgreSQL URL. Spring needs its JDBC equivalent
       # (jdbc:postgresql://...) plus the credentials separately.
@@ -18,7 +20,7 @@ services:
       - key: CLOUDBUILDER_ENCRYPTION_KEY
         generateValue: true
       - key: SPRING_PROFILES_ACTIVE
-        value: prod
+        value: render
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: JAVA_OPTS
@@ -30,7 +32,9 @@ services:
   - type: web
     name: cloudbuilder-engine
     runtime: docker
+    plan: free
     dockerfilePath: provision-engine/Dockerfile
+    dockerContext: provision-engine
     envVars:
       # The engine reads PORT at startup and binds its HTTP API to it.
       - key: PE_SERVER_JWT_SECRET

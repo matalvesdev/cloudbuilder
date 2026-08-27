@@ -367,7 +367,7 @@ func Authenticate(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
-			if path == "/healthz" || path == "/readyz" || path == "/info" {
+			if path == "/health" || path == "/healthz" || path == "/readyz" || path == "/info" {
 				next.ServeHTTP(w, r)
 				return
 			}

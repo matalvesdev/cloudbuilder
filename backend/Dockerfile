@@ -22,7 +22,7 @@ FROM eclipse-temurin:21-jdk AS jre-build
 
 # Create minimal JRE with only needed modules
 RUN jlink \
-    --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.prefs,java.security.jgss,java.sql,java.transaction.xa,java.xml,jdk.crypto.ec \
+    --add-modules java.base,java.desktop,java.instrument,java.logging,java.management,java.naming,java.net.http,java.prefs,java.security.jgss,java.sql,java.transaction.xa,java.xml,jdk.crypto.ec,jdk.unsupported \
     --strip-debug \
     --no-man-pages \
     --no-header-files \

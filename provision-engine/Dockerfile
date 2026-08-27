@@ -109,7 +109,7 @@ USER pe
 EXPOSE 8080 9090
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
-    CMD curl -fs http://localhost:8080/healthz || exit 1
+    CMD curl -fs http://localhost:${PORT:-8080}/health || exit 1
 
 ENTRYPOINT ["/app/api"]
 CMD ["api", "--config", "/app/configs/config.yaml"]
