@@ -2,6 +2,7 @@
 # CloudBuilder — Render.com Free Tier Profile
 # ═══════════════════════════════════════════════════════════════════════════
 # Minimal config for Render free tier (512MB RAM, Neon serverless DB)
+# Every MB counts — aggressive memory limits throughout.
 # ═══════════════════════════════════════════════════════════════════════════
 
 spring:
@@ -34,6 +35,7 @@ spring:
     baseline-version: 0
     validate-on-migrate: false
     out-of-order: false
+
   autoconfigure:
     exclude:
       - org.springframework.boot.actuate.autoconfigure.metrics.export.prometheus.PrometheusMetricsExportAutoConfiguration
@@ -42,6 +44,11 @@ spring:
       - org.springframework.boot.autoconfigure.web.socket.ServletWebSocketServerAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.audit.AuditAutoConfiguration
       - org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
+      - org.springframework.boot.autoconfigure.freemarker.FreeMarkerAutoConfiguration
+      - org.springframework.boot.autoconfigure.groovy.template.GroovyTemplateAutoConfiguration
+      - org.springframework.boot.autoconfigure.mustache.MustacheAutoConfiguration
+      - org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration
 
   jpa:
     hibernate:
@@ -72,7 +79,14 @@ spring:
 
 server:
   port: ${PORT:8080}
-  shutdown: graceful
+  shutdown: immediate
+  tomcat:
+    threads:
+      max: 4
+      min-spare: 1
+    max-connections: 20
+    accept-count: 10
+    connection-timeout: 10000
   compression:
     enabled: true
     mime-types: text/html,text/plain,text/css,application/javascript,application/json
@@ -80,9 +94,6 @@ server:
   error:
     include-stacktrace: never
     include-message: never
-
-spring.lifecycle:
-  timeout-per-shutdown-phase: 30s
 
 management:
   endpoints:

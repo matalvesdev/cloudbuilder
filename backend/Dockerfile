@@ -53,7 +53,7 @@ USER cb
 EXPOSE ${PORT:-8080}
 
 # Ultra-minimal JVM settings for 512MB Render free tier
-ENV JAVA_OPTS="-Xmx320m -Xms64m -Xss512k -XX:+UseSerialGC -XX:MaxRAMPercentage=60.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify -Djava.security.egd=file:/dev/./urandom -Djdk.module.illegalAccess=permit"
+ENV JAVA_OPTS="-Xmx230m -Xms64m -Xss256k -XX:MaxMetaspaceSize=80m -XX:MaxDirectMemorySize=32m -XX:ReservedCodeCacheSize=32m -XX:+UseSerialGC -XX:MaxRAMPercentage=45.0 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -noverify -Djava.security.egd=file:/dev/./urandom -Djdk.module.illegalAccess=permit"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
     CMD curl -f http://localhost:${PORT:-8080}/actuator/health || exit 1
