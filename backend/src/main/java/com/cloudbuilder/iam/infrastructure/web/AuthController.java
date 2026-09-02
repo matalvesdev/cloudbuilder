@@ -1,6 +1,5 @@
 package com.cloudbuilder.iam.infrastructure.web;
 
-import com.cloudbuilder.audit.domain.Audited;
 import com.cloudbuilder.iam.application.dto.*;
 import com.cloudbuilder.iam.domain.service.AuthService;
 import jakarta.validation.Valid;
@@ -23,14 +22,12 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @Audited(action = "REGISTER", resourceType = "USER", resourceId = "#result?.userId", details = "'Registro: ' + #result?.email")
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         var response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @Audited(action = "LOGIN", resourceType = "USER", resourceId = "#result?.userId", details = "'Login: ' + #result?.email")
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         var response = authService.login(request);
@@ -64,14 +61,12 @@ public class AuthController {
         ));
     }
 
-    @Audited(action = "FORGOT_PASSWORD", resourceType = "USER", resourceId = "#request.email()")
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         var response = authService.forgotPassword(request);
         return ResponseEntity.ok(response);
     }
 
-    @Audited(action = "RESET_PASSWORD", resourceType = "USER", resourceId = "#request.email()")
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         var response = authService.resetPassword(request);

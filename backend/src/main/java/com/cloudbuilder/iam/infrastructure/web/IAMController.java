@@ -1,6 +1,5 @@
 package com.cloudbuilder.iam.infrastructure.web;
 
-import com.cloudbuilder.audit.domain.Audited;
 import com.cloudbuilder.iam.domain.model.*;
 import com.cloudbuilder.iam.domain.service.IamService;
 import com.cloudbuilder.iam.domain.service.MfaService;
@@ -51,7 +50,6 @@ public class IAMController {
         return ResponseEntity.ok(iamService.listTenantsByUser(id));
     }
 
-    @Audited(action = "CREATE_USER", resourceType = "USER", resourceId = "#result?.getId()?.toString()")
     @PostMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> createUser(@RequestBody CreateUserRequest req) {
@@ -61,7 +59,6 @@ public class IAMController {
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
-    @Audited(action = "ENABLE_USER", resourceType = "USER", resourceId = "#id?.toString()")
     @PostMapping("/users/{id}/enable")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> enableUser(@PathVariable String id) {
@@ -69,7 +66,6 @@ public class IAMController {
         return ResponseEntity.ok(iamService.enableUser(id));
     }
 
-    @Audited(action = "DISABLE_USER", resourceType = "USER", resourceId = "#id?.toString()")
     @PostMapping("/users/{id}/disable")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<User> disableUser(@PathVariable String id) {

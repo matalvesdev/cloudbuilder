@@ -1,6 +1,6 @@
 package com.cloudbuilder.shared.monitoring;
 
-import com.cloudbuilder.observability.infrastructure.aop.TraceContext;
+import com.cloudbuilder.shared.monitoring.TraceContext;
 import com.cloudbuilder.shared.security.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
