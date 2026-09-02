@@ -42,7 +42,6 @@ spring:
       - org.springframework.boot.autoconfigure.web.socket.ServletWebSocketServerAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.audit.AuditAutoConfiguration
       - org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration
-      - org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 
   jpa:
     hibernate:
