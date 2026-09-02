@@ -488,7 +488,7 @@ function HistoricoSection() {
         const all: VersionEntry[] = JSON.parse(stored);
         setVersions(all.slice(0, 5));
       }
-    } catch {}
+    } catch { /* localStorage may be unavailable */ }
   }, []);
 
   const handleRestore = (version: number) => {
@@ -500,7 +500,7 @@ function HistoricoSection() {
         const store = useCanvasStore.getState();
         store.loadCanvas(design);
       }
-    } catch {}
+    } catch { /* restore may fail */ }
     setTimeout(() => setRestoring(null), 1000);
   };
 
@@ -537,7 +537,7 @@ function HistoricoSection() {
       ].slice(0, 20);
       localStorage.setItem(historyKey, JSON.stringify(updated));
       setVersions(updated.slice(0, 5));
-    } catch {}
+    } catch { /* history save may fail */ }
   };
 
   return (

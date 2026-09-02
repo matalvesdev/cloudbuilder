@@ -32,6 +32,7 @@ function getPasswordStrength(password: string): {
   if (/[A-Z]/.test(password)) score++;
   if (/[a-z]/.test(password)) score++;
   if (/\d/.test(password)) score++;
+  // eslint-disable-next-line no-useless-escape
   if (/[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?]/.test(password)) score++;
 
   if (score <= 2) return { score, label: "Fraca", color: "bg-red-500" };
@@ -82,6 +83,7 @@ export function InvitePage({ token, onSwitchToLogin }: InvitePageProps) {
       uppercase: /[A-Z]/.test(password),
       lowercase: /[a-z]/.test(password),
       number: /\d/.test(password),
+      // eslint-disable-next-line no-useless-escape
       special: /[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?]/.test(password),
     }),
     [password],

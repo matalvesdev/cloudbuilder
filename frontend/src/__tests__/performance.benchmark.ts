@@ -209,7 +209,7 @@ describe("Utility Performance", () => {
     "cn() (class merging)",
     () => {
       cn("text-sm", "font-bold", "p-2", undefined, null, "bg-white");
-      cn("flex", "items-center", "gap-2", false && "hidden");
+      cn("flex", "items-center", "gap-2", undefined);
       cn("rounded-md", "border", "border-gray-200", "hover:bg-gray-50");
     },
     { iterations: 10000 },

@@ -187,7 +187,7 @@ describe("Auth: Register Flow", () => {
       await useAuthStore
         .getState()
         .register("Duplicate User", "existing@test.com", "pass123");
-    } catch {}
+    } catch { /* expected */ }
 
     // Then
     const result = useAuthStore.getState();

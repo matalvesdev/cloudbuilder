@@ -43,6 +43,10 @@ func (dm *DeploymentManager) WriteCode(files map[string]string) error {
 	if err != nil {
 		return fmt.Errorf("resolve work directory: %w", err)
 	}
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		resolvedRoot = root
+	}
 	for filename, content := range files {
 		if filepath.IsAbs(filename) {
 			return fmt.Errorf("absolute output path is not allowed: %s", filename)
@@ -64,9 +68,9 @@ func (dm *DeploymentManager) WriteCode(files map[string]string) error {
 		}
 		resolvedDir, err := filepath.EvalSymlinks(dir)
 		if err != nil {
-			return fmt.Errorf("resolve output directory %s: %w", dir, err)
+			resolvedDir = dir
 		}
-		resolvedRelative, err := filepath.Rel(root, resolvedDir)
+		resolvedRelative, err := filepath.Rel(resolvedRoot, resolvedDir)
 		if err != nil || resolvedRelative == ".." ||
 			len(resolvedRelative) >= 3 && resolvedRelative[:3] == ".."+string(filepath.Separator) {
 			return fmt.Errorf("output directory escapes work directory: %s", filename)

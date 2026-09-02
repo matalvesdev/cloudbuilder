@@ -61,14 +61,14 @@ export function IncidentsView() {
     try {
       await observabilityApi.acknowledgeIncident(id);
       loadIncidents();
-    } catch {}
+    } catch { /* acknowledge may fail */ }
   };
 
   const handleResolve = async (id: string) => {
     try {
       await observabilityApi.resolveIncident(id);
       loadIncidents();
-    } catch {}
+    } catch { /* resolve may fail */ }
   };
 
   if (loading) {

@@ -97,7 +97,7 @@ export function AlertRulesView() {
         enabled: true,
       });
       loadRules();
-    } catch {}
+    } catch { /* rule creation may fail */ }
   };
 
   const toggleRule = async (rule: AlertRuleDTO) => {
@@ -114,14 +114,14 @@ export function AlertRulesView() {
         notifyChannels: rule.notifyChannels ? [rule.notifyChannels] : undefined,
       });
       loadRules();
-    } catch {}
+    } catch { /* rule toggle may fail */ }
   };
 
   const deleteRule = async (id: string) => {
     try {
       await observabilityApi.deleteAlertRule(id);
       loadRules();
-    } catch {}
+    } catch { /* rule deletion may fail */ }
   };
 
   return (

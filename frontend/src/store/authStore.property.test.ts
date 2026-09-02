@@ -97,7 +97,7 @@ describe("authStore.login — property-based", () => {
     });
     try {
       await useAuthStore.getState().login("e@t.co", "pw");
-    } catch {}
+    } catch { /* expected failure */ }
     expect(useAuthStore.getState().isLoading).toBe(false);
   });
 });
@@ -131,7 +131,7 @@ describe("authStore.register — property-based", () => {
     });
     try {
       await useAuthStore.getState().register("Dup", "dup@test.co", "pass");
-    } catch {}
+    } catch { /* expected failure */ }
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
     expect(state.user).toBeNull();
@@ -192,7 +192,7 @@ describe("authStore — state consistency", () => {
     vi.mocked(authApi.login).mockRejectedValueOnce(new Error("new"));
     try {
       await useAuthStore.getState().login("e@t.co", "pw");
-    } catch {}
+    } catch { /* expected failure */ }
     expect(useAuthStore.getState().error).toBe("new");
   });
 });

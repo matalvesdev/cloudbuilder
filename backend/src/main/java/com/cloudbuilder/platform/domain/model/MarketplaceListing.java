@@ -30,7 +30,7 @@ public class MarketplaceListing {
     @Column(name = "listing_type", nullable = false)
     private String listingType;
 
-    @Column(nullable = false)
+    @Column(name = "item_version", nullable = false)
     private String version;
 
     @Column(nullable = false)

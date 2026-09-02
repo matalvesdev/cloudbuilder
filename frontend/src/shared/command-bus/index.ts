@@ -210,12 +210,7 @@ export const authMiddleware: CommandMiddleware = async (command, next) => {
  * Logging middleware — logs command dispatch in development.
  */
 export const loggingMiddleware: CommandMiddleware = async (command, next) => {
-  try {
-    const result = await next(command);
-    return result;
-  } catch (err) {
-    throw err;
-  }
+  return next(command);
 };
 
 /**

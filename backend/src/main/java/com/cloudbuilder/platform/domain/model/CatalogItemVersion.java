@@ -29,7 +29,7 @@ public class CatalogItemVersion {
     @Column(columnDefinition = "TEXT")
     private String schema;
 
-    @Column(nullable = false)
+    @Column(name = "item_version", nullable = false)
     private String version;
 
     @Column(nullable = false)

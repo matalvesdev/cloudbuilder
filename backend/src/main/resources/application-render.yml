@@ -22,8 +22,8 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:?}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
+      maximum-pool-size: 2
+      minimum-idle: 1
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -41,10 +41,12 @@ spring:
       - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
       - org.springframework.boot.autoconfigure.web.socket.ServletWebSocketServerAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.audit.AuditAutoConfiguration
+      - org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration
+      - org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
       naming:
         physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
     show-sql: false
@@ -54,15 +56,20 @@ spring:
         format_sql: false
         default_schema: public
         jdbc:
-          batch_size: 25
+          batch_size: 10
         order_inserts: true
         order_updates: true
+        generate_statistics: false
+        session:
+          events:
+            log:
+              LOG_QUERIES_SLOWER_THAN_MS: 1000
 
   modulith:
     events:
       jpa:
         schema-initialization:
-          enabled: true
+          enabled: false
 
 server:
   port: ${PORT:8080}

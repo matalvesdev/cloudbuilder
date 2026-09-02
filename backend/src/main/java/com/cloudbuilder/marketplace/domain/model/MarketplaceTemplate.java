@@ -27,7 +27,7 @@ public class MarketplaceTemplate extends AggregateRoot {
     @Column(nullable = false)
     private String author;
 
-    @Column(nullable = false)
+    @Column(name = "item_version", nullable = false)
     private String version;
 
     @Column(columnDefinition = "TEXT")
