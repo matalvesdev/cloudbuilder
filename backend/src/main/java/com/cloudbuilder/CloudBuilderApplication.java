@@ -6,10 +6,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
-import org.springframework.modulith.Modulith;
 
 @SpringBootApplication
-@Modulith
 @ComponentScan(excludeFilters = @ComponentScan.Filter(
     type = FilterType.CUSTOM,
     classes = RenderLitePackageFilter.class
